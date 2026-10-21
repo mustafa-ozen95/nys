@@ -93,7 +93,7 @@ class Field extends Component
 
     private function ayarAnahtari(): string
     {
-        return 'basit_mod.alanlar.'.$this->kural.'.acik';
+        return 'simple_mode.alanlar.'.$this->kural.'.acik';
     }
 
     public function render(): View

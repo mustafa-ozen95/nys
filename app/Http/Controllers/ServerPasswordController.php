@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Jobs\SunucuParolaDondurJob;
+use App\Jobs\ServerPasswordRotateJob;
 use App\Models\Server;
 use App\Models\ServerPasswordRotation;
-use App\Services\Sunucu\SunucuParolaDondurucu;
-use App\Services\Sunucu\SurucuSecici;
-use App\Services\Sunucu\TurDurumlari;
+use App\Services\Server\DriverSelector;
+use App\Services\Server\RoundStatuses;
+use App\Services\Server\ServerPasswordRotator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,13 +44,13 @@ class ServerPasswordController extends Controller implements HasMiddleware
     /** Tek sunucu. */
     public function dondur(Request $request, Server $server): RedirectResponse
     {
-        $engel = app(SurucuSecici::class)->engel($server);
+        $engel = app(DriverSelector::class)->engel($server);
 
         if ($engel !== null) {
             return back()->with('error', "{$server->short_name}: {$engel}");
         }
 
-        SunucuParolaDondurJob::kuyrukla(
+        ServerPasswordRotateJob::kuyrukla(
             (int) $server->id,
             (int) $request->user()->id,
             (string) $request->input('reason'),
@@ -78,7 +78,7 @@ class ServerPasswordController extends Controller implements HasMiddleware
             ->whereIn('uuid', $veri['sunucular'])
             ->get();
 
-        $secici = app(SurucuSecici::class);
+        $secici = app(DriverSelector::class);
 
         $yetkisiz = 0;
         $engelli = 0;
@@ -104,7 +104,7 @@ class ServerPasswordController extends Controller implements HasMiddleware
             return back()->with('error', 'Hiçbir sunucunun parolası güncellenemedi: '.$this->atlananlar($yetkisiz, $engelli).'.');
         }
 
-        SunucuParolaDondurJob::sirayaAl(
+        ServerPasswordRotateJob::sirayaAl(
             $kuyruk,
             (int) $request->user()->id,
             (string) $request->input('reason'),
@@ -122,10 +122,10 @@ class ServerPasswordController extends Controller implements HasMiddleware
      * İlerleme.
      *
      * Yanıtın biçimi switch turlarıyla AYNIDIR: ekranda aynı betik çiziyor
-     * (resources/js/components/dondurme-ilerleme.js). Hesap TurDurumlari'nde,
+     * (resources/js/components/rotation-progress.js). Hesap RoundStatuses'nde,
      * yani liste sayfasının ilk çizimiyle aynı yerde.
      */
-    public function durum(Request $request, TurDurumlari $durumlar): JsonResponse
+    public function durum(Request $request, RoundStatuses $durumlar): JsonResponse
     {
         $suren = $durumlar->icin(
             Server::query()
@@ -146,7 +146,7 @@ class ServerPasswordController extends Controller implements HasMiddleware
      * Kuyruğa ATILMAZ, hemen çalışır: onarım tek bir makineye birkaç kimlik
      * denemekten ibaret ve kullanıcı sonucu görmek için düğmeye basıyor.
      */
-    public function onar(Request $request, ServerPasswordRotation $rotation, SunucuParolaDondurucu $dondurucu): RedirectResponse
+    public function onar(Request $request, ServerPasswordRotation $rotation, ServerPasswordRotator $dondurucu): RedirectResponse
     {
         $sunucu = $rotation->server;
 

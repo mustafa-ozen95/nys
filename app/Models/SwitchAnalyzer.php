@@ -109,7 +109,7 @@ class SwitchAnalyzer extends Model
     /**
      * Aynalanan kaynakların tek satırlık özeti.
      *
-     * Blade hesap yapmasın diye burada durur (bkz. .ai/rules/arayuz.md).
+     * Blade hesap yapmasın diye burada durur (bkz. .ai/rules/interface.md).
      *
      * @return Attribute<string, never>
      */

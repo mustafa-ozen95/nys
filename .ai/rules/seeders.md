@@ -6,7 +6,7 @@ paths:
 # Seeders
 
 ## Seeder'a uydurma envanter eklenmez
-Envanter seeder'ları yalnızca yerel envanter dosyasındaki (`database/seeders/yerel/envanter.php`, depoda yok) kayıtları yazar; dosya yoksa hiçbir şey yazmazlar. Demo/örnek switch, sunucu veya kullanıcı üretilmez.
+Envanter seeder'ları yalnızca yerel envanter dosyasındaki (`database/seeders/local/inventory.php`, depoda yok) kayıtları yazar; dosya yoksa hiçbir şey yazmazlar. Demo/örnek switch, sunucu veya kullanıcı üretilmez.
 
 Seeder uydurma kayıt ve rastgele (`fake()->ipv4()`) uplink yazmaz: gerçek veriymiş gibi görünür ve ekranlarda yanlış bilgi oluşturur.
 

@@ -10,7 +10,7 @@ an audit log.
 Sibling projects: EYS (password vault) and the Identity Management Center
 (identity provider).
 
-What is supported, and **to what extent**: [`DESTEK.md`](DESTEK.md) (Turkish).
+What is supported, and **to what extent**: [`SUPPORT.md`](SUPPORT.md) (Turkish).
 
 ## The order of a device write
 

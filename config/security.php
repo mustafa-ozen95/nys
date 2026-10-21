@@ -20,7 +20,7 @@ return [
     | koyuyor" diye atlanması yanlış olur: imajın /etc/nginx ağacında
     | add_header yoktur ve önde hangi katmanın durduğu kuruluma göre
     | değişir. Bir katmanın varlığı yorumla değil ölçümle bilinir
-    | (bkz. GuvenlikBasliklariTest).
+    | (bkz. SecurityHeadersTest).
     |
     | Çift gönderim riski yok — imajdaki nginx bunların hiçbirini koymuyor.
     */

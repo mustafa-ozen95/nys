@@ -3,22 +3,22 @@ import Chart from 'chart.js/auto';
 import * as addressAssignment from './components/address-assignment.js';
 import * as aggregationForm from './components/aggregation-form.js';
 import * as bgpForm from './components/bgp-form.js';
-import * as bildirim from './components/bildirim.js';
+import * as bildirim from './components/notification.js';
 import * as bgpReceived from './components/bgp-received.js';
 import * as chart from './components/chart.js';
 import * as columns from './components/columns.js';
 import * as confirmDialog from './components/confirm.js';
 import * as copy from './components/copy.js';
-import * as dondurmeIlerleme from './components/dondurme-ilerleme.js';
+import * as dondurmeIlerleme from './components/rotation-progress.js';
 import * as dialog from './components/dialog.js';
 import * as firewallForm from './components/firewall-form.js';
 import * as ipAddressForm from './components/ip-address-form.js';
-import * as secim from './components/secim.js';
+import * as secim from './components/selection.js';
 import * as keyboard from './components/keyboard.js';
-import * as kullaniciMenu from './components/kullanici-menu.js';
+import * as kullaniciMenu from './components/user-menu.js';
 import * as meter from './components/meter.js';
 import * as navigation from './components/navigation.js';
-import * as oturumKilidi from './components/oturum-kilidi.js';
+import * as oturumKilidi from './components/session-lock.js';
 import * as portForm from './components/port-form.js';
 import * as provisioningForm from './components/provisioning-form.js';
 import * as remoteSession from './components/remote-session.js';
@@ -84,7 +84,7 @@ function herCizimde() {
 document.addEventListener('DOMContentLoaded', () => {
     herCizimde();
     navigation.init();
-    /* Ekran kilidi: hareketsiz sekme oturumu kapatır (bkz. oturum-kilidi.js). Bir kez. */
+    /* Ekran kilidi: hareketsiz sekme oturumu kapatır (bkz. session-lock.js). Bir kez. */
     oturumKilidi.init();
 });
 

@@ -28,7 +28,7 @@ class NetworkTeamPermissionSeeder extends Seeder
     private function haricTutulanlar(): array
     {
         /** @var list<string> */
-        return YerelEnvanter::al('ekibe_kapali_sunucular');
+        return LocalInventory::al('ekibe_kapali_sunucular');
     }
 
     public function __construct(private PermissionRegistry $registry) {}

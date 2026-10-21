@@ -133,7 +133,7 @@ final class LoginTest extends TestCase
      *
      * Varsayılan kapalı olduğu için sınama kilidi AÇARAK çalıştığını
      * doğrular. Kapalıyken kilitlemediği ayrıca sınanır (bkz.
-     * GirisKilidiTest).
+     * LoginLockTest).
      */
     public function test_repeated_failures_are_rate_limited(): void
     {

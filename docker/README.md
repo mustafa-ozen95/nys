@@ -38,7 +38,7 @@ Vekilsiz deneme: `cp docker-compose.override.example.yml docker-compose.override
 | `isci-yazma` | `nms-switch-write` — `--tries=1`, `--timeout=300` |
 | `isci-genel` | `default` — e-posta ve bildirimler |
 | `zamanlayici` | `schedule:work`; eşitleme işçilerini bu açar |
-| `yeniden-baslat` | Panelin istediği yeniden başlatma (veritabanı taşıması); root, tek iş |
+| `restart` | Panelin istediği yeniden başlatma (veritabanı taşıması); root, tek iş |
 | `guacd` | Guacamole proxy arka planı, 127.0.0.1:4822 |
 | `tomcat` | Guacamole web uygulaması, 127.0.0.1:8090 |
 
@@ -71,8 +71,8 @@ Adlar `ONEK` ile başlar (varsayılan `nys`); aynı sunucuda ikinci kurulum onu 
 
 | Hacim | İçerik |
 |---|---|
-| `nys_storage` | `storage/app`: APP_KEY (verilmediyse), ilk parola dosyası, Ayarlar → Veritabanı'nın bağlantı dosyası (`veritabani/`) |
-| `nys_veritabani` | db servisinin veri dizini |
+| `nys_storage` | `storage/app`: APP_KEY (verilmediyse), ilk parola dosyası, Ayarlar → Veritabanı'nın bağlantı dosyası (`database/`) |
+| `nys_database` | db servisinin veri dizini |
 | `nys_logs` | `storage/logs` |
 
 
@@ -119,14 +119,14 @@ Açılışta panel kapalıyken şu anki veritabanı hedefe kopyalanır ve her ta
 sayısı iki tarafta karşılaştırılır. Bir adım tutmazsa panel şu anki veritabanıyla açılır
 ve sebep sekmede görünür.
 
-Panelden tanımlanan bağlantı `storage/app/veritabani/baglanti.json` dosyasında APP_KEY ile
-şifreli durur ve ortamdaki `DB_*` değerlerinin yerine geçer. `durum.json` taşımanın
-aşamasını tutar ve sır içermez. Yeniden başlatmayı konteyner içindeki `dc-yeniden-baslat`
+Panelden tanımlanan bağlantı `storage/app/database/connection.json` dosyasında APP_KEY ile
+şifreli durur ve ortamdaki `DB_*` değerlerinin yerine geçer. `state.json` taşımanın
+aşamasını tutar ve sır içermez. Yeniden başlatmayı konteyner içindeki `dc-restart`
 yapar; bunun için yeniden başlatma politikası **`unless-stopped`** olmalı (compose'ta öyle).
 
 Taşıma bittikten sonra eski veritabanına **kendiliğinden dönülmez**; taşıma anındaki
 hâliyle durur. Bilerek dönmek için: uzak veritabanının dökümünü eskisine yükleyin,
-sonra `storage/app/veritabani` altındaki `baglanti.json` ve `durum.json`'u silip
+sonra `storage/app/database` altındaki `connection.json` ve `state.json`'u silip
 konteyneri yeniden başlatın. Dökümü yüklemezseniz taşımadan sonraki her şey kaybolur.
 
 APP_KEY değişirse bağlantı dosyası çözülemez ve panel açılmaz.
@@ -136,11 +136,11 @@ APP_KEY değişirse bağlantı dosyası çözülemez ve panel açılmaz.
 
 Kullanıcı tablosu boşsa başlatıcı bir yönetici açar (`ADMIN_EMAIL`, boşsa
 `admin@nys.local`). `ADMIN_PASSWORD` boşsa parola **rastgele üretilir** ve
-`storage/app/ilk-parola.txt` içine (0600; 2. satır) yazılır. Parolanın kendisi günlüğe
+`storage/app/initial-password.txt` içine (0600; 2. satır) yazılır. Parolanın kendisi günlüğe
 yazılmaz; günlükte yalnız dosyanın yeri durur. Sabit bir varsayılan parola konulmaz:
 imajı kuran herkeste aynı giriş bulunurdu.
 
-    docker compose exec panel cat /uygulama/storage/app/ilk-parola.txt
+    docker compose exec panel cat /uygulama/storage/app/initial-password.txt
 
 Giriş yapıp parolayı değiştirdikten sonra o dosyayı silin. Hesabı sonradan açmak için
 (parola sorulur, komut satırına yazılmaz):
@@ -185,7 +185,7 @@ kurulumu içindir, gerçek kurulumda kapalı kalır.
 ## Önde Caddy
 
 Platform değil de düz `docker compose` ile kuruluyorsa önde TLS bitiren bir vekil
-gerekir. Bu panelin Caddy parçası `docker/vekil.caddy`'dedir (SSH/RDP WebSocket'leri
+gerekir. Bu panelin Caddy parçası `docker/proxy.caddy`'dedir (SSH/RDP WebSocket'leri
 için okuma/yazma süresi bir saat). Vekil konteyneri panelin ağında olmalı:
 
     docker network connect <proje>_default dc-vekil
@@ -210,7 +210,7 @@ Bir platformda: yeniden dağıtın (platform depoyu çekip derler). Göçler her
 `--isolated` ile koşar; iki örnek aynı anda kalksa bile bir kez çalışır.
 
 GitHub Actions her main'de imajı derleyip `ghcr.io/mustafa-ozen95/nys` altına da
-yükler (`.github/workflows/imaj.yml`): hazır imaj isteyen kurulum `docker/Dockerfile`'ı
+yükler (`.github/workflows/image.yml`): hazır imaj isteyen kurulum `docker/Dockerfile`'ı
 derlemek yerine onu kullanabilir.
 
 ### Güncelleme kontrolü
@@ -226,7 +226,7 @@ Ekran **yalnızca bakar**.
   özelse `GUNCELLEME_JETONU` salt okunur bir jeton olmalı (fine-grained, yalnız panel depoları,
   Contents ve Actions: read). Erişilemezse kontrol "hata" der, panelin başka yeri etkilenmez.
 - Çalışan sürüm derlemede imaja yazılır (`ARG SURUM`, iş akışı commit'i verir). Derlemeye commit
-  vermeyen platformlarda (NineDeploy gibi) bağlamdaki `.git`'ten okunur (`docker/surum-oku.sh`;
+  vermeyen platformlarda (NineDeploy gibi) bağlamdaki `.git`'ten okunur (`docker/version-read.sh`;
   `.dockerignore` yalnız `HEAD` ve ref'leri alır).
 - Panel GitHub'a çıkamıyorsa (kapalı ağ) kontrol "erişilemedi" der.
 

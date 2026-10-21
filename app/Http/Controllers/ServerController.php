@@ -12,7 +12,7 @@ use App\Http\Requests\Server\ServerRequest;
 use App\Models\Server;
 use App\Services\ActivityRecorder;
 use App\Services\Addressing\AddressCandidateService;
-use App\Services\Sunucu\TurDurumlari;
+use App\Services\Server\RoundStatuses;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -39,7 +39,7 @@ class ServerController extends Controller implements HasMiddleware
         ];
     }
 
-    public function index(Request $request, TurDurumlari $turlar): View
+    public function index(Request $request, RoundStatuses $turlar): View
     {
         $servers = Server::query()
             ->visibleTo($request->user())

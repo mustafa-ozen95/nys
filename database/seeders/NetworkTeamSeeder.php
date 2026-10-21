@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Ağ ekibi kullanıcıları.
  *
- * Hesaplar ve parolalar yerel envanter dosyasından gelir (yerel/envanter.php,
+ * Hesaplar ve parolalar yerel envanter dosyasından gelir (local/inventory.php,
  * .gitignore'da). Yetkileri NetworkTeamPermissionSeeder verir.
  */
 class NetworkTeamSeeder extends Seeder
@@ -24,7 +24,7 @@ class NetworkTeamSeeder extends Seeder
     public static function members(): array
     {
         /** @var array<int, array{name: string, email: string, password: string}> */
-        return YerelEnvanter::al('ekip');
+        return LocalInventory::al('ekip');
     }
 
     public function run(): void

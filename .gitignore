@@ -40,7 +40,7 @@ Thumbs.db
 *.zip
 
 # Yerel envanter dosyası (gerçek cihaz kayıtları; bkz. .ai/rules/seeders.md).
-/database/seeders/yerel/envanter.php
+/database/seeders/local/inventory.php
 
 # Kökte duran bir kurulum yapılandırma dosyası APP_KEY, veritabanı parolası,
 # Guacamole sırrı ve SMTP parolası taşıyabilir; ayarlar kökteki .env'dedir

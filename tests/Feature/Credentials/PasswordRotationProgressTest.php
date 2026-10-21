@@ -116,7 +116,7 @@ final class PasswordRotationProgressTest extends TestCase
      * (Chromium: "Applying inline style violates ... style-src") ve çubuk
      * tarayıcıda boş açılır.
      *
-     * Değeri JS uygular (dondurme-ilerleme.js); CSSOM üzerinden yazmak
+     * Değeri JS uygular (rotation-progress.js); CSSOM üzerinden yazmak
      * CSP'ye takılmaz.
      */
     public function test_ekranda_cubuk_cizilir_ve_dugme_gizlenir(): void

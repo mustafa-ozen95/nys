@@ -8,8 +8,8 @@ use App\Enums\CredentialProtocol;
 use App\Enums\SwitchLocation;
 use App\Enums\SwitchRole;
 use App\Models\NetworkSwitch;
+use Database\Seeders\LocalInventory;
 use Database\Seeders\NetworkSeeder;
-use Database\Seeders\YerelEnvanter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -33,12 +33,12 @@ final class NetworkSeederTest extends TestCase
         $this->dizin = sys_get_temp_dir().'/nys-envanter-'.bin2hex(random_bytes(6));
         mkdir($this->dizin);
 
-        YerelEnvanter::dizinAyarla($this->dizin);
+        LocalInventory::dizinAyarla($this->dizin);
     }
 
     protected function tearDown(): void
     {
-        YerelEnvanter::dizinAyarla(null);
+        LocalInventory::dizinAyarla(null);
 
         array_map(unlink(...), glob($this->dizin.'/*') ?: []);
         @rmdir($this->dizin);
@@ -49,7 +49,7 @@ final class NetworkSeederTest extends TestCase
     /** Testin kullanacağı envanteri yazar. */
     private function envanter(): void
     {
-        file_put_contents($this->dizin.'/envanter.php', <<<'PHP'
+        file_put_contents($this->dizin.'/inventory.php', <<<'PHP'
             <?php
 
             use App\Enums\SwitchLocation;

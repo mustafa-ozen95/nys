@@ -27,7 +27,7 @@ use Illuminate\View\View;
  * teşhis aracıdır ve aynı zamanda bir dinleme yoludur: çıkış portuna erişebilen
  * kişi, kaynak portun bütün trafiğini görür. Döngü korumasını yönetme yetkisi,
  * trafiği kopyalama yetkisi anlamına gelmemeli — "hiçbir şey onu ima etmez"
- * (bkz. .ai/rules/yetki.md).
+ * (bkz. .ai/rules/permission.md).
  *
  * Cihazın kendi ayarları (switches.configure) da doğru yer değildir: o yetki
  * yalnızca SNMP adı ve yapılandırma yedeğidir.

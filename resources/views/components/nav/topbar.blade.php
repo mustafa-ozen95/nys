@@ -102,8 +102,8 @@
                 girişinin kullandığı ayardan gelir; merkez kapalı kurulumda
                 ölü bir bağlantı göstermemek için yalnızca açıkken çizilir.
             --}}
-            @if (config('kimlik.acik'))
-                <a href="{{ config('kimlik.adres') }}" class="kullanici-menu__oge" target="_blank" rel="noopener">Hızlı Erişim</a>
+            @if (config('identity.acik'))
+                <a href="{{ config('identity.adres') }}" class="kullanici-menu__oge" target="_blank" rel="noopener">Hızlı Erişim</a>
             @endif
 
             {{--

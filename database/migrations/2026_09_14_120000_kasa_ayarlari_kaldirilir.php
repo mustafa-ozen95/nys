@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * Dış parola kasası (`kasa.*`) ayarlarını siler.
  *
  * Sunucuların parolası panelin kendisindedir ve panel onu kendisi değiştirir
- * (bkz. Services/Sunucu/SunucuParolaDondurucu). Aynı sunucunun parolası iki
+ * (bkz. Services/Sunucu/ServerPasswordRotator). Aynı sunucunun parolası iki
  * yerde birden durursa hangisinin doğru olduğu bilinmez olur.
  *
  * AYARLAR SİLİNİR, sessizce bırakılmaz: kalan bir `kasa.jeton` satırı,

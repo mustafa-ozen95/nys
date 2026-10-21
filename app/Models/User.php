@@ -7,8 +7,8 @@ namespace App\Models;
 use App\Enums\PanelMode;
 use App\Enums\UserStatus;
 use App\Models\Concerns\AuthorizesAccess;
+use App\Models\Concerns\ClosesSessions;
 use App\Models\Concerns\HasUuid;
-use App\Models\Concerns\OturumlariKapatir;
 use App\Services\Authorization\UserPermissionResolver;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,13 +25,13 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     use AuthorizesAccess;
+    use ClosesSessions;
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;
 
     use HasUuid;
     use Notifiable;
-    use OturumlariKapatir;
 
     protected $fillable = [
         'name',

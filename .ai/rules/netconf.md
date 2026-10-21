@@ -350,7 +350,7 @@ yazmayı reddetmesi demektir. Bu yüzden şema ailesi switch ekranında
 görünür ve bilinmiyorsa "Bilinmiyor — ELS öncesi varsayılıyor" yazar; operatör
 hatanın sebebini görebilsin.
 
-Kilitler: `UyumsuzJunosTest`, `DusmancaYanitTest`, `HataliGirdiTest`.
+Kilitler: `IncompatibleJunosTest`, `HostileResponseTest`, `FaultyInputTest`.
 
 ### Sürümler arası fark: oturumu düşüren öznitelik
 
@@ -542,7 +542,7 @@ adı bu yüzden `$record`.
 ### İşçi kurulmazsa
 
 Yazma işleri kuyrukta bekler ve ekranda "cihaza yazılıyor" hiç değişmez.
-Kurulum: `deploy/BENIOKU.md`.
+Kurulum: `deploy/README.md`.
 
 ## Süren yazma kaynağı KİLİTLER
 
@@ -593,7 +593,7 @@ işlenmez ve panelde tek bir işaret çıkmaz.
 `nms-switch-sync` bu projenin genel işçi kuyruğudur; zabbix, snmp, netconf ve
 parola döndürme de oraya yazar.
 
-Kilit: `KuyrukKapsamiTest`. İki şey ölçer — her işin kuyruk seçtiği, VE
+Kilit: `QueueScopeTest`. İki şey ölçer — her işin kuyruk seçtiği, VE
 seçilen kuyruğun bir dinleyicisi olduğu. Adı doğru yazmak yetmez; kimsenin
 dinlemediği bir kuyruk, kuyruk değil çöp kutusudur.
 

@@ -30,7 +30,7 @@ final class AnnouncementTest extends TestCase
      * Yetki denetimi kapatılır: açık bırakılsaydı her testin ayrıca RIPEstat
      * ve IRR yanıtı hazırlaması gerekir, hazırlamayı unutan test de "mail
      * gitmedi" diye başka bir sebepten düşerdi. Denetimin kendisi
-     * AnonsYetkiTest içinde, üretimin geçtiği yoldan sınanır.
+     * AnnouncementPermissionTest içinde, üretimin geçtiği yoldan sınanır.
      */
     protected function setUp(): void
     {

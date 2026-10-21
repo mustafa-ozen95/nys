@@ -21,13 +21,13 @@ use Illuminate\Database\Seeder;
  * her cihazı hedef alır, panelden uzak tutulması gereken bir cihaz envantere
  * sızarsa ona da bağlanılırdı.
  *
- * Erişim parolaları YEREL DOSYADADIR (yerel/envanter.php, .gitignore'da).
+ * Erişim parolaları YEREL DOSYADADIR (local/inventory.php, .gitignore'da).
  * Veritabanına şifreli yazılır ve hiçbir ekranda basılmazlar.
  */
 class NetworkSeeder extends Seeder
 {
     /**
-     * Envanter YEREL DOSYADAN gelir (yerel/envanter.php): adresler ve
+     * Envanter YEREL DOSYADAN gelir (local/inventory.php): adresler ve
      * parolalar depoda durmaz.
      *
      * @return list<array{hostname: string, management_ip: string, uplink_ip: string, role: SwitchRole, location: SwitchLocation, username: string, password: string, community: string}>
@@ -35,7 +35,7 @@ class NetworkSeeder extends Seeder
     private function switchler(): array
     {
         /** @var list<array{hostname: string, management_ip: string, uplink_ip: string, role: SwitchRole, location: SwitchLocation, username: string, password: string, community: string}> */
-        return YerelEnvanter::al('switchler');
+        return LocalInventory::al('switchler');
     }
 
     public function run(): void

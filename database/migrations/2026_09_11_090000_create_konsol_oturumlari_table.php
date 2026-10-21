@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
  * Ayrı durmasının sebebi: tarayıcı çökerse, makine uykuya girerse ya da ağ
  * koparsa istemci "kapandı" haberini gönderemiyor; önbellekteki kayıt
  * sessizce düşüyor ve geriye "açıldı" satırı olup "kapandı" satırı olmayan
- * bir iz kalıyordu (bkz. KonsolTemizleCommand).
+ * bir iz kalıyordu (bkz. ConsoleCleanCommand).
  *
  * Hedef POLİMORFİKTİR: switch de sunucu da oturum hedefi olabiliyor.
  */

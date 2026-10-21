@@ -104,7 +104,7 @@ class SwitchPolicyTerm extends Model
     /**
      * Terimin ekrandaki tek satırlık özeti.
      *
-     * Blade içinde birleştirilmez; model hazır verir (bkz. .ai/rules/arayuz.md).
+     * Blade içinde birleştirilmez; model hazır verir (bkz. .ai/rules/interface.md).
      *
      * @return Attribute<string, never>
      */

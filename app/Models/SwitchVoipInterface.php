@@ -67,7 +67,7 @@ class SwitchVoipInterface extends Model
      * Ayarın tek satırlık özeti.
      *
      * Blade üç alanı kendisi birleştirmez; hazır metni model verir
-     * (bkz. .ai/rules/arayuz.md → liste satırı).
+     * (bkz. .ai/rules/interface.md → liste satırı).
      *
      * @return Attribute<string, never>
      */

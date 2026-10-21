@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnsureRecordIsUnchanged;
 use App\Http\Middleware\EnsureUserIsActive;
-use App\Http\Middleware\KimlikDurumunuDogrula;
 use App\Http\Middleware\RecordUserActivity;
 use App\Http\Middleware\RequireActionReason;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SharePanelMode;
 use App\Http\Middleware\ThrottleApiClients;
+use App\Http\Middleware\VerifyIdentityStatus;
 use App\Services\Netconf\NetconfException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -93,7 +93,7 @@ return Application::configure(basePath: dirname(__DIR__))
          * Merkezde rolü değişen ya da hesabı askıya alınan biri, oturumu açık
          * diye burada erişmeye devam etmemeli. Merkeze her istekte
          * sorulmaz: yanıt kullanıcı başına önbelleklenir
-         * (bkz. KimlikDurumunuDogrula).
+         * (bkz. VerifyIdentityStatus).
          */
         /*
          * SIRA: önce hesap etkin mi, sonra merkezdeki durumu, sonra gerekçe.
@@ -104,7 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $middleware->web(append: [
             EnsureUserIsActive::class,
-            KimlikDurumunuDogrula::class,
+            VerifyIdentityStatus::class,
             RequireActionReason::class,
         ]);
 

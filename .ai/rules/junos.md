@@ -183,7 +183,7 @@ numaraları sayısal olduğu için bu her ASN listesinde geçerli: anahtar üret
 
 ## Arayüz hataları tarayıcı testiyle yakalanır
 Bu sınıf hata sunucu testlerinden geçer: alan HTML'de vardır, yalnızca yanlış
-anda görünür. `tests/Browser/specs/adim-adim-form.spec.js` adım adım açılmayı
+anda görünür. `tests/Browser/specs/step-by-step-form.spec.js` adım adım açılmayı
 sınar. **JS değiştiyse `npm run build` çalıştırılmadan hiçbir şey
 değişmez**.
 
@@ -478,7 +478,7 @@ Metin ekranda görünür ve kopyalanabilir; cihazdan okunan `$9$` biçimi
 Panelin EN TEHLİKELİ yazma yolu budur: yanlış bir filtre bütün trafiği keser
 ve RE filtresi söz konusuysa panelin cihaza erişimini de koparır. Yetki bu
 yüzden `configure` DEĞİL, kendi kaynağıdır: `switch_firewall`, switch bazında
-verilir (bkz. `.ai/rules/yetki.md`).
+verilir (bkz. `.ai/rules/permission.md`).
 
 Firewall yazma yetenekleri de `Gate::before` yönetici geçişinden muaftır. Muaf
 olmasaydı "NETCONF kimliği var mı" kontrolü hiç çalışmazdı — yönetici yazacak yolu

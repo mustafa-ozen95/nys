@@ -46,18 +46,18 @@ $saatDilimleri = array_combine(
 );
 
 /*
- * BASİT MOD anahtarları bölüm listesinden ÜRETİLİR (bkz. config/basit_mod.php):
+ * BASİT MOD anahtarları bölüm listesinden ÜRETİLİR (bkz. config/simple_mode.php):
  * listeye eklenen bölüm Ayarlar ekranına kendiliğinden gelir. Etiketler yetki
  * kataloğundan okunur; aynı ad iki yerde yazılı kalmaz.
  */
 $basitModKaynaklari = (require __DIR__.'/permissions.php')['resources'];
-$basitMod = require __DIR__.'/basit_mod.php';
+$basitMod = require __DIR__.'/simple_mode.php';
 $basitModAnahtarlari = [];
 $basitModAyarlari = [];
 foreach (array_keys($basitMod['bolumler']) as $bolum) {
     $ad = $basitModKaynaklari[$bolum]['label'] ?? $bolum;
     foreach (['goruntule' => 'görüntülenir', 'yonet' => 'yönetilir'] as $eylem => $fiil) {
-        $anahtar = "basit_mod.bolumler.{$bolum}.{$eylem}";
+        $anahtar = "simple_mode.bolumler.{$bolum}.{$eylem}";
         $basitModAnahtarlari[] = $anahtar;
         $basitModAyarlari[$anahtar] = [
             'label' => "{$ad} — {$fiil}",
@@ -68,9 +68,9 @@ foreach (array_keys($basitMod['bolumler']) as $bolum) {
         ];
     }
 
-    /* Bölümün alanları: basit modda görünsün mü (bkz. config/basit_mod.php · alanlar). */
+    /* Bölümün alanları: basit modda görünsün mü (bkz. config/simple_mode.php · alanlar). */
     foreach ($basitMod['alanlar'][$bolum] ?? [] as $alan => $tanim) {
-        $anahtar = "basit_mod.alanlar.{$bolum}.{$alan}.acik";
+        $anahtar = "simple_mode.alanlar.{$bolum}.{$alan}.acik";
         $basitModAnahtarlari[] = $anahtar;
         $basitModAyarlari[$anahtar] = [
             'label' => $tanim['etiket'],
@@ -293,8 +293,8 @@ return [
             'description' => 'Kullanıcılar parolalarını buraya değil, Kimlik Yönetim Merkezi’ne yazar. '
                 .'Panelin kendi parola girişi kapanmaz; merkez erişilemez olduğunda tek yol odur.',
             'keys' => [
-                'kimlik.acik',
-                'kimlik.yonetici_devri',
+                'identity.acik',
+                'identity.yonetici_devri',
             ],
         ],
 
@@ -381,9 +381,9 @@ return [
          *
          * Açıldığında giriş ekranı merkezi ÖNE alır ve parola formunu
          * katlar — kapatmaz. İki koşullu: istemci bilgileri yoksa bu ayar
-         * açık olsa da akış çalışmaz (bkz. MerkezIstemcisi::acikMi).
+         * açık olsa da akış çalışmaz (bkz. CenterClient::acikMi).
          */
-        'kimlik.acik' => [
+        'identity.acik' => [
             'label' => 'Kimlik Yönetim Merkezi ile giriş',
             'hint' => 'Açıkken giriş ekranı merkezi öne alır; parolayla giriş '
                 .'katlanmış hâlde durur ve merkez erişilemediğinde kullanılabilir.',
@@ -391,7 +391,7 @@ return [
             'rules' => ['boolean'],
         ],
 
-        'kimlik.yonetici_devri' => [
+        'identity.yonetici_devri' => [
             'label' => 'Merkezdeki yönetici burada da yönetici olsun',
             'hint' => 'KAPALI TUTULMASI ÖNERİLİR. Merkezin yöneticisi kimlikleri yönetir; buranın '
                 .'yöneticisi cihazlara yazabilir ve parola değiştirebilir. Açıkken merkezde rol '

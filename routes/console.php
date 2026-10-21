@@ -107,7 +107,7 @@ if (config('snmp.enabled')) {
 | kuyruğa giren iş birkaç saniye bekler. Cihaza YAZMA işleri bu kuyrukta
 | değildir: ayrı bir kuyrukta (nms-switch-write) ve sürekli çalışan kendi
 | systemd işçisinde koşarlar — kullanıcı ekranda beklediği için o yolda
-| dakikalık bir boşluk kabul edilemez (bkz. deploy/BENIOKU.md).
+| dakikalık bir boşluk kabul edilemez (bkz. deploy/README.md).
 |
 | İş zamanaşımı (--timeout) NETCONF zamanaşımından BÜYÜK olmak zorundadır:
 | tek bir RPC config('netconf.timeout') kadar bekleyebilir ve bir eşitleme işi
@@ -144,7 +144,7 @@ foreach (range(1, max(1, (int) config('sync.workers'))) as $sira) {
 |--------------------------------------------------------------------------
 | Merkezde rolü değişen ya da hesabı askıya alınan kişi burada da erişimini
 | kaybetmeli. Panelde gezinen kişi için bunu ara katman zaten yapıyor
-| (bkz. KimlikDurumunuDogrula); bu tur, panele hiç uğramayan hesapları da
+| (bkz. VerifyIdentityStatus); bu tur, panele hiç uğramayan hesapları da
 | kapatır — biri ayrılınca hesabının açık kalması, kimsenin fark etmediği bir
 | kapı olurdu.
 |

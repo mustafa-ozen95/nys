@@ -8,7 +8,7 @@ anons talepleri, uzak oturum (SSH/RDP) ve denetim kaydı taşır.
 
 Kardeş projeler: EYS (parola kasası) ve Kimlik Yönetim Merkezi (kimlik sağlayıcı).
 
-Neyin **ne ölçüde** desteklendiği: [`DESTEK.md`](DESTEK.md).
+Neyin **ne ölçüde** desteklendiği: [`SUPPORT.md`](SUPPORT.md).
 
 ## Cihaza yazmanın sırası
 

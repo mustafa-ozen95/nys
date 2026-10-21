@@ -13,7 +13,7 @@ use Illuminate\Database\Seeder;
 /**
  * Sunucu envanteri.
  *
- * Adresler ve erişim parolaları YEREL DOSYADADIR (yerel/envanter.php,
+ * Adresler ve erişim parolaları YEREL DOSYADADIR (local/inventory.php,
  * .gitignore'da): depoya erişebilen herkesin görebileceği bir yerde durmazlar.
  * Veritabanına şifreli yazılırlar ve hiçbir ekranda basılmazlar.
  */
@@ -44,7 +44,7 @@ class ServerSeeder extends Seeder
     }
 
     /**
-     * Sunucu envanteri YEREL DOSYADAN gelir (yerel/envanter.php).
+     * Sunucu envanteri YEREL DOSYADAN gelir (local/inventory.php).
      *
      * @return array<int, array<string, mixed>>
      */
@@ -54,7 +54,7 @@ class ServerSeeder extends Seeder
             fn (array $satir): array => $satir['tur'] === 'linux'
                 ? $this->linux($satir['kisa'], $satir['uzun'], $satir['adres'], $satir['port'], $satir['kullanici'])
                 : $this->windows($satir['kisa'], $satir['uzun'], $satir['adres'], $satir['port'], $satir['kullanici'], $satir['surum']),
-            YerelEnvanter::al('sunucular'),
+            LocalInventory::al('sunucular'),
         );
     }
 
@@ -108,13 +108,13 @@ class ServerSeeder extends Seeder
     }
 
     /**
-     * Erişim parolaları YEREL DOSYADAN gelir (yerel/envanter.php).
+     * Erişim parolaları YEREL DOSYADAN gelir (local/inventory.php).
      *
      * @return array<string, string> "adres:port" => parola
      */
     private function credentials(): array
     {
         /** @var array<string, string> */
-        return YerelEnvanter::al('sunucu_parolalari');
+        return LocalInventory::al('sunucu_parolalari');
     }
 }

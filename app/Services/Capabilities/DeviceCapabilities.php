@@ -11,7 +11,7 @@ use App\Models\NetworkSwitch;
  *
  * Ekran da, doğrulama da, servis de aynı soruyu buraya sorar. İkinci bir
  * yerde cevaplanırsa biri değiştiğinde öteki sessizce ayrışır
- * (bkz. .ai/rules/modulerlik.md).
+ * (bkz. .ai/rules/modularity.md).
  *
  * BİLİNMEYEN = SERBEST. Henüz ölçülmemiş bir cihazda seçenek KISITLANMAZ:
  * sonda çalışmadı diye çalışan bir özelliğin kaybolması, yanlış bir değeri

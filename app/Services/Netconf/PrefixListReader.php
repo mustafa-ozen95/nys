@@ -19,7 +19,7 @@ use SimpleXMLElement;
  * Açık bir oturum alır; bağlantıyı kendisi açmaz (bkz. .ai/rules/netconf.md).
  *
  * Girdi ayrıştırma dolu bir listeyle sınanır
- * (tests/Fixtures/netconf/policy-options-omurga.xml).
+ * (tests/Fixtures/netconf/policy-options-backbone.xml).
  */
 class PrefixListReader
 {

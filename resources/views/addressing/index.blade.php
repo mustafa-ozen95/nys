@@ -41,7 +41,7 @@
 
             <div class="column__body agac">
                 @forelse ($tree as $dugum)
-                    <x-dynamic-component component="net.blok-dugumu" :dugum="$dugum" :selected="$selected" />
+                    <x-dynamic-component component="net.block-node" :dugum="$dugum" :selected="$selected" />
                 @empty
                     <x-ui.empty title="Blok yok"
                                 :text="$infrastructure

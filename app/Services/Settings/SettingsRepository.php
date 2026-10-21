@@ -46,7 +46,7 @@ class SettingsRepository
          * adresinin, commit süresinin varsayılana dönmesine — yol açmamalı.
          */
         try {
-            return Cache::rememberForever(self::CACHE_KEY, fn (): array => $this->read());
+            return LegacyKeys::currentKeys(Cache::rememberForever(self::CACHE_KEY, fn (): array => $this->read()));
         } catch (Throwable) {
             return $this->read();
         }
@@ -143,7 +143,7 @@ class SettingsRepository
             }
 
             Setting::query()->updateOrCreate(
-                ['key' => $key],
+                ['key' => LegacyKeys::toStored($key)],
                 ['value' => $this->encode($definition, $value), 'updated_by' => $editor?->id],
             );
 
@@ -193,7 +193,7 @@ class SettingsRepository
             ->with(['editor' => fn ($sorgu) => $sorgu->select('id', 'name')->without('role')])
             ->get()
             ->mapWithKeys(fn (Setting $setting): array => [
-                $setting->key => ['at' => $setting->updated_at, 'by' => $setting->editor?->name],
+                LegacyKeys::toCurrent($setting->key) => ['at' => $setting->updated_at, 'by' => $setting->editor?->name],
             ])
             ->all();
     }
@@ -218,13 +218,14 @@ class SettingsRepository
         $values = [];
 
         foreach ($rows as $row) {
-            $definition = $this->catalog->find($row->key);
+            $anahtar = LegacyKeys::toCurrent($row->key);
+            $definition = $this->catalog->find($anahtar);
 
             if ($definition === null) {
                 continue;
             }
 
-            $values[$row->key] = $this->decode($definition, $row->value);
+            $values[$anahtar] = $this->decode($definition, $row->value);
         }
 
         return $values;

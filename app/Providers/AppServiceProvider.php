@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Listeners\OturumAcilisiniYaz;
 use App\Listeners\RecordAuthenticationActivity;
+use App\Listeners\WriteLogin;
+use App\Models\ConsoleSession;
 use App\Models\NetworkSwitch;
 use App\Models\User;
 use App\Services\Announcement\Transport\IrrdTransport;
@@ -26,6 +27,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
@@ -67,6 +69,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Eski sınıf adları etkinlik kaydında (subject_type/konu_type) yazılı; zincir özeti de bu
+        // dizgiye bağlı. Takma ad eski adı korur, yeni adlı model eski satırları çözer.
+        Relation::morphMap([
+            'App\Models\KonsolOturumu' => ConsoleSession::class,
+        ]);
+
         Auth::viaRequest('api-token', $this->app->make(ApiTokenGuard::class));
 
         /*
@@ -151,8 +159,8 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, [RecordAuthenticationActivity::class, 'handleLogin']);
 
-        /* Ortak çıkış için oturumun açılış anı (bkz. OturumAcilisiniYaz). */
-        Event::listen(Login::class, OturumAcilisiniYaz::class);
+        /* Ortak çıkış için oturumun açılış anı (bkz. WriteLogin). */
+        Event::listen(Login::class, WriteLogin::class);
         Event::listen(Logout::class, [RecordAuthenticationActivity::class, 'handleLogout']);
         Event::listen(Failed::class, [RecordAuthenticationActivity::class, 'handleFailed']);
         Event::listen(Lockout::class, [RecordAuthenticationActivity::class, 'handleLockout']);

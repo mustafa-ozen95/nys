@@ -33,7 +33,7 @@
      *
      * Ayrıca AÇILIR PANELLERİN DAYANAĞIDIR: dar ekranda bildirim paneli
      * düğmeye değil başlığa yaslanır ve böylece ekranın dışına taşmaz
-     * (bkz. components/bildirim.css).
+     * (bkz. components/notification.css).
      */
     position: relative;
     z-index: var(--z-dropdown);

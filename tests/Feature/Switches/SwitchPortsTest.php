@@ -185,7 +185,7 @@ final class SwitchPortsTest extends TestCase
          *
          * Merkez kimliği de SABİT bir sorgudur ve yalnızca doğrulama aralığı
          * dolduğunda çalışır: kullanıcının merkezdeki durumu, oturum açıkken
-         * de sorulmalı (bkz. KimlikDurumunuDogrula). Testte önbellek her
+         * de sorulmalı (bkz. VerifyIdentityStatus). Testte önbellek her
          * istekte boş olduğu için hep görünür; üretimde kullanıcı başına
          * beş dakikada bir.
          */

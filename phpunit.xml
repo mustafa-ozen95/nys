@@ -20,7 +20,7 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <!--
-            SAAT DİLİMLERİ SABİTLENİR. GosterimSaatiTest bir DÖNÜŞÜMÜ sınıyor
+            SAAT DİLİMLERİ SABİTLENİR. DisplayTimeTest bir DÖNÜŞÜMÜ sınıyor
             (UTC 12:00 → İstanbul 15:00); iki uç ortamdan gelseydi
             APP_TIMEZONE tanımsız bir makinede gösterim de UTC'ye düşer ve
             test, kodda hiçbir şey değişmeden kırmızıya dönerdi.

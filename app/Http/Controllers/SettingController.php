@@ -8,11 +8,11 @@ use App\Enums\ActivityChannel;
 use App\Http\Requests\Settings\SettingsRequest;
 use App\Models\Setting;
 use App\Services\ActivityRecorder;
-use App\Services\Settings\BasitModGorunumu;
 use App\Services\Settings\SettingDefinition;
 use App\Services\Settings\SettingsAccess;
 use App\Services\Settings\SettingsCatalog;
 use App\Services\Settings\SettingsRepository;
+use App\Services\Settings\SimpleModeView;
 use App\Services\Settings\SystemHealthService;
 use App\Services\Zabbix\ZabbixClient;
 use Illuminate\Http\Client\ConnectionException;
@@ -68,7 +68,7 @@ class SettingController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function show(Request $request, string $section, BasitModGorunumu $basitMod): View
+    public function show(Request $request, string $section, SimpleModeView $basitMod): View
     {
         $group = $this->group($section);
 

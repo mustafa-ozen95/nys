@@ -15,7 +15,7 @@ use Tests\Support\FakeNetconfTransport;
 /**
  * Politikanın TAMAMI okunur ve modellenir.
  *
- * Omurga tipi bir politika örneğiyle başlar (policy-options-omurga.xml):
+ * Omurga tipi bir politika örneğiyle başlar (policy-options-backbone.xml):
  * BGP grubunun import ettiği "prefixes-from-musteri1" zinciri. Sonrası,
  * gelişmiş yapıların (as-path, BGP nitelikleri, varsayılan eylem)
  * modellendiğini ve modellenmeyenlerin ham hâliyle korunduğunu kanıtlar.
@@ -24,7 +24,7 @@ final class PolicyStatementReaderTest extends TestCase
 {
     public function test_omurga_politikasi_cozumlenir(): void
     {
-        $statements = $this->read($this->fixture('policy-options-omurga'));
+        $statements = $this->read($this->fixture('policy-options-backbone'));
 
         $this->assertCount(1, $statements);
         $this->assertSame('prefixes-from-musteri1', $statements[0]['name']);
@@ -37,7 +37,7 @@ final class PolicyStatementReaderTest extends TestCase
      */
     public function test_terim_sirasi_korunur(): void
     {
-        $terms = $this->read($this->fixture('policy-options-omurga'))[0]['terms'];
+        $terms = $this->read($this->fixture('policy-options-backbone'))[0]['terms'];
 
         $this->assertSame(['clear', 'A', 'B'], array_column($terms, 'name'));
         $this->assertSame([0, 1, 2], array_column($terms, 'position'));
@@ -49,7 +49,7 @@ final class PolicyStatementReaderTest extends TestCase
      */
     public function test_prefix_list_filtresi_ve_orlonger_okunur(): void
     {
-        $terms = $this->read($this->fixture('policy-options-omurga'))[0]['terms'];
+        $terms = $this->read($this->fixture('policy-options-backbone'))[0]['terms'];
 
         $this->assertSame(['musteri1-PREFIXES'], $terms[1]['match_prefix_lists']);
         $this->assertSame(PrefixMatchType::OrLonger, $terms[1]['match_type']);
@@ -77,7 +77,7 @@ final class PolicyStatementReaderTest extends TestCase
 
     public function test_community_silme_okunur(): void
     {
-        $terms = $this->read($this->fixture('policy-options-omurga'))[0]['terms'];
+        $terms = $this->read($this->fixture('policy-options-backbone'))[0]['terms'];
 
         $this->assertSame('topluluk-a', $terms[0]['community_delete']);
         $this->assertNull($terms[0]['action']);
@@ -89,7 +89,7 @@ final class PolicyStatementReaderTest extends TestCase
 
     public function test_kosulsuz_terim_her_seye_uyar(): void
     {
-        $terms = $this->read($this->fixture('policy-options-omurga'))[0]['terms'];
+        $terms = $this->read($this->fixture('policy-options-backbone'))[0]['terms'];
 
         $this->assertSame([], $terms[2]['match_prefix_lists']);
         $this->assertSame(PolicyAction::Reject, $terms[2]['action']);

@@ -14,7 +14,7 @@ use Tests\TestCase;
  *
  * Kaynak switchlerin cihazdan okunan kendi AS numaralarıdır. Liste bir
  * KOLAYLIKTIR: anons müşteri ASN'si için de yapılabildiğinden alan listeye
- * kilitli değildir (bkz. AnonsAsnTest).
+ * kilitli değildir (bkz. AnnouncementAsnTest).
  */
 final class AsnDirectoryTest extends TestCase
 {

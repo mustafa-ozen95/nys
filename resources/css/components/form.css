@@ -27,7 +27,7 @@
 */
 /*
  * Basit modda kapatılmış alan: görünmez ama girdisi formda kalır ve
- * dokunulmamış değeriyle gönderilir (bkz. Field::gizli, config/basit_mod.php).
+ * dokunulmamış değeriyle gönderilir (bkz. Field::gizli, config/simple_mode.php).
  */
 .field--basit-gizli {
     display: none !important;

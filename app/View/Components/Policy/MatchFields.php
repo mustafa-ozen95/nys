@@ -13,7 +13,7 @@ use Illuminate\View\View;
  *
  * Aynı bileşen İKİ yerde kullanılır: terimin koşulları ve politikanın KENDİ
  * koşulu (terimsiz politika biçimi). İki ekran için iki düzen yazılmaz
- * (bkz. .ai/rules/arayuz.md).
+ * (bkz. .ai/rules/interface.md).
  *
  * Sınıf bileşenidir çünkü hazırlanacak veri var: Junos "leaf-list" alanları
  * formda tek satırda virgülle yazılır, kayıtta ise dizidir. Bu dönüşüm

@@ -23,7 +23,7 @@
 @import './components/term-row.css';
 @import './components/vlan-row.css';
 @import './components/ip-row.css';
-@import './components/anons-yetki.css';
+@import './components/announcement-permission.css';
 @import './components/remote-session.css';
 @import './components/panel.css';
 @import './components/button.css';
@@ -37,11 +37,11 @@
 @import './components/empty.css';
 @import './components/tabs.css';
 @import './components/toast.css';
-@import './components/kullanici-menu.css';
-@import './components/bildirim.css';
+@import './components/user-menu.css';
+@import './components/notification.css';
 @import './components/pagination.css';
 @import './components/chart.css';
-@import './components/dondurme-ilerleme.css';
-@import './components/basit-mod.css';
+@import './components/rotation-progress.css';
+@import './components/simple-mode.css';
 
 @import './utilities.css';

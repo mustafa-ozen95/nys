@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AddressBlockController;
 use App\Http\Controllers\Ajax\AddressSlotController;
@@ -14,21 +15,20 @@ use App\Http\Controllers\Ajax\SwitchTargetController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AnnouncementRecipientController;
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\Auth\CenterLoginController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\MerkezGirisController;
-use App\Http\Controllers\BaglantiCiktisiController;
 use App\Http\Controllers\BgpOverviewController;
+use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ConfigurationPushController;
+use App\Http\Controllers\ConnectionOutputController;
+use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\DeviceOperationController;
-use App\Http\Controllers\GuncellemeController;
-use App\Http\Controllers\Hesap\ProfilController;
 use App\Http\Controllers\NetworkSwitchController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\PanelModeController;
 use App\Http\Controllers\RemoteSessionPageController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\SertifikaController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServerPasswordController;
 use App\Http\Controllers\SettingController;
@@ -58,9 +58,9 @@ use App\Http\Controllers\SwitchSnmpCommunityController;
 use App\Http\Controllers\SwitchSnmpIdentityController;
 use App\Http\Controllers\SwitchVoipController;
 use App\Http\Controllers\SwitchWriteJobController;
+use App\Http\Controllers\UpdateController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPermissionController;
-use App\Http\Controllers\VeritabaniController;
 use App\Http\Controllers\VlanController;
 use Illuminate\Support\Facades\Route;
 
@@ -88,10 +88,10 @@ Route::middleware('guest')->group(function (): void {
      *
      * Dönüş ucu GET ve gövdesiz olmak zorunda: kullanıcı merkezden buraya
      * tarayıcı yönlendirmesiyle gelir, POST edemez. CSRF'in yerini oturumda
-     * saklanan `state` tutar (bkz. MerkezGirisController).
+     * saklanan `state` tutar (bkz. CenterLoginController).
      */
-    Route::get('/giris/merkez', [MerkezGirisController::class, 'baslat'])->name('kimlik.giris');
-    Route::get('/giris/merkez/geri', [MerkezGirisController::class, 'geri'])->name('kimlik.donus');
+    Route::get('/giris/merkez', [CenterLoginController::class, 'baslat'])->name('kimlik.giris');
+    Route::get('/giris/merkez/geri', [CenterLoginController::class, 'geri'])->name('kimlik.donus');
 });
 
 /*
@@ -206,27 +206,27 @@ Route::middleware('auth')->group(function (): void {
         /*
          * SERTİFİKA de bölüm rotasından ÖNCE: "sertifika" bir ayar bölümü
          * adı sanılırdı. Tur sunucuda koşar, panel yalnızca istek bırakır
-         * (bkz. SertifikaController ve kurulum tarafındaki sertifika ajanı).
+         * (bkz. CertificateController ve kurulum tarafındaki sertifika ajanı).
          */
-        Route::get('sertifika', [SertifikaController::class, 'index'])->name('sertifika');
-        Route::post('sertifika/tur', [SertifikaController::class, 'baslat'])->name('sertifika.baslat');
-        Route::post('sertifika/onayla', [SertifikaController::class, 'tamamla'])->name('sertifika.tamamla');
+        Route::get('sertifika', [CertificateController::class, 'index'])->name('sertifika');
+        Route::post('sertifika/tur', [CertificateController::class, 'baslat'])->name('sertifika.baslat');
+        Route::post('sertifika/onayla', [CertificateController::class, 'tamamla'])->name('sertifika.tamamla');
 
         /*
          * VERİTABANI de bölüm rotasından ÖNCE. Panel bağlantıyı sınar ve
          * taşıma isteğini bırakır; kopya yeniden başlatmada, panel kapalıyken
-         * yapılır (bkz. VeritabaniController ve BaglantiDosyasi).
+         * yapılır (bkz. DatabaseController ve ConnectionFile).
          */
-        Route::get('veritabani', [VeritabaniController::class, 'index'])->name('veritabani');
-        Route::post('veritabani/sina', [VeritabaniController::class, 'sina'])->name('veritabani.sina');
-        Route::post('veritabani/tasi', [VeritabaniController::class, 'tasi'])->name('veritabani.tasi');
+        Route::get('veritabani', [DatabaseController::class, 'index'])->name('veritabani');
+        Route::post('veritabani/sina', [DatabaseController::class, 'sina'])->name('veritabani.sina');
+        Route::post('veritabani/tasi', [DatabaseController::class, 'tasi'])->name('veritabani.tasi');
 
         /*
          * GÜNCELLEME de bölüm rotasından ÖNCE. Yalnızca bakar: çalışan sürüm
-         * GitHub'daki son başarılı derlemeyle karşılaştırılır (bkz. GuncellemeDenetimi).
+         * GitHub'daki son başarılı derlemeyle karşılaştırılır (bkz. UpdateCheck).
          */
-        Route::get('guncelleme', [GuncellemeController::class, 'index'])->name('guncelleme');
-        Route::post('guncelleme', [GuncellemeController::class, 'denetle'])->name('guncelleme.denetle');
+        Route::get('guncelleme', [UpdateController::class, 'index'])->name('guncelleme');
+        Route::post('guncelleme', [UpdateController::class, 'denetle'])->name('guncelleme.denetle');
 
         Route::get('{section}', 'show')->name('show');
         Route::put('{section}', 'update')->name('update');
@@ -613,7 +613,7 @@ Route::middleware('auth')->group(function (): void {
      * Yol 'sunucular/{server}' kalıbıyla çakışmasın diye ondan ÖNCE ve sabit
      * bir önekte; sonra tanımlansaydı "cikti" bir sunucu uuid'si sanılırdı.
      */
-    Route::post('cikti/baglanti', BaglantiCiktisiController::class)->name('export.connections');
+    Route::post('cikti/baglanti', ConnectionOutputController::class)->name('export.connections');
 
     /*
      * Sunucu parolası değiştirme.
@@ -727,7 +727,7 @@ Route::middleware('auth')->group(function (): void {
  * Rol ve yetkiler burada değişmez; onlar yöneticinin ekranında durur.
  */
 Route::middleware('auth')->prefix('hesap')->name('hesap.')->group(function (): void {
-    Route::get('profil', [ProfilController::class, 'index'])->name('profil');
-    Route::put('profil', [ProfilController::class, 'update'])->name('profil.kaydet');
-    Route::put('parola', [ProfilController::class, 'parola'])->name('parola');
+    Route::get('profil', [ProfileController::class, 'index'])->name('profil');
+    Route::put('profil', [ProfileController::class, 'update'])->name('profil.kaydet');
+    Route::put('parola', [ProfileController::class, 'parola'])->name('parola');
 });

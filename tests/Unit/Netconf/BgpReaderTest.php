@@ -21,7 +21,7 @@ use Tests\Support\FakeNetconfTransport;
  * bgp-configuration.xml jn32-test'in kanonik çıktısıdır: her varyant (ttl'li
  * multihop, passive, çok politikalı import, local-as, unicast/any, eşikli ve
  * eşiksiz teardown, dakikalı idle-timeout) cihaza yazdırılıp geri okunarak
- * üretildi. bgp-configuration-omurga.xml omurga tipi bir yapılandırmayı
+ * üretildi. bgp-configuration-backbone.xml omurga tipi bir yapılandırmayı
  * taklit eden anonim örnektir; "idle-timeout forever" ile log-updown'ı
  * oradan gelir.
  */
@@ -141,7 +141,7 @@ final class BgpReaderTest extends TestCase
      */
     public function test_idle_timeout_forever_dakikali_halden_ayrilir(): void
     {
-        $groups = $this->okuGruplar($this->fixture('bgp-configuration-omurga'));
+        $groups = $this->okuGruplar($this->fixture('bgp-configuration-backbone'));
 
         $v6 = collect($groups)->firstWhere('name', 'musteri1-v6');
 
@@ -152,7 +152,7 @@ final class BgpReaderTest extends TestCase
 
     public function test_omurga_grubu_cozumlenir(): void
     {
-        $groups = $this->okuGruplar($this->fixture('bgp-configuration-omurga'));
+        $groups = $this->okuGruplar($this->fixture('bgp-configuration-backbone'));
 
         $musteri1 = collect($groups)->firstWhere('name', 'musteri1');
 

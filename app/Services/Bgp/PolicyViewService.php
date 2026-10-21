@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
  * Politika ekranının hazır verisi.
  *
  * Blade hesap yapmaz: seçenek listeleri, sıra seçenekleri ve atıf yapılabilir
- * tanımlar burada hazırlanır (bkz. .ai/rules/arayuz.md).
+ * tanımlar burada hazırlanır (bkz. .ai/rules/interface.md).
  */
 class PolicyViewService
 {

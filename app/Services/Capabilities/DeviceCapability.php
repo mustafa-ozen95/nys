@@ -19,7 +19,7 @@ use App\Services\Junos\JunosDialect;
  *
  * Cevabı cihazın kendisi verir. Yeni bir yetenek eklemek bu arayüzü uygulayan
  * BİR sınıf ve config/capabilities.php'de BİR satırdır; çıkarmak da aynı iki
- * yerden siler (bkz. .ai/rules/modulerlik.md).
+ * yerden siler (bkz. .ai/rules/modularity.md).
  */
 interface DeviceCapability
 {

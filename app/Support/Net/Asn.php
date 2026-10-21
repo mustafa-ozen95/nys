@@ -13,7 +13,7 @@ namespace App\Support\Net;
  * açar ve mailde her seferinde başka türlü basılır.
  *
  * Normalleştirme burada toplanır; `ltrim($asn, 'ASas')` gibi bir satır başka
- * sınıflarda tekrarlanmaz (bkz. .ai/rules/modulerlik.md, "aynı soruyu ikinci
+ * sınıflarda tekrarlanmaz (bkz. .ai/rules/modularity.md, "aynı soruyu ikinci
  * bir yerde cevaplıyor muyum").
  */
 final readonly class Asn

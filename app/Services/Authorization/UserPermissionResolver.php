@@ -93,7 +93,7 @@ class UserPermissionResolver
     }
 
     /**
-     * BASİT MODDA KAPALI BÖLÜM (bkz. config/basit_mod.php).
+     * BASİT MODDA KAPALI BÖLÜM (bkz. config/simple_mode.php).
      *
      * Basit moddaki kişinin yetkisi "rolünün verdiği ∩ basit modda açık
      * olan"dır: kapatılan bölüm menüden kalkar ve adresi yazılsa da açılmaz.
@@ -104,7 +104,7 @@ class UserPermissionResolver
      */
     private function basitModdaKapali(User $user, string $resource, string $action): bool
     {
-        $bolum = config("basit_mod.bolumler.{$resource}");
+        $bolum = config("simple_mode.bolumler.{$resource}");
 
         if (! is_array($bolum) || $user->etkinPanelModu()->isAdvanced()) {
             return false;

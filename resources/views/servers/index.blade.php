@@ -60,7 +60,7 @@
                         SÜREN TUR SATIRIN ÜSTÜNDE görünür.
 
                         Çubuğu çizen betik switch turlarıyla AYNI
-                        (dondurme-ilerleme.js) ve uç da aynı biçimi veriyor;
+                        (rotation-progress.js) ve uç da aynı biçimi veriyor;
                         ikinci bir çizim kodu, biri değiştiğinde diğerini
                         sessizce eskitirdi.
                     --}}

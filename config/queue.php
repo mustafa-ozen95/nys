@@ -77,7 +77,7 @@ return [
             | dakikalarca sürebiliyor (bkz. credentials.rotation.job_timeout);
             | 90 saniyelik varsayılan onun için fazlasıyla kısadır.
             |
-            | İkisinin ayrışmadığını KuyrukZamanasimiTest denetler.
+            | İkisinin ayrışmadığını QueueTimeoutTest denetler.
             */
             'retry_after' => max(
                 (int) env('REDIS_QUEUE_RETRY_AFTER', 90),

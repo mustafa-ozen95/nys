@@ -49,7 +49,7 @@ class PortMirroringViewService
             /*
              * Kutu listeleri ile açılır listeler AYNI kaynaktan gelir ama
              * açılır listede "yok" seçeneği de bulunur; Blade bunu kendisi
-             * eklemez (bkz. .ai/rules/arayuz.md — hesap Blade'de yapılmaz).
+             * eklemez (bkz. .ai/rules/interface.md — hesap Blade'de yapılmaz).
              */
             'sourceInterfaceOptions' => $kaynaklar,
             'vlanOptions' => $vlanlar,

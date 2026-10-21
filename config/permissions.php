@@ -10,8 +10,8 @@ use App\Models\NetworkSwitch;
 use App\Models\Server;
 use App\Models\Setting;
 use App\Models\User;
-use App\Services\Authorization\Records\GorunumModuRecords;
 use App\Services\Authorization\Records\SettingGroupRecords;
+use App\Services\Authorization\Records\ViewModeRecords;
 
 return [
 
@@ -449,12 +449,12 @@ return [
          * GELİŞMİŞ MOD: basit/gelişmiş anahtarını gelişmişe çevirme hakkı.
          * Kişisel tercih değil, rol yetkisi; kimin alacağı yetki ekranında
          * verilir.
-         * Kaydı tektir (bkz. GorunumModuRecords).
+         * Kaydı tektir (bkz. ViewModeRecords).
          */
         'gorunum_modu' => [
             'label' => 'Gelişmiş mod',
             'model' => Setting::class,
-            'records' => GorunumModuRecords::class,
+            'records' => ViewModeRecords::class,
             'title' => 'key',
             'order' => 'id',
             'actions' => ['view'],

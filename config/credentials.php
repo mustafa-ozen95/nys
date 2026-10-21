@@ -93,7 +93,7 @@ return [
         |
         | Kuyruğun retry_after'ı bundan BÜYÜK olmak zorundadır (bkz.
         | config/queue.php); küçük olursa kuyruk turu daha bitmeden ikinci kez
-        | dağıtır. İkisinin ayrışmadığını KuyrukZamanasimiTest denetler.
+        | dağıtır. İkisinin ayrışmadığını QueueTimeoutTest denetler.
         */
         'job_timeout' => (int) env('CREDENTIAL_ROTATION_TIMEOUT', 900),
     ],

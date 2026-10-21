@@ -267,7 +267,7 @@ ENV UYGULAMA_SURUMU=${SURUM}
 # SURUM verilmezse (NineDeploy gibi platformlar derlemeye commit vermez)
 # bağlamdaki .git'ten okunur ve /uygulama/SURUM'a yazılır; config önce
 # ortama, sonra bu dosyaya bakar. .git yoksa (zip) dosya boş kalır.
-RUN --mount=type=bind,target=/tmp/baglam sh /tmp/baglam/docker/surum-oku.sh > /uygulama/SURUM
+RUN --mount=type=bind,target=/tmp/baglam sh /tmp/baglam/docker/version-read.sh > /uygulama/SURUM
 
 ENTRYPOINT ["/usr/local/bin/nsm-entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

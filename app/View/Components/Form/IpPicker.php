@@ -11,7 +11,7 @@ namespace App\View\Components\Form;
  * Bir ekranın gerçekten elle girişe ihtiyacı varsa (sağlayıcının kendi
  * adresi, envanterde olmayan cihaz) $manual açılır ve listenin sonuna
  * "Listede yok — elle gir" seçeneği eklenir. Hangi alanda neden açık
- * olduğunun listesi: .ai/rules/adresleme.md.
+ * olduğunun listesi: .ai/rules/addressing.md.
  *
  * Mekanizmanın kendisi Picker'dadır; burada yalnızca ADRESE ÖZGÜ metinler
  * durur. Boş liste metni Adresleme'ye yönlendirir: kullanıcıyı "seçilecek
