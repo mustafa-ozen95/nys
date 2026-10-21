@@ -8,6 +8,7 @@ use App\Enums\ActivityChannel;
 use App\Http\Requests\Settings\SettingsRequest;
 use App\Models\Setting;
 use App\Services\ActivityRecorder;
+use App\Services\Settings\BasitModGorunumu;
 use App\Services\Settings\SettingDefinition;
 use App\Services\Settings\SettingsAccess;
 use App\Services\Settings\SettingsCatalog;
@@ -67,17 +68,20 @@ class SettingController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function show(Request $request, string $section): View
+    public function show(Request $request, string $section, BasitModGorunumu $basitMod): View
     {
         $group = $this->group($section);
 
         abort_unless($this->access->canView($request->user(), $group), 403);
 
+        $values = $this->currentValues($group);
+
         return view('settings.show', [
             'sections' => $this->catalog->tabs($section),
             'group' => $group,
-            'values' => $this->currentValues($group),
+            'values' => $values,
             'audit' => $this->auditFor($group),
+            'basitMod' => $group['slug'] === 'basit-mod' ? $basitMod->bolumler($group, $values) : [],
         ]);
     }
 

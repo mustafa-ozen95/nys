@@ -23,18 +23,12 @@
                     cihazdan biri bitmiş diğeri başlamışken "ortalama" ikisinin
                     de yarısında olduğunu söylerdi.
                 --}}
-                @php
-                    $bitenAdim = array_sum(array_column($active, 'adim'));
-                    $toplamAdim = max(1, array_sum(array_column($active, 'toplam')));
-                    $toplamYuzde = (int) round($bitenAdim / $toplamAdim * 100);
-                @endphp
-
                 <div class="ilerleme ilerleme--serit"
                      data-ilerleme-ozet
                      data-ilerleme-adres="{{ route('settings.passwords.progress') }}">
                     <div class="ilerleme__ust">
                         <span class="ilerleme__metin" data-ilerleme-ozet-metin>{{ count($active) }} cihazda parola turu sürüyor</span>
-                        <span class="ilerleme__adim" data-ilerleme-ozet-adim>{{ $bitenAdim }}/{{ $toplamAdim }} adım</span>
+                        <span class="ilerleme__adim" data-ilerleme-ozet-adim>{{ $ozet['biten'] }}/{{ $ozet['toplam'] }} adım</span>
                     </div>
 
                     <div class="ilerleme__yol"
@@ -42,8 +36,8 @@
                          aria-label="Parola turlarının toplam ilerlemesi"
                          aria-valuemin="0"
                          aria-valuemax="100"
-                         aria-valuenow="{{ $toplamYuzde }}">
-                        <div class="ilerleme__cubuk" data-ilerleme-ozet-cubuk data-baslangic="{{ $toplamYuzde }}"></div>
+                         aria-valuenow="{{ $ozet['yuzde'] }}">
+                        <div class="ilerleme__cubuk" data-ilerleme-ozet-cubuk data-baslangic="{{ $ozet['yuzde'] }}"></div>
                     </div>
                 </div>
             @endif
@@ -168,11 +162,10 @@
             <x-ui.panel title="Cihazlar" subtitle="Son turun sonucu. Tek bir cihazı yeniden denemek için satırdaki düğme."
                         >
                 @forelse ($switches as $switch)
-                    @php($suren = $active[$switch->uuid] ?? null)
                     <div class="grid-row grid-row--static ayar-row" data-ilerleme-cihaz="{{ $switch->uuid }}">
                         <span class="mono">{{ $switch->hostname }}</span>
                         <span>
-                            @if ($suren)
+                            @if (isset($active[$switch->uuid]))
                                 <x-ui.badge variant="cyan">Sürüyor</x-ui.badge>
                             @elseif ($switch->latestPasswordRotation === null)
                                 <x-ui.badge variant="gray">Hiç değişmedi</x-ui.badge>
@@ -197,23 +190,23 @@
                                 </span>
                             @endcan
                         </span>
-                        <span @class(['text-right', 'ayar-row__ilerleme' => (bool) $suren])>
-                            @if ($suren)
+                        <span @class(['text-right', 'ayar-row__ilerleme' => isset($active[$switch->uuid])])>
+                            @if (isset($active[$switch->uuid]))
                                 {{--
                                     Tur SÜRÜYOR. Düğmeler gösterilmez: ikinci
                                     iş, işin tekilliğine takılıp sessizce
                                     düşerdi ve kullanıcı bunu hata sanardı.
                                 --}}
                                 <span class="ilerleme">
-                                    <span class="ilerleme__metin" data-ilerleme-metin>{{ $suren['adim'] > 0 ? $suren['adim'].'/'.$suren['toplam'].' · '.$suren['metin'] : $suren['metin'] }}</span>
+                                    <span class="ilerleme__metin" data-ilerleme-metin>{{ $active[$switch->uuid]['adim'] > 0 ? $active[$switch->uuid]['adim'].'/'.$active[$switch->uuid]['toplam'].' · '.$active[$switch->uuid]['metin'] : $active[$switch->uuid]['metin'] }}</span>
 
                                     <span class="ilerleme__yol"
                                           role="progressbar"
                                           aria-label="{{ $switch->hostname }} parola güncelleme ilerlemesi"
                                           aria-valuemin="0"
                                           aria-valuemax="100"
-                                          aria-valuenow="{{ $suren['yuzde'] }}">
-                                        <span class="ilerleme__cubuk" data-ilerleme-cubuk data-baslangic="{{ $suren['yuzde'] }}"></span>
+                                          aria-valuenow="{{ $active[$switch->uuid]['yuzde'] }}">
+                                        <span class="ilerleme__cubuk" data-ilerleme-cubuk data-baslangic="{{ $active[$switch->uuid]['yuzde'] }}"></span>
                                     </span>
                                 </span>
                             @else

@@ -112,8 +112,24 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
              * çubuğun bir kare boş görünmesi bile "bir şey olmuyor" diye
              * okunurdu.
              */
-            'active' => $this->activeMap($switches),
+            'active' => $active = $this->activeMap($switches),
+            'ozet' => $this->activeSummary($active),
         ]);
+    }
+
+    /**
+     * Süren turların toplam doluluğu: ADIM SAYISINDAN hesaplanır (biten adımlar
+     * / toplam adımlar), yüzdelerin ortalamasından değil.
+     *
+     * @param  array<string, array<string, mixed>>  $active
+     * @return array{biten: int, toplam: int, yuzde: int}
+     */
+    private function activeSummary(array $active): array
+    {
+        $biten = array_sum(array_column($active, 'adim'));
+        $toplam = max(1, array_sum(array_column($active, 'toplam')));
+
+        return ['biten' => $biten, 'toplam' => $toplam, 'yuzde' => (int) round($biten / $toplam * 100)];
     }
 
     /**

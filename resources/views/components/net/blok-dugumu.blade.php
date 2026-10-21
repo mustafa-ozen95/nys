@@ -9,12 +9,10 @@
 --}}
 @props(['dugum', 'selected' => null])
 
-@php($block = $dugum['block'])
-
 @if ($dugum['satirlar'] !== [])
-    <details class="agac__dal" @if ($selected && ($selected->is($block) || $selected->parent?->is($block))) open @endif>
+    <details class="agac__dal" @if ($selected && ($selected->is($dugum['block']) || $selected->parent?->is($dugum['block']))) open @endif>
         <summary class="agac__ozet">
-            <x-net.blok-satiri :block="$block" :selected="$selected" />
+            <x-net.blok-satiri :block="$dugum['block']" :selected="$selected" />
         </summary>
 
         <div class="agac__ic">
@@ -53,5 +51,5 @@
         </div>
     </details>
 @else
-    <x-net.blok-satiri :block="$block" :selected="$selected" />
+    <x-net.blok-satiri :block="$dugum['block']" :selected="$selected" />
 @endif
