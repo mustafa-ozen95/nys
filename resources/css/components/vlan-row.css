@@ -1,0 +1,65 @@
+/* VLAN satırı */
+.vlan-row {
+    /*
+        Esnek sütun sona konur: yoksa ad sütunu uzayınca L3 ve port sayısı
+        veriden kopup ekranın sağına savrulur.
+    */
+    grid-template-columns: 70px minmax(100px, 220px) 150px 56px minmax(0, 1fr) auto;
+}
+
+/* Üye port sayısı; adlar yanındaki sütunda. Sağa yaslı olduğu için
+   port adlarına yapışmasın diye kendi boşluğunu taşır. */
+.vlan-row__adet {
+    text-align: right;
+    padding-right: var(--space-6);
+}
+
+.vlan-row__port {
+    min-width: 0;
+}
+
+.vlan-row__eylem {
+    justify-self: end;
+}
+
+@media (max-width: 720px) {
+    /*
+        Telefonda satır iki satıra bölünür: üstte etiket ve ad, altta L3
+        arayüzü ile port sayısı (gizlenirse sütun boş görünür).
+    */
+    .vlan-row {
+        grid-template-columns: 70px minmax(0, 1fr) auto;
+        grid-template-areas:
+            'etiket ad   eylem'
+            'etiket l3   adet'
+            'etiket port port';
+        row-gap: var(--space-1);
+    }
+
+    .vlan-row__etiket { grid-area: etiket; }
+    .vlan-row__ad     { grid-area: ad; }
+    .vlan-row__l3     { grid-area: l3; display: block; }
+    .vlan-row__eylem  { grid-area: eylem; }
+
+    .vlan-row__adet {
+        grid-area: adet;
+        font-size: var(--text-sm);
+    }
+
+    .vlan-row__adet::before {
+        content: 'adet: ';
+        color: var(--color-text-muted);
+    }
+
+    .vlan-row__port {
+        grid-area: port;
+        font-size: var(--text-sm);
+    }
+
+    .vlan-row__port::before {
+        content: 'portlar: ';
+        color: var(--color-text-muted);
+    }
+
+    .vlan-row__head { display: none; }
+}

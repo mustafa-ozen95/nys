@@ -1,0 +1,99 @@
+/*
+ * Switch ekranındaki BGP komşusu satırı.
+ *
+ * Genel bakıştaki .bgp-row'dan AYRIDIR: orada switch sütunu vardır, burada
+ * grup zaten bellidir ve yerine eylemler durur. İkisini aynı sınıfla
+ * işaretlemek, birinin ızgarasını diğerine giydirmek olurdu.
+ */
+.peer-row {
+    grid-template-columns: 150px 110px minmax(0, 1fr) minmax(0, 1fr) auto auto;
+}
+
+@media (max-width: 720px) {
+    .peer-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .peer-row > .text-sm {
+        grid-column: 1 / -1;
+    }
+}
+
+/* BGP oturum satırı */
+.bgp-row {
+    grid-template-columns: 120px 140px 100px 110px 110px minmax(0, 1fr);
+}
+
+@media (max-width: 720px) {
+    .bgp-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'komsu    durum'
+            'asn      switch'
+            'aciklama aciklama';
+    }
+
+    .bgp-row__durum    { grid-area: durum; justify-self: end; }
+    .bgp-row__komsu    { grid-area: komsu; }
+    .bgp-row__asn      { grid-area: asn; }
+    .bgp-row__switch   { grid-area: switch; justify-self: end; }
+    .bgp-row__grup     { display: none; }
+    .bgp-row__aciklama { grid-area: aciklama; }
+    .bgp-row__head     { display: none; }
+}
+
+/* Anons gönderim geçmişi */
+.mail-log {
+    border-bottom: 1px solid var(--color-line);
+}
+
+.mail-log__head {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr) 40px 120px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+}
+
+.mail-log__head::-webkit-details-marker {
+    display: none;
+}
+
+.mail-log__head:hover {
+    background: var(--color-sunken);
+}
+
+.mail-log__zaman {
+    text-align: right;
+}
+
+.mail-log__govde {
+    padding: 0 var(--space-4) var(--space-4);
+}
+
+@media (max-width: 720px) {
+    .mail-log__head {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .mail-log__dil,
+    .mail-log__zaman {
+        display: none;
+    }
+}
+
+/* Anons alıcısı satırı */
+.recipient-row {
+    grid-template-columns: 50px 160px minmax(0, 1fr) 80px;
+}
+
+@media (max-width: 720px) {
+    .recipient-row {
+        grid-template-columns: 50px minmax(0, 1fr) 80px;
+    }
+
+    .recipient-row__mail {
+        display: none;
+    }
+}

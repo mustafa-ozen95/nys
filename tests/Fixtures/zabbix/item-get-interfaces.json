@@ -1,0 +1,141 @@
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "itemid": "50001",
+      "key_": "net.if.status[ifOperStatus.518]",
+      "name": "Interface ge-0/0/0(): Operational status",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50002",
+      "key_": "net.if.speed[ifHighSpeed.518]",
+      "name": "Interface ge-0/0/0(): Speed",
+      "lastvalue": "1000000000",
+      "value_type": "3",
+      "units": "bps"
+    },
+    {
+      "itemid": "50003",
+      "key_": "net.if.type[ifType.518]",
+      "name": "Interface ge-0/0/0(): Interface type",
+      "lastvalue": "6",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50004",
+      "key_": "net.if.duplex[dot3StatsDuplexStatus.518]",
+      "name": "Interface ge-0/0/0(): Duplex",
+      "lastvalue": "3",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50011",
+      "key_": "net.if.status[ifOperStatus.519]",
+      "name": "Interface ge-0/0/1(): Operational status",
+      "lastvalue": "2",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50012",
+      "key_": "net.if.speed[ifHighSpeed.519]",
+      "name": "Interface ge-0/0/1(): Speed",
+      "lastvalue": "0",
+      "value_type": "3",
+      "units": "bps"
+    },
+    {
+      "itemid": "50013",
+      "key_": "net.if.type[ifType.519]",
+      "name": "Interface ge-0/0/1(): Interface type",
+      "lastvalue": "6",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50021",
+      "key_": "net.if.status[ifOperStatus.600]",
+      "name": "Interface vlan.122(): Operational status",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50022",
+      "key_": "net.if.type[ifType.600]",
+      "name": "Interface vlan.122(): Interface type",
+      "lastvalue": "135",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50031",
+      "key_": "net.if.status[ifOperStatus.700]",
+      "name": "Interface lo0(): Operational status",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50032",
+      "key_": "net.if.type[ifType.700]",
+      "name": "Interface lo0(): Interface type",
+      "lastvalue": "24",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50041",
+      "key_": "net.if.status[ifOperStatus.800]",
+      "name": "Interface ge-0/0/0.0(): Operational status",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50101",
+      "key_": "net.if.in[ifHCInOctets.518]",
+      "name": "Interface ge-0/0/0(): Bits received",
+      "lastvalue": "412000000",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50102",
+      "key_": "net.if.out[ifHCOutOctets.518]",
+      "name": "Interface ge-0/0/0(): Bits sent",
+      "lastvalue": "64000000",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50111",
+      "key_": "net.if.in[ifHCInOctets.519]",
+      "name": "Interface ge-0/0/1(): Bits received",
+      "lastvalue": "0",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50051",
+      "key_": "net.if.status[ifOperStatus.530]",
+      "name": "Interface ge-0/1/2(UP-Link-2/1): Operational status",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50052",
+      "key_": "net.if.type[ifType.530]",
+      "name": "Interface ge-0/1/2(UP-Link-2/1): Interface type",
+      "lastvalue": "6",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50061",
+      "key_": "net.if.status[ifOperStatus.540]",
+      "name": "Interface ae0(UP-Link): Operational status",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "50062",
+      "key_": "net.if.type[ifType.540]",
+      "name": "Interface ae0(UP-Link): Interface type",
+      "lastvalue": "161",
+      "value_type": "3"
+    }
+  ],
+  "id": 1
+}

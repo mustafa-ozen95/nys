@@ -1,0 +1,48 @@
+/*
+ * Ayarlar → Basit mod: her switch bölümü bir kart (bkz. settings/partials/basit-mod).
+ */
+.basit-mod {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.basit-mod__bolum {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+}
+
+.basit-mod__bas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+}
+
+.basit-mod__anahtarlar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.basit-mod__alanlar {
+    margin-top: var(--space-2);
+}
+
+.basit-mod__alanlar > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}
+
+.basit-mod__izgara {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-2) var(--space-4);
+    margin: var(--space-3) 0 var(--space-2);
+}

@@ -1,0 +1,171 @@
+/*
+ * Terim satırı — firewall filtresi ve routing politikası terimleri.
+ *
+ * İkisi de aynı şeydir: sıralı, sürüklenebilir, "eşleşme → eylem" satırları.
+ * Aynı bileşeni paylaşırlar; iki ekranda iki ayrı düzen olmaz.
+ *
+ * Satır "row row--between bgp-row term-row" gibi üst üste sınıflarla
+ * işaretlenmez: ızgara .row'un display:flex'i yüzünden hiç uygulanmaz,
+ * geriye space-between kalır; her satırın sütunları kendi metin
+ * uzunluğuna göre kayar ve alt alta hizalanmaz.
+ */
+
+.term-row {
+    grid-template-columns: 20px 220px minmax(0, 1fr) auto;
+    cursor: grab;
+}
+
+.term-row:active {
+    cursor: grabbing;
+}
+
+.term-row.is-dragging {
+    opacity: 0.4;
+}
+
+.term-row__grip {
+    color: var(--color-text-muted);
+    user-select: none;
+}
+
+/* Sıra numarası ve ad birlikte okunur; sıra trafiği belirler. */
+.term-row__ad {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.term-row__ozet {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/*
+ * Dar ekranda ad ve özet alt alta, eylemler sağda kalır. Tutamak gizlenir:
+ * sürükleme zaten dokunmatikte kullanılmıyor.
+ */
+@media (max-width: 720px) {
+    .term-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'ad    eylem'
+            'ozet  eylem';
+    }
+
+    .term-row__grip { display: none; }
+    .term-row__ad { grid-area: ad; }
+    .term-row__ozet { grid-area: ozet; white-space: normal; }
+    .term-row .row-actions { grid-area: eylem; }
+}
+
+/*
+ * Community tanımı satırı.
+ *
+ * Terimle aynı ekranda durur ve aynı ritmi paylaşır; farkı sürüklenebilir
+ * olmamasıdır (sıra anlam taşımaz).
+ */
+.community-row {
+    grid-template-columns: 220px minmax(0, 1fr) auto;
+}
+
+@media (max-width: 720px) {
+    .community-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+/*
+ * Ayar satırı: ad, durum rozeti, özet ve düzenle düğmesi.
+ *
+ * SNMP community, cihaz hesabı ve spanning tree arayüzü listeleri aynı
+ * biçimdedir. .term-row kullanmazlar: o ızgaranın ilk sütunu SÜRÜKLEME
+ * TUTAMAĞIDIR ve bu listelerde tutamak yok — ad o dar sütuna sıkışıp
+ * yanındaki rozetin altına girerdi.
+ */
+.ayar-row {
+    grid-template-columns: 200px 190px minmax(0, 1fr) auto;
+}
+
+@media (max-width: 720px) {
+    .ayar-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+/*
+ * Rol şablonu satırı: kaynak adı solda, aksiyon kutuları sağda. Kutu sayısı
+ * kaynağa göre değişir; sabit sütun vermek yerine kalan alanı doldururlar.
+ */
+.rol-kaynak {
+    grid-template-columns: 200px minmax(0, 1fr);
+    align-items: start;
+}
+
+@media (max-width: 720px) {
+    .rol-kaynak {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/*
+ * Sır satırı: etiket, gizli değer ve eylem.
+ *
+ * Değer sütunu ESNEKTİR ve taşmaz: açılan değer uzundur, sabit genişlikli
+ * bir hücrede yandaki sütunun üstüne biner ve oradaki düğmeyi tıklanamaz
+ * hâle getirir.
+ */
+.sir-row {
+    grid-template-columns: 160px minmax(0, 1fr) auto;
+}
+
+@media (max-width: 720px) {
+    .sir-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+/*
+ * Gizli değer: maskeli metin ve yanındaki göz simgesi.
+ *
+ * Değer açıkken de aynı genişlikte durur; simge satırın sonunda zıplamasın.
+ */
+.secret {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.secret__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    user-select: all;
+}
+
+.secret__toggle {
+    flex: none;
+    line-height: 1;
+}
+
+/*
+ * Belge içindeki örnek komut. Uzun satır kırılmaz, kendi içinde kayar:
+ * kırıldığında kopyalanan komut bozuluyor.
+ */
+.code-block {
+    margin: 0;
+    padding: var(--space-3);
+    background: var(--color-surface-2, var(--color-hover));
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm, 4px);
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre;
+}
+
+.secret__copy {
+    flex: none;
+    line-height: 1;
+}

@@ -1,0 +1,282 @@
+zabbix_export:
+  version: '7.2'
+  template_groups:
+    - uuid: d662a058d5924e27aa122aa0cef79323
+      name: 'Templates/Network devices'
+  templates:
+    - uuid: afb9e75b39f9497ab4fb04de35fb783d
+      template: 'Juniper NYS ek veriler by SNMP'
+      name: 'Juniper NYS ek veriler by SNMP'
+      description: |
+        NYS panelinin ihtiyaç duyduğu, "Juniper by SNMP" şablonunda bulunmayan
+        veriler: VLAN'lar, port VLAN üyeliği, IP adresleri ve commit geçmişi.
+
+        OID'ler bir EX2200 (JunOS) erişim switchi üzerinde snmpwalk ile DOĞRULANDI.
+
+        Standart Q-BRIDGE tabloları bu cihazda KULLANILAMAZ:
+          dot1qVlanFdbId              -> No Such Object
+          dot1qVlanStaticEgressPorts  -> tamamı sıfır
+          dot1qVlanStaticUntaggedPorts-> tamamı sıfır
+        dot1qPvid ÇALIŞIYOR ve gerçek VLAN etiketini döndürüyor; port
+        modunu (access/trunk) belirlemek için kullanılır.
+
+        VLAN adı ve etiketi Juniper'ın kendi MIB'inden alınır çünkü standart
+        tablonun indeksi VLAN etiketi değil, Juniper'ın iç indeksidir.
+
+        Zincir: jnxExVlanPortGroup(vlanIdx, bridgePort)
+                -> dot1dBasePortIfIndex(bridgePort) = ifIndex
+                -> arayüz adı
+        Doğrulanmış örnek: vlan idx 2 (etiket 1, "V1") -> bridge port 514
+        -> ifIndex 504 -> ge-0/0/1.0
+
+        Her tablo tek bir SNMP walk item'ıdır ve JSON döner; keşif kuralı ve
+        item prototipi yoktur, cihaza yüzlerce ayrı sorgu gitmez.
+
+        Route tablosu bilinçli olarak burada DEĞİLDİR: omurgada tam BGP
+        tablosu taşınıyorsa yüz binlerce satır olur. Ayrı şablonda.
+      groups:
+        - name: 'Templates/Network devices'
+      items:
+        - uuid: d397e5c22b594c7697394057738ccee3
+          name: 'NYS: VLAN listesi'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2636.3.40.1.5.1.5.1.2,1.3.6.1.4.1.2636.3.40.1.5.1.5.1.5,1.3.6.1.4.1.2636.3.40.1.5.1.6.1.5]'
+          key: nms.vlans
+          delay: 30m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            JUNIPER-VLAN-MIB jnxExVlanTable. İndeks Juniper'ın iç VLAN
+            indeksidir, VLAN etiketi DEĞİLDİR; etiket ayrı sütundadır.
+              name jnxExVlanName          VLAN adı   (örn "vlan-a")
+              tag  jnxExVlanTag           VLAN etiketi (örn 100)
+              l3if jnxExVlanL3Interface   L3 arayüzü (örn "vlan.3")
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - name
+                - 1.3.6.1.4.1.2636.3.40.1.5.1.5.1.2
+                - '0'
+                - tag
+                - 1.3.6.1.4.1.2636.3.40.1.5.1.5.1.5
+                - '0'
+                - l3if
+                - 1.3.6.1.4.1.2636.3.40.1.5.1.6.1.5
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+        - uuid: 94a6ef9308334f15a6bb31e01095700f
+          name: 'NYS: VLAN port üyeliği'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2636.3.40.1.5.1.7.1.3,1.3.6.1.4.1.2636.3.40.1.5.1.7.1.4]'
+          key: nms.vlan.ports
+          delay: 30m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            JUNIPER-VLAN-MIB jnxExVlanPortGroupTable.
+            İndeks: <vlanIdx>.<bridgePort>
+              status  sütun 3  port durumu
+              tagness sütun 4  etiketli / etiketsiz
+
+            Bridge port numarası ifIndex DEĞİLDİR; nms.bridge.ports ile
+            çevrilir.
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - status
+                - 1.3.6.1.4.1.2636.3.40.1.5.1.7.1.3
+                - '0'
+                - tagness
+                - 1.3.6.1.4.1.2636.3.40.1.5.1.7.1.4
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+        - uuid: 34983bf0ce644ca8b3ffb8feea7fe858
+          name: 'NYS: Bridge port - ifIndex eşlemesi'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.17.1.4.1.2]'
+          key: nms.bridge.ports
+          delay: 30m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            dot1dBasePortIfIndex. VLAN üyelik tablosundaki bridge port
+            numarasını arayüz indeksine çevirir. Bu olmadan VLAN üyeliği
+            yanlış porta bağlanır.
+
+            Dönen ifIndex mantıksal arayüzündür (ge-0/0/1.0); fiziksel
+            porta çeviri nms.if.stack ile yapılır.
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - ifindex
+                - 1.3.6.1.2.1.17.1.4.1.2
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+        - uuid: c82b9259ce9a41f996ca3f37a2a1efdc
+          name: 'NYS: Port native VLAN (PVID)'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.17.7.1.4.5.1.1]'
+          key: nms.port.pvid
+          delay: 30m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            dot1qPvid. Portun etiketsiz (native) VLAN etiketi.
+
+            Ölçülen cihazda DOĞRULANDI: gerçek VLAN etiketlerini döndürüyor.
+
+            İndeks bridge port numarasıdır; nms.bridge.ports ile ifIndex'e
+            çevrilir. Port modu (access / trunk) bundan ve VLAN üyelik
+            tablosundan belirlenir.
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - pvid
+                - 1.3.6.1.2.1.17.7.1.4.5.1.1
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+        - uuid: 6f73058c4d3745e384f64b861038b1a4
+          name: 'NYS: Mantıksal - fiziksel arayüz bağı'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.31.1.2.1.3]'
+          key: nms.if.stack
+          delay: 30m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            ifStackTable. İndeks <ustIfIndex>.<altIfIndex>.
+
+            JunOS'ta VLAN üyesi olan şey fiziksel arayüz değil, mantıksal
+            birimdir: ge-0/0/1 (tip 6) ortamdır, ge-0/0/1.0 (tip 53) L2
+            varlığıdır. Bridge tablosu mantıksal olana işaret eder.
+
+            Panel fiziksel portu tuttuğu için çeviri gerekir:
+              504 (ge-0/0/1.0) -> 503 (ge-0/0/1)
+            Bu tablo o bağı standart biçimde verir; arayüz adından ".0"
+            kırpmaya gerek kalmaz.
+
+            Ölçülen cihazda doğrulandı: .504.503 = 1. Üst indeksi 0 olan satırlar
+            "hiçbir şeyin üstünde değil" demektir, atlanır.
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - stack
+                - 1.3.6.1.2.1.31.1.2.1.3
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+        - uuid: 983e1b4fe75b4476a124c138a2464c8a
+          name: 'NYS: IP adresleri'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.4.20.1.2,1.3.6.1.2.1.4.20.1.3]'
+          key: nms.ip.addresses
+          delay: 30m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            IP-MIB ipAddrTable. Adresin kendisi OID indeksindedir.
+              ifindex ipAdEntIfIndex  adresin bağlı olduğu arayüz
+              netmask ipAdEntNetMask  ağ maskesi
+            Ölçülen cihazda yönetim, uplink ve genel IP'ler döndü.
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - ifindex
+                - 1.3.6.1.2.1.4.20.1.2
+                - '0'
+                - netmask
+                - 1.3.6.1.2.1.4.20.1.3
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+        - uuid: 20f45ec68b7a479f9ccb5337ba646af9
+          name: 'NYS: Commit geçmişi'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2636.3.18.1.7.1.2,1.3.6.1.4.1.2636.3.18.1.7.1.4,1.3.6.1.4.1.2636.3.18.1.7.1.5]'
+          key: nms.commits
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            JUNIPER-CFGMGMT-MIB jnxCmCfgChgEventTable.
+              time   sütun 2  değişiklik anı (cihaz uptime'ına göre timetick)
+              source sütun 4  değişikliğin yapıldığı yöntem
+              user   sütun 5  değişikliği yapan kullanıcı
+            Ölçülen cihazda kullanıcı alanı dolu geliyor.
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - time
+                - 1.3.6.1.4.1.2636.3.18.1.7.1.2
+                - '0'
+                - source
+                - 1.3.6.1.4.1.2636.3.18.1.7.1.4
+                - '0'
+                - user
+                - 1.3.6.1.4.1.2636.3.18.1.7.1.5
+                - '0'
+          tags:
+            - tag: component
+              value: nms
+    - uuid: ed486ba5f1e847f3bfe4ccb07b5436c1
+      template: 'Juniper NYS route tablosu by SNMP'
+      name: 'Juniper NYS route tablosu by SNMP'
+      description: |
+        DİKKAT — bu şablonu omurga switchlere BAĞLAMAYIN.
+
+        inetCidrRouteTable cihazın tüm route tablosudur. Tam BGP tablosu
+        taşıyan bir omurgada yüz binlerce satırdır; SNMP walk yönlendirme
+        motorunu meşgul eder.
+
+        OID'in ölçülen cihazda yanıt verdiği tek adımlık snmpgetnext ile doğrulandı;
+        tablo BÜYÜKLÜĞÜ ölçülmedi (bilerek yürünmedi).
+
+        Yalnızca route sayısı sınırlı switchlerde anlamlıdır. Item kasten
+        devre dışı gelir; etkinleştirmeden önce cihazın route sayısına bakın.
+      groups:
+        - name: 'Templates/Network devices'
+      items:
+        - uuid: fbc09c363b924575b1ed2891f3416222
+          name: 'NYS: Route tablosu'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.4.24.7.1.7,1.3.6.1.2.1.4.24.7.1.8]'
+          key: nms.routes
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          status: DISABLED
+          description: |
+            IP-FORWARD-MIB inetCidrRouteTable. Hedef, maske ve sonraki
+            atlama OID indeksinde kodludur.
+              ifindex  inetCidrRouteIfIndex
+              protocol inetCidrRouteProto
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - ifindex
+                - 1.3.6.1.2.1.4.24.7.1.7
+                - '0'
+                - protocol
+                - 1.3.6.1.2.1.4.24.7.1.8
+                - '0'
+          tags:
+            - tag: component
+              value: nms

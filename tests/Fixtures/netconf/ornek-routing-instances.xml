@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<rpc-reply xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="131">
+  <configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:changed-seconds="1577836800" junos:changed-localtime="2020-01-01 00:00:00 UTC">
+    <routing-instances>
+      <instance>
+        <name>tablo-a</name>
+        <instance-type>forwarding</instance-type>
+        <routing-options>
+          <static>
+            <route>
+              <name>0.0.0.0/0</name>
+              <qualified-next-hop>
+                <name>198.51.100.141</name>
+                <metric>150</metric>
+              </qualified-next-hop>
+            </route>
+          </static>
+        </routing-options>
+      </instance>
+    </routing-instances>
+  </configuration>
+</rpc-reply>

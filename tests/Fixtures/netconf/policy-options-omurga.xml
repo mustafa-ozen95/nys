@@ -1,0 +1,51 @@
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" message-id="3">
+<configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:changed-seconds="1577836800" junos:changed-localtime="2020-01-01 00:00:00 UTC">
+    <policy-options>
+        <prefix-list>
+            <name>koru</name>
+        </prefix-list>
+        <prefix-list>
+            <name>musteri1-PREFIXES</name>
+            <prefix-list-item>
+                <name>192.0.2.0/24</name>
+            </prefix-list-item>
+        </prefix-list>
+        <prefix-list>
+            <name>musteri1-PREFIXES-v6</name>
+            <prefix-list-item>
+                <name>2001:db8:a000::/36</name>
+            </prefix-list-item>
+        </prefix-list>
+        <policy-statement>
+            <name>prefixes-from-musteri1</name>
+            <term>
+                <name>clear</name>
+                <then>
+                    <community>
+                        <delete/>
+                        <community-name>topluluk-a</community-name>
+                    </community>
+                </then>
+            </term>
+            <term>
+                <name>A</name>
+                <from>
+                    <prefix-list-filter>
+                        <list_name>musteri1-PREFIXES</list_name>
+                        <orlonger/>
+                    </prefix-list-filter>
+                </from>
+                <then>
+                    <accept/>
+                </then>
+            </term>
+            <term>
+                <name>B</name>
+                <then>
+                    <reject/>
+                </then>
+            </term>
+        </policy-statement>
+    </policy-options>
+</configuration>
+</rpc-reply>

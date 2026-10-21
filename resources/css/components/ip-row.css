@@ -1,0 +1,63 @@
+/* IP adresi ve route satırı */
+.ip-row {
+    grid-template-columns: 180px minmax(0, 1fr) 120px 90px;
+}
+
+.ip-row__eylem {
+    text-align: right;
+}
+
+/* Commit geçmişi satırı.
+   Açıklama panelden yazılan commit'lerde kullanıcı adını taşır; kırpılmaz,
+   satır sarar. */
+.commit-row {
+    grid-template-columns: 60px 130px 120px minmax(0, 1fr) 110px;
+    align-items: start;
+}
+
+.commit-row__eylem {
+    text-align: right;
+}
+
+.commit-row__not {
+    overflow-wrap: anywhere;
+}
+
+.prefix-entry + .prefix-entry {
+    border-top: 1px solid var(--color-line);
+}
+
+.prefix-entry {
+    padding: var(--space-2) 0;
+}
+
+@media (max-width: 720px) {
+    .ip-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'adres  eylem'
+            'arayuz port';
+    }
+
+    .ip-row__adres  { grid-area: adres; }
+    .ip-row__arayuz { grid-area: arayuz; }
+    .ip-row__port   { grid-area: port; justify-self: end; }
+    .ip-row__eylem  { grid-area: eylem; }
+    .ip-row__head   { display: none; }
+
+    .commit-row {
+        grid-template-columns: 50px minmax(0, 1fr);
+        grid-template-areas:
+            'sira  zaman'
+            'kim   kim'
+            'not   not'
+            'eylem eylem';
+    }
+
+    .commit-row__sira  { grid-area: sira; }
+    .commit-row__zaman { grid-area: zaman; justify-self: end; }
+    .commit-row__kim   { grid-area: kim; }
+    .commit-row__not   { grid-area: not; }
+    .commit-row__eylem { grid-area: eylem; text-align: left; }
+    .commit-row__head  { display: none; }
+}

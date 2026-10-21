@@ -1,0 +1,36 @@
+.meter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 96px;
+}
+
+.meter__track {
+    flex: 1;
+    height: 3px;
+    background: var(--color-sunken);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.meter__fill {
+    display: block;
+    height: 100%;
+    /* Genişlik şablondan gelen --meter-value veri değeriyle belirlenir. */
+    width: var(--meter-value, 0%);
+    border-radius: var(--radius-full);
+    transition: width var(--transition);
+}
+
+.meter__fill--green  { background: var(--color-green-fg); }
+.meter__fill--yellow { background: var(--color-yellow-fg); }
+.meter__fill--red    { background: var(--color-red-fg); }
+.meter__fill--gray   { background: var(--color-gray-fg); }
+
+.meter__value {
+    min-width: 34px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+}

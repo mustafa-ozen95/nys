@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<rpc-reply xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="134">
+  <configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:changed-seconds="1577836800" junos:changed-localtime="2020-01-01 00:00:00 UTC">
+    <ethernet-switching-options>
+      <voip>
+        </voip>
+      <storm-control>
+        <interface>
+          <name>all</name>
+        </interface>
+      </storm-control>
+    </ethernet-switching-options>
+  </configuration>
+</rpc-reply>

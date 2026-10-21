@@ -1,0 +1,25 @@
+set protocols bgp group musteri1 type external
+set protocols bgp group musteri1 multihop
+set protocols bgp group musteri1 local-address 198.51.100.133
+set protocols bgp group musteri1 log-updown
+set protocols bgp group musteri1 import prefixes-from-musteri1
+set protocols bgp group musteri1 family inet any prefix-limit maximum 200
+set protocols bgp group musteri1 export 100-hepsi
+set protocols bgp group musteri1 peer-as 64497
+set protocols bgp group musteri1 neighbor 198.51.100.134
+set protocols bgp group musteri1-v6 type external
+set protocols bgp group musteri1-v6 local-address 2001:db8:0:230::1
+set protocols bgp group musteri1-v6 family inet6 any prefix-limit maximum 50
+set protocols bgp group musteri1-v6 family inet6 any prefix-limit teardown 100
+set protocols bgp group musteri1-v6 family inet6 any prefix-limit teardown idle-timeout
+set protocols bgp group musteri1-v6 peer-as 64497
+set protocols bgp group musteri1-v6 neighbor 2001:db8:0:230::2
+set protocols bgp group router type internal
+set protocols bgp group router local-address 198.51.100.142
+set protocols bgp group router import no-route
+set protocols bgp group router neighbor 198.51.100.141
+deactivate protocols bgp group router
+set protocols rstp
+set protocols igmp-snooping vlan all
+set protocols lldp interface all
+set protocols lldp-med interface all

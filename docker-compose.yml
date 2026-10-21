@@ -1,0 +1,166 @@
+# =============================================================================
+#  nys — NYS (Juniper Ağ Yönetim Paneli) — Compose (compose-spec.io)
+# =============================================================================
+#  Her ortamda aynı dosya: `docker compose up -d --build`, NineDeploy, Coolify,
+#  Dokploy, Portainer... Ayarların hepsi ortamdan gelir (.env ya da platformun
+#  değişken ekranı); liste ve açıklamalar .env.example'da.
+#
+#      cp .env.example .env      # en az APP_URL ve DB_PASSWORD
+#      docker compose up -d --build
+#
+#  HTTP portu dışarı AÇILMAZ: alan adını ve TLS'i önündeki vekil (platformun
+#  kendisi ya da Caddy/nginx) verir, panele konteyner ağından 80'den ulaşır.
+#  Vekilsiz deneme için docker-compose.override.example.yml.
+#
+#  Servisler: panel (nginx + php-fpm + kuyruk işçileri + zamanlayıcı + uzak
+#  oturumlar: ttyd, guacd, Tomcat), db (MariaDB), redis (önbellek, oturum,
+#  kuyruk; kalıcılık kapalı).
+#
+#  Dışarıdaki ya da platformun yönettiği bir veritabanı: DB_HOST ve
+#  kimlik bilgilerini verin, VT_KOPYA=0 ile db servisi hiç kalkmaz.
+#
+#  Adlar: konteyner ve hacimler ONEK ile başlar (varsayılan nys). Aynı
+#  sunucuda ikinci kurulum ONEK'i değiştirir.
+# =============================================================================
+
+services:
+  panel:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: ${ONEK:-nys}:yerel
+    container_name: ${ONEK:-nys}
+    restart: unless-stopped
+    # Kapanış NE KADAR SÜRÜYORSA o kadar beklenir; buradaki değer bir hedef
+    # değil, asla devreye girmemesi gereken bir TAVANDIR. Cihaza yazan bir iş
+    # sürerken kapanış dakikalara çıkabilir; kesilmiş bir yazma, panelin
+    # bilmediği bir cihaz durumu demektir. Konteyner işi bitince HEMEN çıkar.
+    stop_grace_period: 1h
+    # Yalnız 80: ttyd (7700-7900) ve Tomcat (8090) konteynerin içinde
+    # 127.0.0.1'de, onlara nginx'in /ssh-proxy/ ve /rdp-proxy/ yolları
+    # üzerinden gelinir.
+    expose: ["80"]
+    # Tanımsız değişken konteynere GEÇMEZ (boş değer de değil): varsayılanlar
+    # başlatıcıda ve config/ altında.
+    environment:
+      - APP_NAME
+      - APP_ENV
+      - APP_DEBUG
+      - APP_KEY
+      - APP_URL
+      - APP_LOCALE
+      - APP_TIMEZONE
+      - TRUSTED_PROXIES
+      - DB_HOST
+      - DB_PORT
+      - DB_DATABASE
+      - DB_USERNAME
+      - DB_PASSWORD
+      - REDIS_HOST
+      - REDIS_PORT
+      - REDIS_PASSWORD
+      - KIMLIK_ACIK
+      - KIMLIK_ADRES
+      - KIMLIK_ISTEMCI
+      - KIMLIK_ISTEMCI_SIR
+      - KIMLIK_DONUS
+      - KIMLIK_BILDIRIM_SIR
+      - KIMLIK_AD
+      - KIMLIK_KOK
+      - KIMLIK_YONETICI_DEVRI
+      - TEMA_ALANI
+      - ACTIVITY_CHAIN_KEY
+      - GUNCELLEME_JETONU
+      - ZABBIX_ENABLED
+      - ZABBIX_URL
+      - ZABBIX_API_TOKEN
+      - ANNOUNCEMENT_AUTHORIZATION
+      - ANNOUNCEMENT_ASN
+      - ARCHIVAL_SITE
+      - GUACAMOLE_SECRET
+      - GUACAMOLE_USER
+      - SUNUCU_WINRM_KURTARMA
+      - ORNEK_VERI
+      - ADMIN_NAME
+      - ADMIN_EMAIL
+      - ADMIN_PASSWORD
+      - MAIL_MAILER
+      - MAIL_HOST
+      - MAIL_PORT
+      - MAIL_USERNAME
+      - MAIL_PASSWORD
+      - MAIL_SCHEME
+      - MAIL_FROM_ADDRESS
+      - MAIL_FROM_NAME
+    volumes:
+      # ⚠ APP_KEY ile BİRLİKTE yedeklenir: switch parolaları, SNMP
+      # community'leri, sunucu kimlikleri ve uzak veritabanı bağlantısı ona
+      # bağlı.
+      - storage:/uygulama/storage/app
+      - logs:/uygulama/storage/logs
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/up"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+
+  db:
+    image: mariadb:11.4
+    container_name: ${ONEK:-nys}-db
+    restart: unless-stopped
+    # 0: dışarıdaki ya da platformun veritabanı kullanılıyor (DB_HOST).
+    deploy:
+      replicas: ${VT_KOPYA:-1}
+    # Docker'ın varsayılan 10 saniyesi InnoDB boşaltmasına yetmeyebilir
+    # (boştayken bile); tavan, hedef değil.
+    stop_grace_period: 2m
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-nsm}
+      MARIADB_USER: ${DB_USERNAME:-nsm}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD gerekli (.env.example)}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+      MARIADB_AUTO_UPGRADE: "1"
+    volumes:
+      - veritabani:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 6
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: ${ONEK:-nys}-redis
+    restart: unless-stopped
+    # Kalıcılık KAPALI: burada yalnız önbellek, oturum ve kuyruk durur.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+networks:
+  default:
+    # Ağ yalıtımı: true iken konteynerler switchlere, Zabbix'e, kimlik
+    # merkezine (KYM) ve
+    # dışarıya bağlanamaz (taşıma ya da deneme kurulumunda canlı cihazlara
+    # yazılmasın diye). Port yayınları da o zaman dışarıdan erişilmez.
+    internal: ${AG_YALITIMI:-false}
+
+volumes:
+  storage:
+    name: ${ONEK:-nys}_storage
+  logs:
+    name: ${ONEK:-nys}_logs
+  veritabani:
+    name: ${ONEK:-nys}_veritabani

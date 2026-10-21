@@ -1,0 +1,53 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+Thumbs.db
+/tests/Browser/results
+/tests/Browser/shots
+/test-results
+/playwright-report
+
+# Ortam dosyasının HER kopyası; .env.example bilerek dışarıda tutulur.
+# Elle alınmış .env yedekleri gerçek parolaları taşır ve bir kez commit
+# edilirse geçmişten temizlenmesi ayrı bir iş olur.
+.env.*
+!.env.example
+
+# Sürüm arşivleri: içlerinde .env var ve depoya girmemeli.
+*.zip
+
+# Yerel envanter dosyası (gerçek cihaz kayıtları; bkz. .ai/rules/seeders.md).
+/database/seeders/yerel/envanter.php
+
+# Kökte duran bir kurulum yapılandırma dosyası APP_KEY, veritabanı parolası,
+# Guacamole sırrı ve SMTP parolası taşıyabilir; ayarlar kökteki .env'dedir
+# (örneği .env.example). İkisi de ASLA izlenmez.
+/nys.conf
+
+# Vekilsiz deneme (docker-compose.override.example.yml'den kopyalanır).
+docker-compose.override.yml
+# İmajda derlemede yazılır (docker/Dockerfile); depoya girmez.
+/SURUM

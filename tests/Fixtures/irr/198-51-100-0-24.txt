@@ -1,0 +1,33 @@
+route:          198.51.100.0/24
+descr:          RPKI ROA for 198.51.100.0/24 / AS64496
+remarks:        This AS64496 route object represents routing data retrieved
+                from the RPKI. This route object is the result of an automated
+                RPKI-to-IRR conversion process performed by IRRd.
+max-length:     24
+origin:         AS64496
+source:         RPKI  # Trust Anchor: ripe
+
+route:          198.51.100.0/24
+descr:          Ornek
+origin:         AS64497
+mnt-by:         ORNEK-MNT
+created:        2015-05-12T07:05:24Z
+last-modified:  2015-05-12T07:05:24Z
+source:         RIPE
+remarks:        ****************************
+remarks:        * THIS OBJECT IS MODIFIED
+remarks:        * Please note that all data that is generally regarded as personal
+remarks:        * data has been removed from this object.
+remarks:        * To view the original object, please query the RIPE Database at:
+remarks:        * http://www.ripe.net/whois
+remarks:        ****************************
+rpki-ov-state:  valid
+
+route:          198.51.100.0/24
+descr:          RPKI ROA for 198.51.100.0/24 / AS64497
+remarks:        This AS64497 route object represents routing data retrieved
+                from the RPKI. This route object is the result of an automated
+                RPKI-to-IRR conversion process performed by IRRd.
+max-length:     24
+origin:         AS64497
+source:         RPKI  # Trust Anchor: ripe

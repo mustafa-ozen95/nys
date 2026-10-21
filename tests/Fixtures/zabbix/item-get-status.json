@@ -1,0 +1,81 @@
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "itemid": "40001",
+      "key_": "icmpping",
+      "name": "ICMP ping",
+      "lastvalue": "1",
+      "value_type": "3"
+    },
+    {
+      "itemid": "40002",
+      "key_": "system.cpu.util[jnxOperatingCPU.1.1.0.0]",
+      "name": "CPU utilization",
+      "lastvalue": "34",
+      "units": "%",
+      "value_type": "0"
+    },
+    {
+      "itemid": "40003",
+      "key_": "system.cpu.util[jnxOperatingCPU.1.2.0.0]",
+      "name": "CPU utilization RE1",
+      "lastvalue": "88",
+      "units": "%",
+      "value_type": "0"
+    },
+    {
+      "itemid": "40004",
+      "key_": "vm.memory.util[jnxOperatingBuffer.1.1.0.0]",
+      "name": "Memory utilization",
+      "lastvalue": "61",
+      "units": "%",
+      "value_type": "0"
+    },
+    {
+      "itemid": "40005",
+      "key_": "sensor.temp.value[jnxOperatingTemp.1.1.0.0]",
+      "name": "Temperature",
+      "lastvalue": "41",
+      "units": "C",
+      "value_type": "0"
+    },
+    {
+      "itemid": "40006",
+      "key_": "system.net.uptime[sysUpTime.0]",
+      "name": "Uptime",
+      "lastvalue": "8352000",
+      "units": "uptime",
+      "value_type": "3"
+    },
+    {
+      "itemid": "40007",
+      "key_": "system.name",
+      "name": "System name",
+      "lastvalue": "sw-test-1.Juniper-EX2200",
+      "value_type": "1"
+    },
+    {
+      "itemid": "40008",
+      "key_": "system.hw.model",
+      "name": "Hardware model name",
+      "lastvalue": "Juniper EX2200-48T-4G Ethernet Switch",
+      "value_type": "1"
+    },
+    {
+      "itemid": "40009",
+      "key_": "system.hw.serialnumber",
+      "name": "Hardware serial number",
+      "lastvalue": "TESTSN0000001",
+      "value_type": "1"
+    },
+    {
+      "itemid": "40010",
+      "key_": "system.sw.os",
+      "name": "Operating system",
+      "lastvalue": "",
+      "value_type": "1"
+    }
+  ],
+  "id": 1
+}

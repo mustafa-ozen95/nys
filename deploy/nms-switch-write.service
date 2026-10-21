@@ -1,0 +1,44 @@
+# Ornek birim: <site-kullanicisi> (php-fpm ile ayni kullanici) ve
+# <kurulum-dizini> yer tutucularini kurulumunuza gore doldurun.
+
+[Unit]
+Description=NYS - cihaza yazma kuyrugu iscisi
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=<site-kullanicisi>
+Group=<site-kullanicisi>
+WorkingDirectory=<kurulum-dizini>
+
+# --tries=1: is sinifinin kendi ayariyla AYNI olmali. Cihaz yazmasi kor
+#   tekrar edilmez; yarida kalmis bir degisiklige ikinci kez yazmak, panelin
+#   bilmedigi bir duruma yazmaktir. Geri alma guvencesi zaten yazma yolunda
+#   (commit confirmed).
+# --timeout=300: bir yazma iki gercek commit icerir ve ELS switchte tek
+#   commit on saniyeyi asabilir. Sinir comert tutulur.
+# --max-time=3600: isci saatte bir yenilenir, boylece yeni kod devreye girer.
+# --sleep=1: kullanici ekranda bekliyor; bos kuyrukta uzun uyumak gereksiz
+#   gecikme demek.
+ExecStart=/usr/bin/php artisan queue:work redis \
+    --queue=nms-switch-write \
+    --tries=1 \
+    --timeout=300 \
+    --max-time=3600 \
+    --sleep=1
+
+Restart=always
+RestartSec=5
+StandardOutput=append:<kurulum-dizini>/logs/switch-write-queue.log
+StandardError=append:<kurulum-dizini>/logs/switch-write-queue.log
+
+# Isci yalnizca kendi proje dizinine yazar.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=<kurulum-dizini>/storage <kurulum-dizini>/logs
+
+[Install]
+WantedBy=multi-user.target

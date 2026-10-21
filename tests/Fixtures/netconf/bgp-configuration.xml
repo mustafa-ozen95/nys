@@ -1,0 +1,62 @@
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" message-id="3">
+<configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:changed-seconds="1577836800" junos:changed-localtime="2020-01-01 00:00:00 UTC">
+    <protocols>
+        <bgp>
+            <group>
+                <name>ic</name>
+                <type>internal</type>
+                <local-address>198.18.8.38</local-address>
+                <passive/>
+                <neighbor>
+                    <name>198.18.8.37</name>
+                    <description>ic komsu</description>
+                </neighbor>
+            </group>
+            <group>
+                <name>dis</name>
+                <type>external</type>
+                <multihop>
+                    <ttl>5</ttl>
+                </multihop>
+                <import>p1</import>
+                <import>p2</import>
+                <family>
+                    <inet>
+                        <unicast>
+                            <prefix-limit>
+                                <maximum>100</maximum>
+                                <teardown>
+                                    <limit-threshold>80</limit-threshold>
+                                    <idle-timeout>
+                                        <timeout>30</timeout>
+                                    </idle-timeout>
+                                </teardown>
+                            </prefix-limit>
+                        </unicast>
+                    </inet>
+                    <inet6>
+                        <any>
+                            <prefix-limit>
+                                <maximum>50</maximum>
+                                <teardown>
+                                </teardown>
+                            </prefix-limit>
+                        </any>
+                    </inet6>
+                </family>
+                <export>e1</export>
+                <peer-as>65001</peer-as>
+                <local-as>
+                    <as-number>65009</as-number>
+                </local-as>
+                <neighbor>
+                    <name>198.18.8.37</name>
+                    <description>dis komsu</description>
+                    <local-address>198.18.8.38</local-address>
+                    <peer-as>65002</peer-as>
+                </neighbor>
+            </group>
+        </bgp>
+    </protocols>
+</configuration>
+</rpc-reply>

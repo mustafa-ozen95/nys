@@ -1,0 +1,62 @@
+/*
+ * Grafik kabı sabit yüksekliklidir ve konumlandırma bağlamı kurar.
+ *
+ * Aksi hâlde şöyle bir döngü oluşur: tuval büyür -> panelde kaydırma
+ * çubuğu belirir -> kullanılabilir genişlik daralır -> tuval yeniden
+ * boyutlanır. Ekranda bu, kaydırma çubuğunun küçülüp durması olarak
+ * görünür.
+ */
+.chart {
+    position: relative;
+    height: 180px;
+    margin-top: var(--space-3);
+}
+
+.chart__canvas {
+    position: absolute;
+    inset: 0;
+}
+
+.chart__ranges {
+    /* Eşit sütunlar: her düğme en genişi kadar yer kaplar, metin uzunluğu
+       düğme boyunu değiştirmez. */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+    gap: var(--space-1);
+}
+
+.chart__ranges .btn {
+    justify-content: center;
+    padding-inline: var(--space-2);
+}
+
+.chart__state {
+    /*
+        Bu öğe .chart kabının dışındadır ve akış içinde durur. Mutlak
+        konumlu olsaydı konumlandırılmış bir ata bulamayıp bütün sayfayı
+        örterdi: port listesi "Yükleniyor…" arkasında kaybolurdu.
+    */
+    display: grid;
+    place-items: center;
+    min-height: 120px;
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+}
+
+/* Gelen ve giden ayrı grafiklerde; ölçekleri bağımsız. */
+.chart-pair {
+    display: grid;
+    gap: var(--space-5);
+    /* Aralık düğmeleriyle ilk grafik başlığı arasında nefes payı. */
+    margin-top: var(--space-4);
+}
+
+.chart-pair__label {
+    margin-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.chart--kisa {
+    height: 130px;
+}

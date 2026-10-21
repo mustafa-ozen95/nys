@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<rpc-reply xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="130">
+  <configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:changed-seconds="1577836800" junos:changed-localtime="2020-01-01 00:00:00 UTC">
+    <routing-options>
+      <interface-routes>
+        <rib-group>
+          <inet>rib-grup-a</inet>
+        </rib-group>
+      </interface-routes>
+      <rib>
+        <name>inet6.0</name>
+        <static>
+          <route>
+            <name>2001:db8:f000::/36</name>
+            <next-hop>2001:db8:0:160::2</next-hop>
+          </route>
+          <route>
+            <name>0::0/0</name>
+            <next-hop>fd00:abcd:b::1</next-hop>
+          </route>
+        </static>
+      </rib>
+      <static>
+        <route>
+          <name>0.0.0.0/0</name>
+          <next-hop>198.18.8.37</next-hop>
+          <next-hop>203.0.113.133</next-hop>
+        </route>
+        <route>
+          <name>198.18.0.232/29</name>
+          <next-hop>198.51.100.134</next-hop>
+        </route>
+        <route>
+          <name>198.51.100.94/32</name>
+          <discard/>
+        </route>
+      </static>
+      <rib-groups>
+        <name>rib-grup-a</name>
+        <import-rib>inet.0</import-rib>
+      </rib-groups>
+      <autonomous-system>
+        <as-number>64496</as-number>
+      </autonomous-system>
+    </routing-options>
+  </configuration>
+</rpc-reply>

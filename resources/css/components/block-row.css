@@ -1,0 +1,189 @@
+/* Adresleme: blok satırı, atama rozeti ve boş yuva seçici */
+.block-row {
+    grid-template-columns: 130px minmax(0, 1fr) auto 80px;
+}
+
+.block-row__sayi {
+    text-align: right;
+}
+
+.assignment {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.assignment__switch {
+    font-size: var(--text-sm);
+}
+
+.block-note {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-sunken);
+    border-radius: var(--radius);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.assignment__ok {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.assignment--bos {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.slot-picker {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: end;
+    justify-content: start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+}
+
+.slot-picker__liste {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.slot-picker__yuva {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    padding: 2px var(--space-3);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.slot-picker__yuva:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+.slot-picker__yuva[disabled] {
+    color: var(--color-text-muted);
+    border-style: dashed;
+    cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+    .block-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'cidr     atama'
+            'aciklama sayi';
+    }
+
+    .block-row__cidr     { grid-area: cidr; }
+    .block-row__aciklama { grid-area: aciklama; }
+    .block-row__atama    { grid-area: atama; justify-self: end; }
+    .block-row__sayi     { grid-area: sayi; }
+}
+
+/* --- Adres ağacı: tıklayınca yerinde açılan yapı -------------------------- */
+
+/*
+ * <details> KULLANILIR, betik değil: satır betik yüklenmese de açılıyor ve
+ * açık/kapalı durumu tarayıcının kendi işi. Burada yalnızca görünüm var.
+ */
+.agac__dal {
+    border-bottom: 1px solid var(--color-line);
+}
+
+.agac__ozet {
+    display: block;
+    list-style: none;
+    cursor: pointer;
+}
+
+/* Varsayılan üçgeni kaldırıp kendi göstergemizi koyuyoruz. */
+.agac__ozet::-webkit-details-marker { display: none; }
+
+.agac__ozet .block-row::before {
+    content: '▸';
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    transition: transform 120ms ease;
+}
+
+.agac__dal[open] > .agac__ozet .block-row::before {
+    transform: rotate(90deg);
+}
+
+/* Gösterge sütunu: satır ızgarasına bir sütun eklenir. */
+.agac__ozet .block-row {
+    grid-template-columns: 14px 130px minmax(0, 1fr) auto 80px;
+}
+
+/*
+ * İÇERİ GİRİNTİ: hangi bloğun hangisinin altında olduğu göz kırpmadan
+ * okunmalı. Çizgi, girintinin nereden geldiğini gösterir.
+ */
+.agac__ic {
+    padding-left: var(--space-5);
+    border-left: 2px solid var(--color-line);
+    margin-left: var(--space-4);
+}
+
+/* "Aşağı kayarak açılan" his: yükseklik değil opaklık ve kayma. */
+@media (prefers-reduced-motion: no-preference) {
+    .agac__dal[open] > .agac__ic {
+        animation: agac-ac 140ms ease-out;
+    }
+}
+
+@keyframes agac-ac {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/*
+ * BOŞLUK satırı: tanımlı bir kaydı yok, tıklanamaz. Kesik çerçeve onu
+ * "burada bir şey yok" diye okutuyor.
+ */
+.agac__bosluk {
+    border-left: 2px dashed var(--color-line);
+    background: none;
+    color: var(--color-text-muted);
+}
+
+.agac__kesildi {
+    padding: var(--space-3) var(--space-4);
+}
+
+/* --- Host düzeyi: hangi adres kimde ------------------------------------- */
+.adres-listesi {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.adres-listesi__satir {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: 2px var(--space-2);
+    border-bottom: 1px solid var(--color-line);
+}
+
+/* Dolu satır göze çarpsın: aranan şey çoğu zaman "boşta olan hangisi". */
+.adres-listesi__satir--dolu {
+    background: var(--color-sunken);
+}

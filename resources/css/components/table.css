@@ -1,0 +1,178 @@
+/*
+ * Yönetim ekranlarının tablosu. Sütun şeridi kullanmayan sayfalarda
+ * (kullanıcılar, kayıtlar) kullanılır; sütun satırlarıyla aynı ritmi korur.
+ */
+
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-line);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-line);
+    font-size: var(--text-md);
+    vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.table tbody tr:hover td {
+    background: var(--color-hover);
+}
+
+.table__cell--mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+}
+
+.table__cell--right { text-align: right; }
+.table__cell--tight { width: 1%; white-space: nowrap; }
+
+.table__row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-1);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.table tbody tr:hover .table__row-actions,
+.table__row-actions:focus-within {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .table__row-actions { opacity: 1; }
+}
+
+/*
+ * Dar ekranda tablo yatay kaydırılmaz: her satır kendi bloğuna dönüşür ve
+ * sütun başlıkları hücrelerin önüne etiket olarak iner. Yatay kaydırma
+ * telefonda sütunların yarısını görünmez yapar.
+ *
+ * Etiketler <td data-label="..."> ile verilir.
+ */
+@media (max-width: 720px) {
+    .table {
+        min-width: 0;
+    }
+
+    .table thead {
+        display: none;
+    }
+
+    .table,
+    .table tbody,
+    .table tr {
+        display: block;
+        width: 100%;
+    }
+
+    .table tr {
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--color-line);
+    }
+
+    .table tbody tr:hover td {
+        background: transparent;
+    }
+
+    .table td {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-4);
+        width: 100%;
+        padding: 2px 0;
+        border: 0;
+    }
+
+    .table td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+
+        /*
+         * Etiketler ortak bir genişlikten başlar: aksi hâlde her satırda
+         * değer/kutu farklı yerden başlar ve blok tırtıklı görünür.
+         * min-width, uzun etiketin taşmasına izin verir.
+         */
+        min-width: 6.5rem;
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+
+        /*
+         * Etiket HER ZAMAN sola yaslanır. Sayı sütunları .text-right taşır
+         * ve hizalama etikete de geçer; değerin sağa yaslanması doğru,
+         * etiketin değil.
+         */
+        text-align: left;
+    }
+
+    /*
+     * ETİKETSİZ HÜCRE: satır eylemleri.
+     *
+     * Değerler sağda hizalanırken düğmelerin sola kaçması satırı iki ayrı
+     * hizaya böler — göz önce sağdaki değerleri, sonra soldaki düğmeleri
+     * arar.
+     *
+     * Şerit de açılmaz: `content: attr(data-label)` özniteliği olmayan
+     * hücrede boş dizeye dönüşür ama kutu yine çizilip etiket sütununu
+     * ayırır.
+     */
+    .table td:not([data-label]) {
+        justify-content: flex-end;
+        padding-top: var(--space-3);
+    }
+
+    .table td:not([data-label])::before {
+        display: none;
+    }
+
+    .table__cell--right,
+    .table__cell--tight {
+        width: 100%;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .table__row-actions {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}
+
+/* Yetki matrisi */
+.permission-wildcards {
+    gap: var(--space-5);
+}
+
+.permission-records {
+    margin-top: var(--space-5);
+}
+
+/* Kayıt bütünlüğü şeridi: tablonun üstünde, tablonun boşluğuyla hizalı. */
+.log-integrity {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-line);
+}

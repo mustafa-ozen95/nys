@@ -1,0 +1,57 @@
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" message-id="3">
+<configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:changed-seconds="1577836800" junos:changed-localtime="2020-01-01 00:00:00 UTC">
+    <protocols>
+        <bgp>
+            <group>
+                <name>musteri1</name>
+                <type>external</type>
+                <multihop>
+                </multihop>
+                <local-address>198.51.100.133</local-address>
+                <log-updown/>
+                <import>prefixes-from-musteri1</import>
+                <family>
+                    <inet>
+                        <any>
+                            <prefix-limit>
+                                <maximum>200</maximum>
+                            </prefix-limit>
+                        </any>
+                    </inet>
+                </family>
+                <export>only-default</export>
+                <peer-as>64497</peer-as>
+                <neighbor>
+                    <name>198.51.100.134</name>
+                </neighbor>
+            </group>
+            <group>
+                <name>musteri1-v6</name>
+                <type>external</type>
+                <local-address>2001:db8:0:230::1</local-address>
+                <log-updown/>
+                <import>prefixes-musteri1-v6</import>
+                <family>
+                    <inet6>
+                        <any>
+                            <prefix-limit>
+                                <maximum>50</maximum>
+                                <teardown>
+                                    <limit-threshold>100</limit-threshold>
+                                    <idle-timeout>
+                                    </idle-timeout>
+                                </teardown>
+                            </prefix-limit>
+                        </any>
+                    </inet6>
+                </family>
+                <export>send-v6-default</export>
+                <peer-as>64497</peer-as>
+                <neighbor>
+                    <name>2001:db8:0:230::2</name>
+                </neighbor>
+            </group>
+        </bgp>
+    </protocols>
+</configuration>
+</rpc-reply>

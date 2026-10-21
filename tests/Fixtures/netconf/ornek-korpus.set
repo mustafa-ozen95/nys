@@ -1,0 +1,33 @@
+set policy-options prefix-list spoof-prefixes
+set policy-options prefix-list musteri1-PREFIXES 198.18.4.0/24
+set policy-options prefix-list musteri1-PREFIXES 203.0.113.0/24
+set policy-options prefix-list ipv6-prefix 2001:db8::/29
+set policy-options prefix-list ipv6-prefix 2001:db8:0:701::/64
+set policy-options prefix-list filtre-hizmeti-a 198.18.10.0/24
+set policy-options prefix-list FIREWALL-PREFIXES 198.18.2.56/29
+set policy-options community topluluk-b members 64496:999
+set policy-options community topluluk-a members 64496:400
+set policy-options policy-statement 100-hepsi term A then accept
+set policy-options policy-statement no-route term A then reject
+set policy-options policy-statement export-v6 term B then reject
+set policy-options policy-statement export-v6 term A from prefix-list-filter ipv6-prefix orlonger
+set policy-options policy-statement export-v6 term A then accept
+set policy-options policy-statement only-v6-default term A from protocol bgp
+set policy-options policy-statement only-v6-default term A from route-filter ::/0 exact
+set policy-options policy-statement only-v6-default term A then accept
+set policy-options policy-statement prefixes-from-musteri1 term clear then community delete topluluk-a
+set policy-options policy-statement prefixes-from-musteri1 term A from prefix-list-filter musteri1-PREFIXES orlonger
+set policy-options policy-statement prefixes-from-musteri1 term A then accept
+set policy-options policy-statement prefixes-from-musteri1 term B then reject
+set policy-options policy-statement self-all term A from route-filter 0.0.0.0/0 exact
+set policy-options policy-statement self-all term A from route-filter 10.0.0.0/8 orlonger
+set policy-options policy-statement self-all term A then reject
+set policy-options policy-statement self-all term topluluk-a from prefix-list filtre-hizmeti-a
+set policy-options policy-statement self-all term topluluk-a then community add topluluk-a
+set policy-options policy-statement self-all term C from route-filter 0.0.0.0/0 prefix-length-range /24-/24
+set policy-options policy-statement self-all term C then community add topluluk-b
+set policy-options policy-statement self-all term C then next-hop self
+set policy-options policy-statement self-all term C then accept
+set policy-options policy-statement self-all term B then next-hop self
+set policy-options policy-statement self-all term B then accept
+deactivate policy-options policy-statement no-route

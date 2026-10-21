@@ -1,0 +1,42 @@
+set firewall policer limit-600 filter-specific
+set firewall policer limit-600 if-exceeding bandwidth-limit 600m
+set firewall policer limit-600 if-exceeding burst-size-limit 1m
+set firewall policer limit-600 then discard
+set firewall policer udp-filtre-limit if-exceeding bandwidth-limit 200m
+set firewall policer udp-filtre-limit if-exceeding burst-size-limit 128k
+set firewall policer udp-filtre-limit then discard
+set firewall family inet filter RE_FILTER term Kabul from source-address 198.18.1.50/32
+set firewall family inet filter RE_FILTER term Kabul from source-address 198.51.100.141/32
+set firewall family inet filter RE_FILTER term Kabul then accept
+set firewall family inet filter RE_FILTER term red then count red
+set firewall family inet filter RE_FILTER term red then discard
+set firewall family inet filter siniflandir-a term tablo-a-musteri from source-prefix-list FIREWALL-PREFIXES
+set firewall family inet filter siniflandir-a term tablo-a-musteri then routing-instance tablo-a
+set firewall family inet filter siniflandir-a term list from source-prefix-list musteri1-PREFIXES
+set firewall family inet filter siniflandir-a term list then accept
+set firewall family inet filter koru term udp-filtre from packet-length 100-120
+set firewall family inet filter koru term udp-filtre from protocol udp
+set firewall family inet filter koru term udp-filtre from ttl 10-20
+set firewall family inet filter koru term udp-filtre then policer udp-filtre-limit
+set firewall family inet filter koru term permit then accept
+set firewall family inet filter koru1 term icmp-stop from protocol icmp
+set firewall family inet filter koru1 term icmp-stop from icmp-type unreachable
+set firewall family inet filter koru1 term icmp-stop from icmp-code host-unreachable
+set firewall family inet filter koru1 term icmp-stop then count icmp-stop
+set firewall family inet filter koru1 term icmp-stop then discard
+set firewall family inet filter koru1 term allow then accept
+set firewall family inet filter out-filter term fragment-drop from is-fragment
+set firewall family inet filter out-filter term fragment-drop from protocol udp
+set firewall family inet filter out-filter term fragment-drop then count fragmented
+set firewall family inet filter out-filter term fragment-drop then discard
+set firewall family inet filter out-filter term all then accept
+set firewall family inet filter filtre-b-input term stop-smtp from destination-port 25
+set firewall family inet filter filtre-b-input term stop-smtp from tcp-initial
+set firewall family inet filter filtre-b-input term stop-smtp then count smtp
+set firewall family inet filter filtre-b-input term stop-smtp then discard
+set firewall family inet filter ME_FILTER term kabul from source-address 198.18.30.68/32
+set firewall family inet6 filter V6-RE_FILTER term kabul from source-address 2001:db8:0:120::/64
+set firewall family inet6 filter V6-RE_FILTER term kabul then accept
+set firewall family inet6 filter V6-RE_FILTER term icmp from icmp-type echo-reply
+set firewall family inet6 filter V6-RE_FILTER term icmp then accept
+deactivate firewall family inet filter koru1 term allow

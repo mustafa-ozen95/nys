@@ -1,0 +1,122 @@
+/*
+ * Switch satırı — genel bakış ve switch listesinde ortak.
+ *
+ * Yerleşim burada tanımlanır, şablonda değil: dar ekranda kolon düzeninin
+ * değişebilmesi için grid tanımının medya sorgusuna erişmesi gerekir.
+ *
+ * Kırılımlar:
+ *   geniş    tek satır, sekiz kolon
+ *   ≤1200px  rol ve konum düşer
+ *   ≤720px   iki satıra yığılır: kimlik üstte, ölçümler altta
+ */
+
+.switch-row {
+    display: grid;
+    align-items: center;
+    gap: var(--space-3);
+    grid-template-columns: 14px 150px minmax(0, 1fr) 96px 96px 118px 118px 92px 82px;
+    grid-template-areas: 'durum ad ip rol konum cpu bellek sure isi';
+}
+
+.switch-row__durum  { grid-area: durum; }
+.switch-row__ad     { grid-area: ad; }
+.switch-row__ip     { grid-area: ip; }
+.switch-row__rol    { grid-area: rol; }
+.switch-row__konum  { grid-area: konum; }
+.switch-row__cpu    { grid-area: cpu; }
+.switch-row__bellek { grid-area: bellek; }
+.switch-row__sure   { grid-area: sure; text-align: right; }
+.switch-row__isi    { grid-area: isi; text-align: right; }
+
+@media (max-width: 1200px) {
+    .switch-row {
+        grid-template-columns: 14px 140px minmax(0, 1fr) 110px 110px 88px 76px;
+        grid-template-areas: 'durum ad ip cpu bellek sure isi';
+    }
+
+    .switch-row__rol,
+    .switch-row__konum {
+        display: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .switch-row {
+        grid-template-columns: 14px minmax(0, 1fr) auto;
+        grid-template-areas:
+            'durum ad    isi'
+            '.     ip    ip'
+            '.     cpu   cpu'
+            '.     bellek bellek'
+            '.     sure  sure';
+        row-gap: var(--space-2);
+        padding-top: var(--space-3);
+        padding-bottom: var(--space-3);
+    }
+
+    /* Başlık satırı dar ekranda anlamını yitirir; etiketler hücrelere iner. */
+    .switch-row__head {
+        display: none;
+    }
+
+    .switch-row__cpu::before,
+    .switch-row__bellek::before,
+    .switch-row__sure::before {
+        content: attr(data-label);
+        margin-right: var(--space-3);
+        min-width: 46px;
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+    }
+
+    .switch-row__sure {
+        text-align: left;
+    }
+
+    .switch-row__cpu,
+    .switch-row__bellek {
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* Genel bakıştaki ikinci bölüm başlığı */
+.overview-section {
+    margin-top: var(--space-5);
+    border-top: 1px solid var(--color-line);
+}
+
+/* En yoğun portlar satırı */
+.busy-row {
+    display: grid;
+    align-items: center;
+    gap: var(--space-3);
+    grid-template-columns: 14px 110px 110px minmax(0, 1fr) 110px 118px;
+}
+
+.busy-row__hiz {
+    text-align: right;
+}
+
+@media (max-width: 900px) {
+    .busy-row {
+        grid-template-columns: 14px 100px minmax(0, 1fr) 100px;
+    }
+
+    .busy-row__aciklama,
+    .busy-row__doluluk {
+        display: none;
+    }
+}
+
+/* Son hareketler */
+.activity-line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.activity-line .dot {
+    margin-top: 6px;
+}

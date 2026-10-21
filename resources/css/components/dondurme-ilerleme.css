@@ -1,0 +1,126 @@
+/*
+ * Süren parola turunun ilerleme çubuğu.
+ *
+ * Cihaz satırında, "Değiştir" düğmesinin yerinde durur: tur sürerken
+ * düğmenin görünmesi kullanıcıyı ikinci kez başlatmaya davet ederdi ve
+ * ikinci iş, işin tekilliğine (ShouldBeUnique) takılıp sessizce düşerdi.
+ *
+ * Satır içinde durduğu için daralır: ekran genişliğini paylaşan bir
+ * ızgaranın içinde, kendi sütununa sığar.
+ */
+
+.ilerleme {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.ilerleme__ust {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.ilerleme__metin {
+    font-size: var(--text-md);
+    color: var(--color-text-secondary);
+}
+
+.ilerleme__adim {
+    font-variant-numeric: tabular-nums;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.ilerleme__yol {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-sunken);
+}
+
+.ilerleme__cubuk {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-accent);
+
+    /*
+     * Geçiş YAVAŞ: adımlar saniyelerce sürer, ani sıçrama çubuğu takılmış
+     * gibi gösterir.
+     */
+    transition: width 600ms ease;
+}
+
+/*
+ * Çubuğun içinde ilerleyen parıltı. Aşama değişmeden geçen 20 saniye
+ * boyunca duran bir çubuk "donmuş" diye okunuyor; hareket, işin sürdüğünü
+ * söyleyen tek işaret.
+ */
+.ilerleme__cubuk::after {
+    content: '';
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 35%), transparent);
+    animation: ilerleme-parilti 1.6s linear infinite;
+}
+
+@keyframes ilerleme-parilti {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+}
+
+/* Hareketi azaltılmış arayüzde parıltı durur; çubuk yine dolar. */
+@media (prefers-reduced-motion: reduce) {
+    .ilerleme__cubuk::after { animation: none; }
+    .ilerleme__cubuk { transition: none; }
+}
+
+/* Cihaz satırında: metin ile çubuk yan yana sığsın. */
+.ayar-row .ilerleme {
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+/*
+ * Çubuğun okunabilir bir asgari genişliği olmalı: satırın son sütunu
+ * içeriğine göre daralıyor ve bir düğme kadar dar bir çubuk ilerlemeyi
+ * göstermiyor.
+ */
+.ayar-row__ilerleme {
+    min-width: 240px;
+    text-align: left;
+}
+
+.ayar-row .ilerleme__metin {
+    font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/*
+ * Dar ekranda satır iki sütuna iniyor (bkz. term-row.css). Çubuk son
+ * sütunda kalsaydı ekranın yarısından azına sıkışırdı; kendi satırını
+ * alır ve tam genişliğe yayılır.
+ */
+@media (max-width: 720px) {
+    .ayar-row__ilerleme {
+        grid-column: 1 / -1;
+        min-width: 0;
+    }
+}
+
+/*
+ * Sayfanın başındaki özet şerit: süren turlar cihaz listesinden ÖNCE
+ * görünmeli. Panel gibi kutulanır ki sayfanın geri kalanından ayrılsın.
+ */
+.ilerleme--serit {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}

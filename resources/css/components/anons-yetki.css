@@ -1,0 +1,45 @@
+/* Anons yetkisi: prefix başına kaynak kararları (RPKI ROA, IRR route) */
+.anons-yetki-row {
+    grid-template-columns: 220px minmax(0, 1fr);
+    /* Satır tıklanabilir değil: grid-row'un işaretçisi burada yalan söyler. */
+    cursor: default;
+}
+
+.anons-yetki-row:hover {
+    background: transparent;
+}
+
+.anons-yetki-row__kaynaklar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+}
+
+.anons-kaynak {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.anons-yetki-row__gerekce {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+}
+
+/* Gönderimi gerçekten durduran gerekçe; eksik kaynak uyarısıyla karışmaz. */
+.anons-yetki-row__gerekce--engel {
+    color: var(--color-red-fg);
+}
+
+@media (max-width: 720px) {
+    .anons-yetki-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .anons-yetki-row__head {
+        display: none;
+    }
+}

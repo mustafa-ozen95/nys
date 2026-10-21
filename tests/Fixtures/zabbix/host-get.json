@@ -1,0 +1,18 @@
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "hostid": "90501",
+      "host": "sw-test-1",
+      "name": "sw-test-1 access switch",
+      "interfaces": [{ "ip": "198.18.30.39" }]
+    },
+    {
+      "hostid": "90502",
+      "host": "sw-test-2",
+      "name": "sw-test-2",
+      "interfaces": [{ "ip": "198.18.30.130" }, { "ip": "198.18.8.194" }]
+    }
+  ],
+  "id": 1
+}

@@ -1,0 +1,26 @@
+set interfaces ge-0/1/0 description Musteri-A
+set interfaces ge-0/1/0 unit 0 family inet filter input siniflandir-a
+set interfaces ge-0/1/0 unit 0 family inet address 198.51.100.129/30
+set interfaces ge-0/1/0 unit 0 family inet address 198.18.5.109/30
+set interfaces ge-0/1/0 unit 0 family inet6 address 2001:db8:0:120::1/64
+set interfaces ge-0/1/1 description Sunucu-Odasi
+set interfaces ge-0/1/1 unit 0 family inet address 198.51.100.181/30
+set interfaces ge-0/1/1 unit 0 family inet6 address 2001:db8:0:707::1/128
+set interfaces ge-0/1/2 description Omurga-Uplink
+set interfaces ge-0/1/2 ether-options 802.3ad ae7
+set interfaces ge-0/1/3 ether-options 802.3ad ae7
+set interfaces ae7 description Router
+set interfaces ae7 aggregated-ether-options minimum-links 1
+set interfaces ae7 aggregated-ether-options lacp active
+set interfaces ae7 aggregated-ether-options lacp periodic fast
+set interfaces ae7 unit 0 family inet filter input koru
+set interfaces ae7 unit 0 family inet filter output out-filter
+set interfaces ae7 unit 0 family inet address 198.51.100.142/30
+set interfaces ae7 unit 0 family inet6 address fd00:abcd:0002::2/64
+set interfaces ae9 description Core-Router
+set interfaces ae9 unit 0 family ethernet-switching port-mode trunk
+set interfaces vlan unit 910 family inet address 203.0.113.134/30
+set interfaces vlan unit 910 family inet6 address fd00:abcd:000b::2/64
+set interfaces vlan unit 940 family inet address 198.18.255.252/29
+set interfaces lo0 unit 0 family inet filter input RE_FILTER
+set interfaces lo0 unit 0 family inet6 filter input V6-RE_FILTER

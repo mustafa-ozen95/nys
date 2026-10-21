@@ -1,0 +1,9 @@
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" message-id="1">
+<configuration xmlns="http://xml.juniper.net/xnm/1.1/xnm" junos:commit-seconds="1577836800" junos:commit-localtime="2020-01-01 00:00:00 UTC" junos:commit-user="root">
+    <policy-options>
+        <prefix-list>
+            <name>koru</name>
+        </prefix-list>
+    </policy-options>
+</configuration>
+</rpc-reply>

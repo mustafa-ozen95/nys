@@ -1,0 +1,10 @@
+set routing-options static route 198.18.0.232/29 next-hop 198.51.100.134
+set routing-options static route 198.51.100.94/32 discard
+set routing-options static route 0.0.0.0/0 next-hop 203.0.113.133
+set routing-options rib inet6.0 static route 2001:db8:f000::/36 next-hop 2001:db8:0:160::2
+set routing-options rib inet6.0 static route 0::0/0 next-hop fd00:abcd:b::1
+set routing-options rib-groups rib-grup-a import-rib inet.0
+set routing-options interface-routes rib-group inet rib-grup-a
+set routing-options autonomous-system 64496
+set routing-instances tablo-a instance-type forwarding
+set routing-instances tablo-a routing-options static route 0.0.0.0/0 qualified-next-hop 198.51.100.141 metric 150

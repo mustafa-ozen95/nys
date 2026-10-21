@@ -1,0 +1,1 @@
+set firewall family inet filter ORNEK-ME_FILTER term kabul from source-address 198.18.30.68/32

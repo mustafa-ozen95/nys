@@ -1,0 +1,125 @@
+/*
+ * Port satırı. Switch satırıyla aynı mantık: yerleşim burada tanımlanır,
+ * şablonda değil.
+ *
+ *   geniş    tek satır, sekiz kolon
+ *   ≤1400px  açıklama daralır, doluluk düşer
+ *   ≤900px   mod ve hız düşer
+ *   ≤720px   iki satıra yığılır
+ */
+
+.port-row {
+    display: grid;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    grid-template-columns: 14px 104px minmax(0, 1fr) 96px 72px 92px 92px 108px;
+    grid-template-areas: 'durum ad aciklama mod hiz gelen giden doluluk';
+}
+
+/*
+ * Buton sıfırlaması yalnızca gerçek satırlara uygulanır: başlık satırı da
+ * .port-row taşıdığı için genel bir "background: none" yapışkan başlığı
+ * saydamlaştırır ve içerik başlığın altından geçer.
+ */
+button.port-row {
+    text-align: left;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+}
+
+.port-row__durum    { grid-area: durum; }
+.port-row__ad       { grid-area: ad; }
+.port-row__aciklama { grid-area: aciklama; }
+.port-row__mod {
+    grid-area: mod;
+    /* Uzun bir etiket komşu kolonun üstüne binmemeli. */
+    min-width: 0;
+    overflow: hidden;
+}
+
+.port-row__mod .badge {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+.port-row__hiz      { grid-area: hiz; }
+.port-row__gelen    { grid-area: gelen; text-align: right; }
+.port-row__giden    { grid-area: giden; text-align: right; }
+.port-row__doluluk  { grid-area: doluluk; }
+
+@media (max-width: 1400px) {
+    .port-row {
+        grid-template-columns: 14px 104px minmax(0, 1fr) 96px 72px 92px 92px;
+        grid-template-areas: 'durum ad aciklama mod hiz gelen giden';
+    }
+
+    .port-row__doluluk { display: none; }
+}
+
+@media (max-width: 900px) {
+    .port-row {
+        grid-template-columns: 14px 104px minmax(0, 1fr) 92px 92px;
+        grid-template-areas: 'durum ad aciklama gelen giden';
+    }
+
+    .port-row__mod,
+    .port-row__hiz {
+        display: none;
+    }
+}
+
+@media (max-width: 720px) {
+    /*
+        Telefonda satır başına dört ayrı satır çok yer kaplar: çok portlu bir
+        switch ekranı metrelerce uzatır. Gelen/giden yan yana, doluluk
+        ölçeri de aynı satırda.
+    */
+    .port-row {
+        grid-template-columns: 14px minmax(0, 1fr) auto;
+        grid-template-areas:
+            'durum ad       doluluk'
+            '.     aciklama aciklama'
+            '.     trafik   trafik';
+        row-gap: var(--space-1);
+        padding-top: var(--space-3);
+        padding-bottom: var(--space-3);
+    }
+
+    .port-row__head { display: none; }
+
+    /* Boş açıklama telefonda satır kaplamasın: 24 portta 24 boş satır eder. */
+    .port-row__aciklama[data-bos] { display: none; }
+
+    .port-row__doluluk {
+        grid-area: doluluk;
+        justify-self: end;
+    }
+
+    .port-row__gelen,
+    .port-row__giden {
+        grid-area: trafik;
+        text-align: left;
+    }
+
+    /* İkisi tek satırda: gelen solda, giden sağda. */
+    .port-row__gelen { justify-self: start; }
+    .port-row__giden { justify-self: end; }
+
+    .port-row__gelen::before,
+    .port-row__giden::before {
+        content: attr(data-label);
+        margin-right: var(--space-2);
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+    }
+
+    /* Açıklaması olmayan port fazladan satır açmasın. */
+    .port-row__aciklama:empty {
+        display: none;
+    }
+}

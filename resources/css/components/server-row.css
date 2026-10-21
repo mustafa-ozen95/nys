@@ -1,0 +1,58 @@
+/*
+ * Sunucu satırı. Switch ve port satırlarıyla aynı mantık: yerleşim burada.
+ */
+
+.server-row {
+    display: grid;
+    align-items: center;
+    gap: var(--space-3);
+    grid-template-columns: 190px minmax(0, 1fr) 230px 120px 110px;
+    grid-template-areas: 'ad adres os erisim durum';
+}
+
+.server-row__ad {
+    grid-area: ad;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.server-row__adres  { grid-area: adres; }
+.server-row__os     { grid-area: os; display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.server-row__erisim { grid-area: erisim; }
+.server-row__durum  { grid-area: durum; }
+
+@media (max-width: 1200px) {
+    .server-row {
+        grid-template-columns: 160px minmax(0, 1fr) 130px 110px;
+        grid-template-areas: 'ad adres erisim durum';
+    }
+
+    .server-row__os { display: none; }
+}
+
+@media (max-width: 720px) {
+    .server-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'ad     durum'
+            'adres  adres'
+            'erisim erisim';
+        row-gap: var(--space-2);
+        padding-top: var(--space-3);
+        padding-bottom: var(--space-3);
+    }
+
+    .server-row__head { display: none; }
+}
+
+/* Detay panelindeki serbest metin notu */
+.server-note {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-sunken);
+    border-radius: var(--radius);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    white-space: pre-wrap;
+}

@@ -1,0 +1,15 @@
+set vlans Core-Router vlan-id 910
+set vlans Core-Router l3-interface vlan.910
+set vlans V10 vlan-id 10
+set vlans V10 l3-interface vlan.9
+set vlans V11 vlan-id 11
+set vlans V11 l3-interface vlan.10
+set vlans V27 l3-interface vlan.28
+set vlans V32 description Eth1
+set vlans V32 vlan-id 32
+set vlans V32 interface ge-0/1/0.0
+set vlans V32 interface ge-0/1/1.0
+set vlans V33 description Eth2
+set vlans V33 vlan-id 33
+set ethernet-switching-options storm-control interface all
+set ethernet-switching-options voip

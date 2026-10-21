@@ -1,0 +1,53 @@
+<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos" message-id="1">
+<route-information xmlns="http://xml.juniper.net/junos/12.3R12/junos-routing">
+<!-- keepalive -->
+<route-table>
+<table-name>inet.0</table-name>
+<destination-count>8</destination-count>
+<total-route-count>8</total-route-count>
+<active-route-count>7</active-route-count>
+<holddown-route-count>0</holddown-route-count>
+<hidden-route-count>1</hidden-route-count>
+<rt junos:style="bgp-brief">
+<rt-destination>192.168.50.0/24</rt-destination>
+<rt-entry>
+<active-tag>*</active-tag>
+<protocol-name>BGP</protocol-name>
+<as-path>65001 I
+</as-path>
+<nh>
+<to>198.18.8.37</to>
+</nh>
+</rt-entry>
+</rt>
+<rt junos:style="bgp-brief">
+<rt-destination>192.168.51.0/24</rt-destination>
+<rt-entry>
+<active-tag> </active-tag>
+<protocol-name>BGP</protocol-name>
+<as-path>65001 I
+</as-path>
+<nh>
+<to>198.18.8.37</to>
+</nh>
+</rt-entry>
+</rt>
+</route-table>
+<route-table>
+<table-name>__juniper_private1__.inet.0</table-name>
+<destination-count>4</destination-count>
+<total-route-count>6</total-route-count>
+<active-route-count>4</active-route-count>
+<holddown-route-count>0</holddown-route-count>
+<hidden-route-count>0</hidden-route-count>
+</route-table>
+<route-table>
+<table-name>__juniper_private2__.inet.0</table-name>
+<destination-count>1</destination-count>
+<total-route-count>1</total-route-count>
+<active-route-count>0</active-route-count>
+<holddown-route-count>0</holddown-route-count>
+<hidden-route-count>1</hidden-route-count>
+</route-table>
+</route-information>
+</rpc-reply>

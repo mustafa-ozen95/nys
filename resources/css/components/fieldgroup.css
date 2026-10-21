@@ -1,0 +1,49 @@
+/*
+ * Katlanabilir alan kümesi.
+ *
+ * Politika terimi Junos'un pratik yüzeyinin tamamını taşıyor: koşullar ve
+ * eylemler bir arada çok sayıda alan eder. Hepsi açıkken pencere okunmaz
+ * hâle gelir, alanları atmak ise "her şeyi yönetebilelim" hedefini bozar. Sık kullanılanlar açıkta durur, uzun kuyruk katlanır.
+ *
+ * <details> tarayıcının kendi öğesidir: JavaScript çalışmasa da açılır ve
+ * klavyeyle gezilebilir.
+ */
+.fieldgroup {
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+}
+
+.fieldgroup__head {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
+
+    /* Varsayılan üçgen iki tarayıcıda iki türlü çizilir; kendi işaretimizi
+       koyuyoruz (bkz. .fieldgroup__head::after). */
+    list-style: none;
+}
+
+.fieldgroup__head::-webkit-details-marker {
+    display: none;
+}
+
+.fieldgroup__head::after {
+    content: '+';
+    float: inline-end;
+    color: var(--color-text-muted);
+}
+
+.fieldgroup[open] > .fieldgroup__head {
+    border-bottom: 1px solid var(--color-line);
+}
+
+.fieldgroup[open] > .fieldgroup__head::after {
+    content: '−';
+}
+
+.fieldgroup__body {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+}

@@ -1,0 +1,267 @@
+# =============================================================================
+#  nys — Juniper Ağ Yönetim Paneli, tek imaj (appliance)
+# =============================================================================
+#
+#  Kalıp: uygulama konteyneri
+#  nginx + php-fpm + kuyruk işçileri + zamanlayıcı + uzak oturumlar (ttyd,
+#  guacd, Tomcat), supervisord altında. Veritabanı (MariaDB) ve redis AYRI
+#  servisler (docker-compose.yml); TLS'i önündeki vekil bitirir, panel yalnız
+#  80'i dinler.
+#
+#  Uzak oturumlar panelin konteynerinde kalır: uygulama onların localhost'ta
+#  olduğunu VARSAYIYOR. ttyd 127.0.0.1:7700-7900'de süreç açıyor, nginx
+#  auth_request ile yine localhost'taki php-fpm'e soruyor, Tomcat 8090'da.
+#  Hepsine dışarıdan yalnız nginx'in 80'i üzerinden gelinir. Yatay ölçekleme
+#  YOKTUR ve istenmez: cihaza yazma işleri switch başına zaten sıraya
+#  sokulmuş durumda. Ayrıntı: docker/README.md.
+#
+#  Derleme:  docker compose build   (ya da: docker build -f docker/Dockerfile .)
+# =============================================================================
+
+ARG PHP_VERSION=8.5
+ARG TTYD_VERSION=1.7.7
+ARG GUACAMOLE_VERSION=1.5.5
+
+# -----------------------------------------------------------------------------
+#  1. Arayüz varlıkları
+# -----------------------------------------------------------------------------
+FROM node:22-bookworm-slim AS varliklar
+
+WORKDIR /uygulama
+
+# Önce yalnızca kilit dosyaları: kaynak değişince npm ci yeniden koşmasın.
+COPY package.json package-lock.json ./
+# --ignore-scripts: Playwright postinstall'ı tarayıcı indirmeye kalkıyor.
+RUN npm ci --ignore-scripts
+
+COPY vite.config.js ./
+COPY resources ./resources
+RUN npm run build
+
+# -----------------------------------------------------------------------------
+#  2. guacd — KAYNAKTAN derlenir
+# -----------------------------------------------------------------------------
+#  Resmi guacamole/guacd:1.5.5 imajı Alpine/musl tabanlıdır; ikilileri glibc
+#  tabanlı bu imaja kopyalanamaz. Sürüm yine 1.5.5, yalnızca glibc'ye bağlanır.
+#
+#  Java tarafı (guacamole.war, auth-json eklentisi) taşınabilir olduğu için
+#  resmi imajdan doğrudan kopyalanır.
+FROM debian:bookworm-slim AS guacd-derleme
+
+ARG GUACAMOLE_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential ca-certificates curl \
+      libcairo2-dev libjpeg62-turbo-dev libpng-dev libtool-bin libossp-uuid-dev \
+      freerdp2-dev libpango1.0-dev libssh2-1-dev libtelnet-dev \
+      libvncserver-dev libwebsockets-dev libpulse-dev libssl-dev \
+      libvorbis-dev libwebp-dev \
+      libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL "https://archive.apache.org/dist/guacamole/${GUACAMOLE_VERSION}/source/guacamole-server-${GUACAMOLE_VERSION}.tar.gz" \
+      -o /tmp/guacamole-server.tar.gz \
+ && tar -xzf /tmp/guacamole-server.tar.gz -C /tmp \
+ && cd "/tmp/guacamole-server-${GUACAMOLE_VERSION}" \
+ && ./configure --prefix=/opt/guacamole --disable-guaclog \
+ && make -j"$(nproc)" \
+ && make install \
+ && rm -rf /tmp/guacamole-server*
+
+# -----------------------------------------------------------------------------
+#  3. PHP tabanı — hem bağımlılık çözümü hem çalışma zamanı bunu paylaşır
+# -----------------------------------------------------------------------------
+FROM debian:bookworm-slim AS php-taban
+
+ARG PHP_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+
+# PHP 8.5 Debian'da yok; Sury deposu eklenir.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+ && curl -fsSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/sury-php.gpg \
+ && echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ bookworm main" \
+      > /etc/apt/sources.list.d/sury-php.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      php${PHP_VERSION}-cli \
+      php${PHP_VERSION}-fpm \
+      php${PHP_VERSION}-bcmath \
+      php${PHP_VERSION}-curl \
+      php${PHP_VERSION}-gd \
+      php${PHP_VERSION}-intl \
+      php${PHP_VERSION}-mbstring \
+      php${PHP_VERSION}-mysql \
+      php${PHP_VERSION}-readline \
+      php${PHP_VERSION}-redis \
+      php${PHP_VERSION}-xml \
+      php${PHP_VERSION}-zip \
+ && rm -rf /var/lib/apt/lists/*
+# NOT: php8.5-opcache diye ayrı bir paket YOK; 8.5'te opcache php-common
+# içinde geliyor. 8.3 ve öncesinde ayrıydı, alışkanlıkla eklenirse derleme
+# "Unable to locate package" ile düşer.
+
+# "php" her yerde 8.5 demek olsun: cron, artisan ve supervisord aynı ikiliyi
+# çağırmalı; aksi hâlde komut satırı ile php-fpm farklı sürümde kalabilir.
+RUN update-alternatives --set php /usr/bin/php${PHP_VERSION}
+
+# -----------------------------------------------------------------------------
+#  4. PHP bağımlılıkları
+# -----------------------------------------------------------------------------
+FROM php-taban AS saticilar
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /uygulama
+
+# Kaynak kod olmadan çözüm yapılamaz (post-autoload-dump artisan çağırıyor),
+# bu yüzden önce kilit dosyaları çözülür, betikler sonraya bırakılır.
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+
+COPY . .
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
+
+# -----------------------------------------------------------------------------
+#  5. Çalışma zamanı
+# -----------------------------------------------------------------------------
+FROM php-taban AS calisma
+
+ARG PHP_VERSION
+ARG TTYD_VERSION
+ENV DEBIAN_FRONTEND=noninteractive \
+    PHP_VERSION=${PHP_VERSION} \
+    TZ=Europe/Istanbul
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      nginx \
+      # Yalnız istemci: veritabanını bekleme ve Ayarlar → Veritabanı taşıması
+      # (mariadb-dump). Sunucu compose'taki db servisi.
+      mariadb-client \
+      supervisor \
+      procps \
+      tzdata \
+      snmp \
+      openssh-client \
+      sshpass \
+      # WinRM taşıması: Windows sunucularda parola değişimi, pywinrm'i çağıran
+      # küçük bir Python yardımcısıyla yapılır (bkz. resources/bin/winrm-runner.py).
+      # Modül kurulu değilse tur "pywinrm yüklü değil" diyerek daha başlamadan
+      # düşer. RDP komut çalıştırmaz; Windows'ta tek yol budur.
+      python3-winrm \
+      gosu \
+      openssl \
+      unzip \
+      # guacd'nin çalışma zamanı kütüphaneleri (derleme aşamasındaki -dev
+      # paketlerinin karşılıkları). Eksik biri "error while loading shared
+      # libraries" ile guacd'yi hiç başlatmaz.
+      libcairo2 libjpeg62-turbo libpng16-16 libossp-uuid16 \
+      libfreerdp-client2-2 libfreerdp2-2 libwinpr2-2 \
+      libpango-1.0-0 libpangocairo-1.0-0 \
+      libssh2-1 libtelnet2 libvncclient1 libwebsockets17 \
+      libpulse0 libvorbis0a libvorbisenc2 libwebp7 \
+      libavcodec59 libavformat59 libavutil57 libswscale6 \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
+
+# ttyd: uzak SSH oturumları için. Statik ikili, sürümü sabit — dağıtımın
+# paketlemesine bağlı kalmamak için doğrudan yayından alınır.
+RUN curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.x86_64" \
+      -o /usr/local/bin/ttyd \
+ && chmod 0755 /usr/local/bin/ttyd \
+ && ttyd --version
+
+# --- Guacamole ---------------------------------------------------------------
+# guacd kendi derlediğimiz, Java tarafı resmi imajdan: sürümler birbirine
+# uymak zorunda ve ikisi de 1.5.5.
+COPY --from=guacd-derleme /opt/guacamole /opt/guacamole
+# RDP kanal eklentileri (guac-common-svc, guacsnd, guacdr...) guac'ın prefix'ine
+# DEĞİL, FreeRDP'nin kendi eklenti dizinine kurulur; yalnızca /opt/guacamole
+# kopyalanırsa derleme aşamasında kalır ve guacd her oturumda
+#   Cannot create static channel "rdpdr": failed to load "guac-common-svc"
+# diyerek bağlantıyı "Security negotiation failed" ile düşürür.
+COPY --from=guacd-derleme /usr/lib/x86_64-linux-gnu/freerdp2 /usr/lib/x86_64-linux-gnu/freerdp2
+COPY --from=guacamole/guacamole:1.5.5 /opt/java/openjdk /opt/java/openjdk
+COPY --from=guacamole/guacamole:1.5.5 /usr/local/tomcat /usr/local/tomcat
+COPY --from=guacamole/guacamole:1.5.5 /opt/guacamole/guacamole.war /usr/local/tomcat/webapps/guacamole.war
+COPY --from=guacamole/guacamole:1.5.5 /opt/guacamole/json/guacamole-auth-json-1.5.5.jar /etc/guacamole/extensions/
+
+ENV JAVA_HOME=/opt/java/openjdk \
+    CATALINA_HOME=/usr/local/tomcat \
+    GUACAMOLE_HOME=/etc/guacamole \
+    PATH=/opt/java/openjdk/bin:/opt/guacamole/sbin:$PATH
+
+RUN ldconfig /opt/guacamole/lib \
+ # Tomcat 8090'ı dinler: config/remote.php ve nginx'teki /rdp-proxy/ oraya
+ # bakıyor. Varsayılan 8080 bırakılsaydı üç yerde ayrı ayrı değiştirmek
+ # gerekirdi. YALNIZ 127.0.0.1: varsayılan bütün arayüzlerdir ve öyle
+ # kalırsa compose ağındaki her konteyner (vekil, db, redis) nginx'in
+ # bekçisini atlayıp 8090'a doğrudan gelebilir.
+ && sed -i 's|<Connector port="8080"|<Connector address="127.0.0.1" port="8090"|' /usr/local/tomcat/conf/server.xml \
+ && rm -rf /usr/local/tomcat/webapps/ROOT /usr/local/tomcat/webapps/docs \
+           /usr/local/tomcat/webapps/examples /usr/local/tomcat/webapps/manager \
+           /usr/local/tomcat/webapps/host-manager \
+ && guacd -v
+
+# Uygulama kullanıcısı: hiçbir servis root olarak çalışmaz.
+RUN useradd --system --create-home --home-dir /uygulama --shell /usr/sbin/nologin nsm
+
+# WAR derleme sırasında AÇILIR ve dosyanın kendisi silinir.
+#
+# Tomcat nsm olarak çalışıyor, kurulum dizini ise root'un: çalışma anında ne
+# WAR'ı açabilir ne de conf/Catalina/localhost'u yaratabilir — sonuç
+# "Unable to create directory for deployment" ve /guacamole için 404.
+# Yalnızca YAZMASI gereken dizinler devredilir; bin ve lib root'ta kalır.
+RUN mkdir -p /usr/local/tomcat/webapps/guacamole /usr/local/tomcat/conf/Catalina/localhost \
+ && unzip -q /usr/local/tomcat/webapps/guacamole.war -d /usr/local/tomcat/webapps/guacamole \
+ && rm -f /usr/local/tomcat/webapps/guacamole.war \
+ && chown -R nsm:nsm /usr/local/tomcat/webapps /usr/local/tomcat/work \
+                     /usr/local/tomcat/temp /usr/local/tomcat/logs \
+                     /usr/local/tomcat/conf/Catalina
+
+WORKDIR /uygulama
+
+COPY --chown=nsm:nsm . .
+COPY --from=saticilar --chown=nsm:nsm /uygulama/vendor ./vendor
+COPY --from=varliklar --chown=nsm:nsm /uygulama/public/build ./public/build
+
+# Yapılandırmalar ve başlatıcı
+COPY docker/rootfs/ /
+
+# PHP yapılandırmaları sürüm numaralı dizinlerde durur; ARG ile yerleştirilir.
+RUN cp /etc/nsm/php.ini /etc/php/${PHP_VERSION}/fpm/conf.d/99-nsm.ini \
+ && cp /etc/nsm/php.ini /etc/php/${PHP_VERSION}/cli/conf.d/99-nsm.ini \
+ && rm -f /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf \
+ && cp /etc/nsm/php-fpm-pool.conf /etc/php/${PHP_VERSION}/fpm/pool.d/nsm.conf \
+ && chmod 0755 /usr/local/bin/nsm-* /usr/local/bin/dc-* \
+ && rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf \
+ && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
+ && chown -R nsm:nsm storage bootstrap/cache \
+ && chmod -R 0775 storage bootstrap/cache
+
+VOLUME ["/uygulama/storage/app", "/uygulama/storage/logs"]
+
+EXPOSE 80
+
+# `docker stop` varsayılan 10 saniye bekler ve sonra SIGKILL gönderir; nazik
+# kapanış cihaza yazan bir iş sürerken dakikalar sürebilir. compose'daki
+# stop_grace_period kullanılmalı.
+STOPSIGNAL SIGTERM
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD curl -fsS http://127.0.0.1/up || exit 1
+
+# Hangi commit'ten derlendiği: panel kendi sürümünü buradan bilir (Ayarlar →
+# Güncelleme). Son katmanda: değeri her derlemede değişir, önbelleği bozmasın.
+ARG SURUM=""
+ENV UYGULAMA_SURUMU=${SURUM}
+# SURUM verilmezse (NineDeploy gibi platformlar derlemeye commit vermez)
+# bağlamdaki .git'ten okunur ve /uygulama/SURUM'a yazılır; config önce
+# ortama, sonra bu dosyaya bakar. .git yoksa (zip) dosya boş kalır.
+RUN --mount=type=bind,target=/tmp/baglam sh /tmp/baglam/docker/surum-oku.sh > /uygulama/SURUM
+
+ENTRYPOINT ["/usr/local/bin/nsm-entrypoint"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
