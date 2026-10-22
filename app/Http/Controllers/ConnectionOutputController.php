@@ -32,22 +32,22 @@ use Illuminate\Routing\Controllers\Middleware;
 class ConnectionOutputController extends Controller implements HasMiddleware
 {
     /** Dakikada kaç çıktı: tek istek bütün envanteri dosyaya yazabilir. */
-    private const DAKIKADA = 3;
+    private const MINUTE = 3;
 
     /** @return array<int, Middleware> */
     public static function middleware(): array
     {
-        return ['throttle:'.self::DAKIKADA.',1'];
+        return ['throttle:'.self::MINUTE.',1'];
     }
 
-    public function __invoke(Request $request, ConnectionOutput $ciktisi): Response|RedirectResponse
+    public function __invoke(Request $request, ConnectionOutput $output): Response|RedirectResponse
     {
-        $kullanici = $request->user();
+        $user = $request->user();
 
-        $sunucularVar = $kullanici->can('exportAny', Server::class);
-        $switchlerVar = $kullanici->can('exportAny', NetworkSwitch::class);
+        $hasServers = $user->can('exportAny', Server::class);
+        $hasSwitches = $user->can('exportAny', NetworkSwitch::class);
 
-        abort_unless($sunucularVar || $switchlerVar, 403);
+        abort_unless($hasServers || $hasSwitches, 403);
 
         $veri = $request->validate([
             /*
@@ -59,44 +59,44 @@ class ConnectionOutputController extends Controller implements HasMiddleware
             'q' => ['nullable', 'string', 'max:190'],
         ]);
 
-        $arama = trim((string) ($veri['q'] ?? '')) ?: null;
-        $kapsam = $veri['kapsam'];
+        $search = trim((string) ($veri['q'] ?? '')) ?: null;
+        $scope = $veri['kapsam'];
 
-        $sunucular = $sunucularVar && $kapsam !== 'switchler'
+        $servers = $hasServers && $scope !== 'switchler'
             ? Server::query()
-                ->visibleTo($kullanici)
-                ->search($arama)
+                ->visibleTo($user)
+                ->search($search)
                 ->orderBy('short_name')
                 ->get()
             : collect();
 
-        $switchler = $switchlerVar && $kapsam !== 'sunucular'
+        $switches = $hasSwitches && $scope !== 'sunucular'
             ? NetworkSwitch::query()
-                ->visibleTo($kullanici)
-                ->search($arama)
+                ->visibleTo($user)
+                ->search($search)
                 ->with('credentials')
                 ->orderBy('hostname')
                 ->get()
             : collect();
 
-        $sonuc = $ciktisi->uret(
-            $sunucular,
-            $switchler,
-            $kullanici,
+        $result = $output->generate(
+            $servers,
+            $switches,
+            $user,
             (string) $request->input('reason'),
         );
 
-        if ($sonuc['yazilan'] === 0) {
-            return back()->with('error', 'Çıktıya alınacak bağlantı bilgisi yok: '.$this->elenenler($sonuc).'.');
+        if ($result['yazilan'] === 0) {
+            return back()->with('error', 'Çıktıya alınacak bağlantı bilgisi yok: '.$this->filteredOut($result).'.');
         }
 
-        $ek = $this->elenenler($sonuc);
-        $ek = $ek === '' ? '' : '; '.$ek;
+        $extra = $this->filteredOut($result);
+        $extra = $extra === '' ? '' : '; '.$extra;
 
-        return response($sonuc['icerik'])
+        return response($result['icerik'])
             ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            ->header('Content-Disposition', 'attachment; filename="'.$sonuc['ad'].'"')
-            ->header('X-Nys-Ozet', $sonuc['yazilan'].' satır yazıldı'.$ek)
+            ->header('Content-Disposition', 'attachment; filename="'.$result['ad'].'"')
+            ->header('X-Nys-Ozet', $result['yazilan'].' satır yazıldı'.$extra)
             /* Açık parola listesi hiçbir ara sunucuda ve tarayıcıda durmamalı. */
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
             ->header('Pragma', 'no-cache');
@@ -111,18 +111,18 @@ class ConnectionOutputController extends Controller implements HasMiddleware
      *
      * @param  array{yazilan: int, yetkisiz: int, parolasiz: int}  $sonuc
      */
-    private function elenenler(array $sonuc): string
+    private function filteredOut(array $result): string
     {
-        $parcalar = [];
+        $fragments = [];
 
-        if ($sonuc['parolasiz'] > 0) {
-            $parcalar[] = $sonuc['parolasiz'].' kaydın parolası yok';
+        if ($result['parolasiz'] > 0) {
+            $fragments[] = $result['parolasiz'].' kaydın parolası yok';
         }
 
-        if ($sonuc['yetkisiz'] > 0) {
-            $parcalar[] = $sonuc['yetkisiz'].' kayıtta çıktı yetkiniz yok';
+        if ($result['yetkisiz'] > 0) {
+            $fragments[] = $result['yetkisiz'].' kayıtta çıktı yetkiniz yok';
         }
 
-        return implode(', ', $parcalar);
+        return implode(', ', $fragments);
     }
 }

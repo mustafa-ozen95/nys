@@ -193,21 +193,21 @@ class AddressBlockController extends Controller implements HasMiddleware
      */
     private function announcement(AddressBlock $block): string
     {
-        $yapilanlar = [];
+        $done = [];
 
         if ($block->switch_prefix_list_id !== null) {
-            $yapilanlar[] = 'Prefix list cihaza yazıldı.';
+            $done[] = 'Prefix list cihaza yazıldı.';
         }
 
         if ($block->connection_type === AddressConnectionType::NextHop && $block->next_hop !== null) {
-            $yapilanlar[] = 'Statik route cihaza yazıldı.';
+            $done[] = 'Statik route cihaza yazıldı.';
         }
 
         if (in_array($block->connection_type, [AddressConnectionType::Vlan, AddressConnectionType::Port], true)) {
-            $yapilanlar[] = 'Geçit adresi cihaza yazıldı.';
+            $done[] = 'Geçit adresi cihaza yazıldı.';
         }
 
-        return $yapilanlar === [] ? '' : ' '.implode(' ', $yapilanlar);
+        return $done === [] ? '' : ' '.implode(' ', $done);
     }
 
     private function back(?AddressBlock $block, string $status): RedirectResponse
@@ -253,7 +253,7 @@ class AddressBlockController extends Controller implements HasMiddleware
      */
     private function prefixListOptions(Request $request): array
     {
-        $gruplar = SwitchPrefixList::query()
+        $groups = SwitchPrefixList::query()
             ->with('switch')
             ->whereHas('switch', fn ($query) => $query
                 ->visibleTo($request->user())
@@ -261,12 +261,12 @@ class AddressBlockController extends Controller implements HasMiddleware
             ->orderBy('name')
             ->get()
             ->groupBy(fn (SwitchPrefixList $list): string => $list->switch->hostname)
-            ->map(fn ($listeler) => $listeler->mapWithKeys(
+            ->map(fn ($lists) => $lists->mapWithKeys(
                 fn (SwitchPrefixList $list): array => [$list->uuid => $list->name],
             )->all())
             ->all();
 
-        return ['' => 'Seçilmedi'] + $gruplar;
+        return ['' => 'Seçilmedi'] + $groups;
     }
 
     /**

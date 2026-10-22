@@ -185,16 +185,16 @@ class PeerConfigurationBuilder
 
         $lines[] = "set protocols bgp group {$name} type ".$group->type->value;
 
-        $metinler = [
+        $texts = [
             'peer-as' => $group->peer_asn,
             'local-address' => $group->local_address,
             'cluster' => $group->cluster,
             'description' => $group->description,
         ];
 
-        foreach ($metinler as $eleman => $deger) {
-            if (filled($deger)) {
-                $lines[] = "set protocols bgp group {$name} {$eleman} {$deger}";
+        foreach ($texts as $element => $value) {
+            if (filled($value)) {
+                $lines[] = "set protocols bgp group {$name} {$element} {$value}";
             }
         }
 
@@ -202,14 +202,14 @@ class PeerConfigurationBuilder
             $lines[] = "set protocols bgp group {$name} local-as {$group->local_asn}";
         }
 
-        $sayilar = [
+        $numbers = [
             'hold-time' => $group->hold_time,
             'out-delay' => $group->out_delay,
         ];
 
-        foreach ($sayilar as $eleman => $deger) {
-            if ($deger !== null) {
-                $lines[] = "set protocols bgp group {$name} {$eleman} {$deger}";
+        foreach ($numbers as $element => $value) {
+            if ($value !== null) {
+                $lines[] = "set protocols bgp group {$name} {$element} {$value}";
             }
         }
 
@@ -224,7 +224,7 @@ class PeerConfigurationBuilder
                 : "set protocols bgp group {$name} multihop ttl {$group->multihop_ttl}";
         }
 
-        $bayraklar = [
+        $flags = [
             'log-updown' => $group->log_updown,
             'passive' => $group->passive,
             'remove-private' => $group->remove_private,
@@ -234,9 +234,9 @@ class PeerConfigurationBuilder
             'damping' => $group->damping,
         ];
 
-        foreach ($bayraklar as $eleman => $acik) {
-            if ($acik) {
-                $lines[] = "set protocols bgp group {$name} {$eleman}";
+        foreach ($flags as $element => $open) {
+            if ($open) {
+                $lines[] = "set protocols bgp group {$name} {$element}";
             }
         }
 
@@ -251,9 +251,9 @@ class PeerConfigurationBuilder
             $lines[] = "set protocols bgp group {$name} allow {$prefix}";
         }
 
-        foreach (['import' => $group->import_policies, 'export' => $group->export_policies] as $eleman => $politikalar) {
-            foreach ($politikalar ?? [] as $politika) {
-                $lines[] = "set protocols bgp group {$name} {$eleman} {$politika}";
+        foreach (['import' => $group->import_policies, 'export' => $group->export_policies] as $element => $policies) {
+            foreach ($policies ?? [] as $policy) {
+                $lines[] = "set protocols bgp group {$name} {$element} {$policy}";
             }
         }
 
@@ -284,32 +284,32 @@ class PeerConfigurationBuilder
         $lines = [];
 
         foreach ($neighbor->group->families as $family) {
-            $yol = "set protocols bgp group {$name} family {$family->family->value} {$family->nlri->value}";
+            $path = "set protocols bgp group {$name} family {$family->family->value} {$family->nlri->value}";
 
-            $lines[] = $yol;
+            $lines[] = $path;
 
             if ($family->prefix_limit_maximum === null) {
                 continue;
             }
 
-            $lines[] = "{$yol} prefix-limit maximum {$family->prefix_limit_maximum}";
+            $lines[] = "{$path} prefix-limit maximum {$family->prefix_limit_maximum}";
 
             if (! $family->teardown) {
                 continue;
             }
 
             $lines[] = $family->teardown_threshold === null
-                ? "{$yol} prefix-limit teardown"
-                : "{$yol} prefix-limit teardown {$family->teardown_threshold}";
+                ? "{$path} prefix-limit teardown"
+                : "{$path} prefix-limit teardown {$family->teardown_threshold}";
 
             /*
              * "forever" ile dakikalı hâl aynı anda yazılamaz; ikisi de
              * teardown'ın altındadır.
              */
             if ($family->idle_timeout_forever) {
-                $lines[] = "{$yol} prefix-limit teardown idle-timeout forever";
+                $lines[] = "{$path} prefix-limit teardown idle-timeout forever";
             } elseif ($family->idle_timeout_minutes !== null) {
-                $lines[] = "{$yol} prefix-limit teardown idle-timeout {$family->idle_timeout_minutes}";
+                $lines[] = "{$path} prefix-limit teardown idle-timeout {$family->idle_timeout_minutes}";
             }
         }
 
@@ -324,43 +324,43 @@ class PeerConfigurationBuilder
      */
     private function ourNeighborLines(BgpNeighbor $neighbor, string $name, array &$notes): array
     {
-        $yol = "set protocols bgp group {$name} neighbor {$neighbor->address}";
-        $lines = [$yol];
+        $path = "set protocols bgp group {$name} neighbor {$neighbor->address}";
+        $lines = [$path];
 
-        $metinler = [
+        $texts = [
             'description' => $neighbor->description,
             'peer-as' => $neighbor->peer_asn,
             'local-address' => $neighbor->local_address,
         ];
 
-        foreach ($metinler as $eleman => $deger) {
-            if (filled($deger)) {
-                $lines[] = "{$yol} {$eleman} {$deger}";
+        foreach ($texts as $element => $value) {
+            if (filled($value)) {
+                $lines[] = "{$path} {$element} {$value}";
             }
         }
 
         if ($neighbor->hold_time !== null) {
-            $lines[] = "{$yol} hold-time {$neighbor->hold_time}";
+            $lines[] = "{$path} hold-time {$neighbor->hold_time}";
         }
 
         if ($neighbor->passive) {
-            $lines[] = "{$yol} passive";
+            $lines[] = "{$path} passive";
         }
 
         if ($neighbor->multihop) {
             $lines[] = $neighbor->multihop_ttl === null
-                ? "{$yol} multihop"
-                : "{$yol} multihop ttl {$neighbor->multihop_ttl}";
+                ? "{$path} multihop"
+                : "{$path} multihop ttl {$neighbor->multihop_ttl}";
         }
 
-        foreach (['import' => $neighbor->import_policies, 'export' => $neighbor->export_policies] as $eleman => $politikalar) {
-            foreach ($politikalar ?? [] as $politika) {
-                $lines[] = "{$yol} {$eleman} {$politika}";
+        foreach (['import' => $neighbor->import_policies, 'export' => $neighbor->export_policies] as $element => $policies) {
+            foreach ($policies ?? [] as $policy) {
+                $lines[] = "{$path} {$element} {$policy}";
             }
         }
 
         if ($neighbor->authentication_key !== null) {
-            $lines[] = "{$yol} authentication-key \"<ANAHTAR>\"";
+            $lines[] = "{$path} authentication-key \"<ANAHTAR>\"";
             $notes[] = 'Komşuya özel bir oturum anahtarı var; o da metne konmadı.';
         }
 

@@ -29,7 +29,7 @@ final class HostileResponseTest extends TestCase
         $this->expectException(NetconfException::class);
         $this->expectExceptionMessage('doküman türü bildirimi');
 
-        $this->oku(
+        $this->read(
             '<?xml version="1.0"?><!DOCTYPE r [<!ENTITY x "AAAA">]>'
             .'<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data>&x;</data></rpc-reply>'
         );
@@ -42,12 +42,12 @@ final class HostileResponseTest extends TestCase
     public function test_yerel_dosya_okuma_denemesi_sizdirmaz(): void
     {
         try {
-            $sonuc = $this->oku(
+            $result = $this->read(
                 '<?xml version="1.0"?><!DOCTYPE r [<!ENTITY x SYSTEM "file:///etc/passwd">]>'
                 .'<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data>&x;</data></rpc-reply>'
             );
 
-            $this->fail('Doktipli yanıt kabul edildi: '.$sonuc);
+            $this->fail('Doktipli yanıt kabul edildi: '.$result);
         } catch (NetconfException $e) {
             $this->assertStringNotContainsString('root:', $e->getMessage());
         }
@@ -56,7 +56,7 @@ final class HostileResponseTest extends TestCase
     /**
      * @return array<string, array{0: string}>
      */
-    public static function bozukYanitlar(): array
+    public static function brokenResponses(): array
     {
         return [
             'kesik XML' => ['<rpc-reply><configuration><interfaces><interface><name>ge-0/0/0'],
@@ -66,12 +66,12 @@ final class HostileResponseTest extends TestCase
         ];
     }
 
-    #[DataProvider('bozukYanitlar')]
+    #[DataProvider('brokenResponses')]
     public function test_bozuk_yanit_temiz_reddedilir(string $xml): void
     {
         $this->expectException(NetconfException::class);
 
-        $this->oku($xml);
+        $this->read($xml);
     }
 
     /**
@@ -81,15 +81,15 @@ final class HostileResponseTest extends TestCase
      */
     public function test_tanimadigi_yapi_kabul_edilir(): void
     {
-        $sonuc = $this->oku(
+        $result = $this->read(
             '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">'
             .'<gelecekteki-bilinmeyen-eleman><ic>x</ic></gelecekteki-bilinmeyen-eleman></rpc-reply>'
         );
 
-        $this->assertStringContainsString('gelecekteki-bilinmeyen-eleman', $sonuc);
+        $this->assertStringContainsString('gelecekteki-bilinmeyen-eleman', $result);
     }
 
-    private function oku(string $xml): string
+    private function read(string $xml): string
     {
         $transport = new FakeNetconfTransport([
             '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities>'

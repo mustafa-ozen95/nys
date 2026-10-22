@@ -7,15 +7,15 @@ import { $, $$ } from '../lib/dom.js';
  * kullanıcı hangi bölümde olduğunu görmek için kaydırmak zorunda kalır,
  * sağdaki bölümler ("Kullanıcılar" gibi) yarım görünür.
  */
-function seciliyeOdaklan(serit) {
-    const secili = $('[aria-current="page"]', serit);
+function focusSelected(strip) {
+    const selected = $('[aria-current="page"]', strip);
 
-    if (!secili || serit.scrollWidth <= serit.clientWidth) {
+    if (!selected || strip.scrollWidth <= strip.clientWidth) {
         return;
     }
 
     // Seçili öğe ortalanır; iki yanındaki komşular da görünür kalır.
-    serit.scrollLeft = secili.offsetLeft - (serit.clientWidth - secili.offsetWidth) / 2;
+    strip.scrollLeft = selected.offsetLeft - (strip.clientWidth - selected.offsetWidth) / 2;
 }
 
 /**
@@ -24,11 +24,11 @@ function seciliyeOdaklan(serit) {
  * Görünmeyen bölmeler atlanır: detay paneli çoğu ekranda yalnızca bir kayıt
  * seçiliyken çizilir.
  */
-function enSagdakiBolme(serit) {
-    const bolmeler = $$(':scope > .column, :scope > .detail', serit)
-        .filter((bolme) => getComputedStyle(bolme).display !== 'none');
+function rightmostSegment(strip) {
+    const segments = $$(':scope > .column, :scope > .detail', strip)
+        .filter((segment) => getComputedStyle(segment).display !== 'none');
 
-    return bolmeler[bolmeler.length - 1] ?? null;
+    return segments[segments.length - 1] ?? null;
 }
 
 /**
@@ -52,15 +52,15 @@ function enSagdakiBolme(serit) {
  * Yalnızca AÇILIŞTA yapılır; kullanıcının kendi kaydırmasına karışılmaz.
  * Geniş ekranda şerit zaten taşmaz ve hiçbir şey yapılmaz.
  */
-function bolmeyeIn(serit, hedef, yumusak = false) {
+function scrollToSegment(strip, target, smooth = false) {
     // Taşma yoksa (masaüstü) kaydırılacak bir şey de yok.
-    if (!hedef || serit.scrollWidth <= serit.clientWidth) {
+    if (!target || strip.scrollWidth <= strip.clientWidth) {
         return;
     }
 
-    serit.scrollTo({
-        left: hedef.offsetLeft - serit.offsetLeft,
-        behavior: yumusak ? 'smooth' : 'auto',
+    strip.scrollTo({
+        left: target.offsetLeft - strip.offsetLeft,
+        behavior: smooth ? 'smooth' : 'auto',
     });
 }
 
@@ -72,20 +72,20 @@ function bolmeyeIn(serit, hedef, yumusak = false) {
  * çalışsaydı o ekranlarda panel açılır ama şerit yerinde kalırdı — kullanıcı
  * seçtiği şeyin bilgisini göremezdi. Kural tektir, tetikleyeni değişir.
  */
-function acilanPanelleriIzle(serit) {
-    new MutationObserver((degisimler) => {
-        for (const degisim of degisimler) {
-            const bolme = degisim.target;
+function watchOpenedPanels(strip) {
+    new MutationObserver((changes) => {
+        for (const change of changes) {
+            const segment = change.target;
 
-            if (bolme.hidden) {
+            if (segment.hidden) {
                 continue;
             }
 
-            bolmeyeIn(serit, enSagdakiBolme(serit), true);
+            scrollToSegment(strip, rightmostSegment(strip), true);
 
             return;
         }
-    }).observe(serit, {
+    }).observe(strip, {
         attributes: true,
         attributeFilter: ['hidden'],
         subtree: true,
@@ -94,12 +94,12 @@ function acilanPanelleriIzle(serit) {
 
 export function init() {
     // Yatay kayan HER şerit aynı kurala tabidir: seçili öğe görünür olur.
-    // Listede olmayan bir şeritte (ör. sekmeler) /ayarlar/bakim gibi sondaki
+    // Listede olmayan bir şeritte (ör. sekmeler) /settings/maintenance gibi sondaki
     // bir bölümde seçilinin nerede olduğu görünmez.
-    $$('.topbar__nav, .tabs, .pagination').forEach(seciliyeOdaklan);
+    $$('.topbar__nav, .tabs, .pagination').forEach(focusSelected);
 
-    $$('.columns').forEach((serit) => {
-        bolmeyeIn(serit, enSagdakiBolme(serit));
-        acilanPanelleriIzle(serit);
+    $$('.columns').forEach((strip) => {
+        scrollToSegment(strip, rightmostSegment(strip));
+        watchOpenedPanels(strip);
     });
 }

@@ -22,7 +22,7 @@ final class RecordVersionTest extends TestCase
     public function test_kayit_form_acildiktan_sonra_degistiyse_yazma_reddedilir(): void
     {
         $recipient = AnnouncementRecipient::factory()->create(['label' => 'NOC']);
-        $eskiSurum = $recipient->updated_at->getTimestamp();
+        $oldVersion = $recipient->updated_at->getTimestamp();
 
         // Başka biri araya girip kaydı değiştirdi.
         $this->travel(2)->seconds();
@@ -30,7 +30,7 @@ final class RecordVersionTest extends TestCase
 
         $this->actingAs(User::factory()->admin()->create())
             ->put(route('announcements.recipients.update', $recipient), [
-                'record_version' => $eskiSurum,
+                'record_version' => $oldVersion,
                 'label' => 'BENIM YAZDIGIM',
                 'email' => $recipient->email,
                 'locale' => $recipient->locale->value,

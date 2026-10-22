@@ -9,13 +9,13 @@
     Gönderim mevcut ayar ucuna gider (SettingsRequest): her kutu gizli bir
     "0" ile birlikte basılır, işaretsiz kutu da "kapalı" olarak kaydedilir.
 --}}
-<div class="basit-mod">
+<div class="simple-mode">
     @foreach ($basitMod as $bolum)
-        <section class="basit-mod__bolum">
-            <header class="basit-mod__bas">
-                <strong class="basit-mod__ad">{{ $bolum['ad'] }}</strong>
+        <section class="simple-mode__section">
+            <header class="simple-mode__head">
+                <strong class="simple-mode__name">{{ $bolum['ad'] }}</strong>
 
-                <span class="basit-mod__anahtarlar">
+                <span class="simple-mode__keys">
                     @foreach ($bolum['anahtarlar'] as $k)
                         <label class="checkbox" title="{{ $k['ipucu'] }}">
                             <input type="hidden" name="{{ $k['ad'] }}" value="0">
@@ -27,7 +27,7 @@
             </header>
 
             @if ($bolum['alanlar'] !== [])
-                <details class="basit-mod__alanlar" @if ($errors->any()) open @endif>
+                <details class="simple-mode__fields" @if ($errors->any()) open @endif>
                     <summary>
                         Alanlar ({{ count($bolum['alanlar']) }})
                         @if ($bolum['farkli'] > 0)
@@ -35,7 +35,7 @@
                         @endif
                     </summary>
 
-                    <div class="basit-mod__izgara">
+                    <div class="simple-mode__grid">
                         @foreach ($bolum['alanlar'] as $k)
                             <label class="checkbox">
                                 <input type="hidden" name="{{ $k['ad'] }}" value="0">

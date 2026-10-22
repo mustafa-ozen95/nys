@@ -71,28 +71,28 @@ final class PolicyMatch
             return $match;
         }
 
-        $taninan = [];
+        $known = [];
 
         foreach (self::TEXT_LISTS as $key => $element) {
             $values = XmlNode::texts($from, $element);
 
             if ($values !== []) {
                 $match[$key] = $values;
-                $taninan[] = $element;
+                $known[] = $element;
             }
         }
 
         $match['prefix_lists'] = XmlNode::childTexts($from, 'prefix-list', 'name');
 
         if ($match['prefix_lists'] !== []) {
-            $taninan[] = 'prefix-list';
+            $known[] = 'prefix-list';
         }
 
-        $match['prefix_list_filters'] = self::prefixListFilters($from, $taninan);
-        $match['route_filters'] = self::routeFilters($from, $taninan);
+        $match['prefix_list_filters'] = self::prefixListFilters($from, $known);
+        $match['route_filters'] = self::routeFilters($from, $known);
 
         // Çözümlenmemiş her çocuk ham hâliyle korunur.
-        $match['residual'] = ResidualXml::collect($from, $taninan);
+        $match['residual'] = ResidualXml::collect($from, $known);
 
         return $match;
     }
@@ -140,32 +140,32 @@ final class PolicyMatch
             return [];
         }
 
-        $parcalar = [];
+        $fragments = [];
 
         foreach ($match['prefix_lists'] ?? [] as $list) {
-            $parcalar[] = "prefix-list {$list}";
+            $fragments[] = "prefix-list {$list}";
         }
 
         foreach ($match['prefix_list_filters'] ?? [] as $filter) {
-            $parcalar[] = 'prefix-list-filter '.($filter['list'] ?? '').' '.($filter['match_type'] ?? '');
+            $fragments[] = 'prefix-list-filter '.($filter['list'] ?? '').' '.($filter['match_type'] ?? '');
         }
 
         foreach ($match['route_filters'] ?? [] as $filter) {
-            $parcalar[] = trim('route-filter '.($filter['address'] ?? '').' '
+            $fragments[] = trim('route-filter '.($filter['address'] ?? '').' '
                 .($filter['match_type'] ?? '').' '.($filter['value'] ?? ''));
         }
 
         foreach (self::TEXT_LISTS as $key => $element) {
             foreach ($match[$key] ?? [] as $value) {
-                $parcalar[] = "{$element} {$value}";
+                $fragments[] = "{$element} {$value}";
             }
         }
 
-        foreach (ResidualXml::names($match['residual'] ?? null) as $ad) {
-            $parcalar[] = $ad;
+        foreach (ResidualXml::names($match['residual'] ?? null) as $name) {
+            $fragments[] = $name;
         }
 
-        return $parcalar;
+        return $fragments;
     }
 
     /**
@@ -183,7 +183,7 @@ final class PolicyMatch
      * @param  list<string>  $taninan
      * @return list<array{list: string, match_type: string}>
      */
-    private static function prefixListFilters(SimpleXMLElement $from, array &$taninan): array
+    private static function prefixListFilters(SimpleXMLElement $from, array &$known): array
     {
         $filters = [];
 
@@ -200,7 +200,7 @@ final class PolicyMatch
         }
 
         if ($filters !== [] && count($filters) === count(XmlNode::children($from, 'prefix-list-filter'))) {
-            $taninan[] = 'prefix-list-filter';
+            $known[] = 'prefix-list-filter';
         }
 
         return $filters;
@@ -212,12 +212,12 @@ final class PolicyMatch
      * @param  list<string>  $taninan
      * @return list<array{address: string, match_type: string, value: ?string}>
      */
-    private static function routeFilters(SimpleXMLElement $from, array &$taninan): array
+    private static function routeFilters(SimpleXMLElement $from, array &$known): array
     {
         $filters = [];
-        $dugumler = XmlNode::children($from, 'route-filter');
+        $nodes = XmlNode::children($from, 'route-filter');
 
-        foreach ($dugumler as $node) {
+        foreach ($nodes as $node) {
             $address = XmlNode::text($node, 'address');
             $type = null;
             $value = null;
@@ -240,8 +240,8 @@ final class PolicyMatch
             $filters[] = ['address' => $address, 'match_type' => $type->value, 'value' => $value];
         }
 
-        if ($filters !== [] && count($filters) === count($dugumler)) {
-            $taninan[] = 'route-filter';
+        if ($filters !== [] && count($filters) === count($nodes)) {
+            $known[] = 'route-filter';
         }
 
         return $filters;
@@ -292,14 +292,14 @@ final class PolicyMatch
                 continue;
             }
 
-            $ic = '<address>'.XmlNode::escape($address).'</address>';
+            $inner = '<address>'.XmlNode::escape($address).'</address>';
             $value = trim((string) ($filter['value'] ?? ''));
 
-            $ic .= $type->needsValue() && $value !== ''
+            $inner .= $type->needsValue() && $value !== ''
                 ? '<'.$type->value.'>'.XmlNode::escape($value).'</'.$type->value.'>'
                 : '<'.$type->value.'/>';
 
-            $body .= XmlNode::wrap('route-filter', $ic);
+            $body .= XmlNode::wrap('route-filter', $inner);
         }
 
         return $body;

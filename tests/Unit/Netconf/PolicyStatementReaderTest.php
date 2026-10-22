@@ -214,14 +214,14 @@ final class PolicyStatementReaderTest extends TestCase
      */
     public function test_next_policy_ve_next_term_okunur(): void
     {
-        foreach (['policy' => PolicyAction::NextPolicy, 'term' => PolicyAction::NextTerm] as $argument => $beklenen) {
+        foreach (['policy' => PolicyAction::NextPolicy, 'term' => PolicyAction::NextTerm] as $argument => $expected) {
             $term = $this->read($this->reply(
                 '<policy-options><policy-statement><name>p</name>'
                 ."<term><name>t</name><then><next>{$argument}</next></then></term>"
                 .'</policy-statement></policy-options>'
             ))[0]['terms'][0];
 
-            $this->assertSame($beklenen, $term['action']);
+            $this->assertSame($expected, $term['action']);
         }
     }
 

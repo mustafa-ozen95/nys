@@ -41,10 +41,10 @@ class StormControlReader
             .'</get-configuration>'
         );
 
-        $kok = $reply->xpath('//*[local-name()="ethernet-switching-options"]/*[local-name()="storm-control"]') ?: [];
+        $root = $reply->xpath('//*[local-name()="ethernet-switching-options"]/*[local-name()="storm-control"]') ?: [];
         $interfaces = [];
 
-        foreach ($kok as $storm) {
+        foreach ($root as $storm) {
             foreach ($storm->xpath('./*[local-name()="interface"]') ?: [] as $node) {
                 $name = trim((string) ($node->xpath('./*[local-name()="name"]')[0] ?? ''));
 
@@ -67,7 +67,7 @@ class StormControlReader
         }
 
         return [
-            'shutdown' => $kok !== [] && $this->has($kok[0], 'action-shutdown'),
+            'shutdown' => $root !== [] && $this->has($root[0], 'action-shutdown'),
             'interfaces' => $interfaces,
         ];
     }

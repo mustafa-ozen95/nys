@@ -92,8 +92,8 @@ final class DeviceObjectPermissionTest extends TestCase
 
     public function test_yetki_switch_bazinda_verilebilir(): void
     {
-        $izinli = $this->switch('izinli', '198.18.20.195');
-        $yasakli = $this->switch('yasakli', '198.18.20.196');
+        $permitted = $this->switch('izinli', '198.18.20.195');
+        $forbidden = $this->switch('yasakli', '198.18.20.196');
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'switches', ['view']);
@@ -101,17 +101,17 @@ final class DeviceObjectPermissionTest extends TestCase
             $user,
             'switch_vlans',
             ['view'],
-            allowedRecords: ['create' => [$izinli->id]],
+            allowedRecords: ['create' => [$permitted->id]],
         );
         $user = $user->fresh();
 
         $this->actingAs($user)
-            ->post(route('switches.vlans.store', $yasakli), [])
+            ->post(route('switches.vlans.store', $forbidden), [])
             ->assertForbidden();
 
         // İzinli switchte yetki geçer; doğrulama hatası bunu gösterir.
         $this->actingAs($user)
-            ->post(route('switches.vlans.store', $izinli), [])
+            ->post(route('switches.vlans.store', $permitted), [])
             ->assertSessionHasErrors();
     }
 

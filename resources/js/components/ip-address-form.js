@@ -9,27 +9,27 @@ import { $$, on } from '../lib/dom.js';
  * fazla bağlantı gider.
  */
 
-function uygula(form) {
-    const secili = form.querySelector('[data-ip-attachment] input:checked');
-    const tur = secili ? secili.value : null;
+function apply(form) {
+    const selected = form.querySelector('[data-ip-attachment] input:checked');
+    const type = selected ? selected.value : null;
 
-    form.querySelectorAll('[data-ip-alan]').forEach((alan) => {
-        const gorunur = alan.dataset.ipAlan === tur;
+    form.querySelectorAll('[data-ip-field]').forEach((field) => {
+        const visible = field.dataset.ipField === type;
 
-        alan.hidden = ! gorunur;
+        field.hidden = ! visible;
 
-        if (! gorunur) {
-            alan.querySelectorAll('select, input').forEach((girdi) => {
-                girdi.value = '';
+        if (! visible) {
+            field.querySelectorAll('select, input').forEach((input) => {
+                input.value = '';
             });
         }
     });
 }
 
 export function init() {
-    $$('[data-ip-attachment]').forEach((secici) => uygula(secici.closest('form')));
+    $$('[data-ip-attachment]').forEach((selector) => apply(selector.closest('form')));
 
-    on('change', '[data-ip-attachment] input', (event, girdi) => {
-        uygula(girdi.closest('form'));
+    on('change', '[data-ip-attachment] input', (event, input) => {
+        apply(input.closest('form'));
     });
 }

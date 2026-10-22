@@ -58,7 +58,7 @@ class SettingsRequest extends FormRequest
         $validator->after(fn (Validator $validator) => $this->guardSecretEndpoints($validator, app(SettingsCatalog::class)));
 
         $validator->after(function (Validator $validator): void {
-            $alanlar = [
+            $fields = [
                 'length' => 'credentials.rotation.length',
                 'lowercase' => 'credentials.rotation.lowercase',
                 'uppercase' => 'credentials.rotation.uppercase',
@@ -66,13 +66,13 @@ class SettingsRequest extends FormRequest
                 'symbols' => 'credentials.rotation.symbols',
             ];
 
-            $gonderilen = array_filter(
-                $alanlar,
+            $sent = array_filter(
+                $fields,
                 fn (string $key): bool => $this->has(str_replace('.', '__', $key)),
             );
 
             // Bu ayarlardan hiçbiri gönderilmediyse kontrol edilecek bir şey yok.
-            if ($gonderilen === []) {
+            if ($sent === []) {
                 return;
             }
 
@@ -80,29 +80,29 @@ class SettingsRequest extends FormRequest
              * Yürürlükte olacak değer: gönderildiyse istekten, gönderilmediyse
              * mevcut ayardan.
              */
-            $etkin = [];
+            $active = [];
 
-            foreach ($alanlar as $ad => $key) {
+            foreach ($fields as $name => $key) {
                 $alan = str_replace('.', '__', $key);
 
-                $etkin[$ad] = $ad === 'length'
+                $active[$name] = $name === 'length'
                     ? ($this->has($alan) ? (int) $this->input($alan) : (int) config($key))
                     : ($this->has($alan) ? $this->boolean($alan) : (bool) config($key));
             }
 
-            $sorun = PasswordGenerator::problemWith(
-                $etkin['length'],
-                $etkin['lowercase'],
-                $etkin['uppercase'],
-                $etkin['digits'],
-                $etkin['symbols'],
+            $problem = PasswordGenerator::problemWith(
+                $active['length'],
+                $active['lowercase'],
+                $active['uppercase'],
+                $active['digits'],
+                $active['symbols'],
             );
 
-            if ($sorun !== null) {
+            if ($problem !== null) {
                 // Hata, gönderilen alanlardan birine iliştirilir ki ekranda görünsün.
                 $validator->errors()->add(
-                    str_replace('.', '__', reset($gonderilen)),
-                    $sorun,
+                    str_replace('.', '__', reset($sent)),
+                    $problem,
                 );
             }
         });
@@ -121,32 +121,32 @@ class SettingsRequest extends FormRequest
      */
     private function guardSecretEndpoints(Validator $validator, SettingsCatalog $catalog): void
     {
-        $bolum = $this->section($catalog);
+        $section = $this->section($catalog);
 
-        foreach ($catalog->items() as $anahtar => $sir) {
-            if (! $sir->isSecret() || $sir->binds === [] || ! in_array($anahtar, $bolum, true)) {
+        foreach ($catalog->items() as $key => $secret) {
+            if (! $secret->isSecret() || $secret->binds === [] || ! in_array($key, $section, true)) {
                 continue;
             }
 
             // Saklı sır yoksa korunacak bir şey yok.
-            if (blank(config($anahtar)) || filled($this->input($sir->field()))) {
+            if (blank(config($key)) || filled($this->input($secret->field()))) {
                 continue;
             }
 
-            foreach ($sir->binds as $uc) {
-                $tanim = $catalog->items()[$uc] ?? null;
+            foreach ($secret->binds as $endpoint) {
+                $definition = $catalog->items()[$endpoint] ?? null;
 
-                if ($tanim === null || ! $this->has($tanim->field())) {
+                if ($definition === null || ! $this->has($definition->field())) {
                     continue;
                 }
 
-                $yeni = (string) ($tanim->cast($this->input($tanim->field())) ?? '');
-                $eski = (string) (config($uc) ?? '');
+                $new = (string) ($definition->cast($this->input($definition->field())) ?? '');
+                $old = (string) (config($endpoint) ?? '');
 
-                if ($yeni !== $eski) {
+                if ($new !== $old) {
                     $validator->errors()->add(
-                        $sir->field(),
-                        "“{$tanim->label}” değişirken kayıtlı “{$sir->label}” yeni uca gönderilir; ".
+                        $secret->field(),
+                        "“{$definition->label}” değişirken kayıtlı “{$secret->label}” yeni uca gönderilir; ".
                         'değeri yeniden girmeden bu değişiklik kaydedilemez.',
                     );
 
@@ -202,12 +202,12 @@ class SettingsRequest extends FormRequest
      */
     private function submitted(SettingsCatalog $catalog): array
     {
-        $bolum = $this->section($catalog);
+        $section = $this->section($catalog);
 
         return array_filter(
             $catalog->items(),
             fn (SettingDefinition $definition, string $key): bool => $this->has($definition->field())
-                && in_array($key, $bolum, true),
+                && in_array($key, $section, true),
             ARRAY_FILTER_USE_BOTH,
         );
     }

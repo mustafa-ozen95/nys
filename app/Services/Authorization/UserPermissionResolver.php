@@ -41,7 +41,7 @@ class UserPermissionResolver
             return true;
         }
 
-        if ($this->yalnizcaYoneticiKaynagi($resource) || $this->basitModdaKapali($user, $resource, $action)) {
+        if ($this->onlyAdminSource($resource) || $this->simpleModeClosed($user, $resource, $action)) {
             return false;
         }
 
@@ -69,13 +69,13 @@ class UserPermissionResolver
      *
      * Ayarlar, hesaplar ve etkinlik
      * kaydı yönetici olmayana verilemez — ne rol şablonuyla ne kişisel
-     * istisnayla. Liste config'te (permissions.yonetim_kaynaklari); cihaz
+     * istisnayla. Liste config'te (permissions.management_resources); cihaz
      * ekranları orada YOK, onlar işin kendisi.
      *
      * Karar burada duruyor çünkü üç giriş de (allows, allowsAny, scope)
      * buradan geçiyor; üç ayrı yere yazılsaydı biri unutulurdu.
      */
-    private function yalnizcaYoneticiKaynagi(string $resource): bool
+    private function onlyAdminSource(string $resource): bool
     {
         /*
          * Varsayılanlar GÜVENLİ TARAFA düşer ve bilinçli olarak burada da
@@ -84,10 +84,10 @@ class UserPermissionResolver
          * bırakırdı. Kapalı olması gereken bir kapının varsayılanı "açık"
          * olamaz.
          */
-        return (bool) config('permissions.yonetim_yalnizca_yonetici', true)
+        return (bool) config('permissions.admin_only_management', true)
             && in_array(
                 $resource,
-                (array) config('permissions.yonetim_kaynaklari', ['settings', 'users', 'logs']),
+                (array) config('permissions.management_resources', ['settings', 'users', 'logs']),
                 true,
             );
     }
@@ -102,17 +102,17 @@ class UserPermissionResolver
      * allowsAny, scope) buradan geçer — biri unutulursa menü kapalı ama
      * adres açık kalırdı.
      */
-    private function basitModdaKapali(User $user, string $resource, string $action): bool
+    private function simpleModeClosed(User $user, string $resource, string $action): bool
     {
-        $bolum = config("simple_mode.bolumler.{$resource}");
+        $section = config("simple_mode.bolumler.{$resource}");
 
-        if (! is_array($bolum) || $user->etkinPanelModu()->isAdvanced()) {
+        if (! is_array($section) || $user->activePanelMode()->isAdvanced()) {
             return false;
         }
 
-        $gorur = (bool) ($bolum['goruntule'] ?? true);
+        $sees = (bool) ($section['goruntule'] ?? true);
 
-        return $action === 'view' ? ! $gorur : (! $gorur || ! (bool) ($bolum['yonet'] ?? true));
+        return $action === 'view' ? ! $sees : (! $sees || ! (bool) ($section['yonet'] ?? true));
     }
 
     /**
@@ -124,7 +124,7 @@ class UserPermissionResolver
             return true;
         }
 
-        if ($this->yalnizcaYoneticiKaynagi($resource) || $this->basitModdaKapali($user, $resource, $action)) {
+        if ($this->onlyAdminSource($resource) || $this->simpleModeClosed($user, $resource, $action)) {
             return false;
         }
 
@@ -155,7 +155,7 @@ class UserPermissionResolver
         }
 
         /* Panelin yönetimi yalnızca yöneticide; basit modda kapalı bölüm de boş döner. */
-        if ($this->yalnizcaYoneticiKaynagi($resource) || $this->basitModdaKapali($user, $resource, $action)) {
+        if ($this->onlyAdminSource($resource) || $this->simpleModeClosed($user, $resource, $action)) {
             return $query->whereRaw('1 = 0');
         }
 
@@ -166,11 +166,11 @@ class UserPermissionResolver
          * Kişinin kaynak geneli satırı yoksa ROL konuşur. Süzme veritabanında
          * kalır: "hepsini getir sonra ekranda gizle" güvenlik değildir.
          */
-        $genelIzin = $wildcard !== null
+        $generalPermission = $wildcard !== null
             ? $wildcard->effect === PermissionEffect::Allow
             : $this->roles->grants($user->role, $resource, $action);
 
-        if ($genelIzin) {
+        if ($generalPermission) {
             return $query->whereNotIn($query->qualifyColumn('id'), $this->deniedIds($rows));
         }
 

@@ -63,11 +63,11 @@ final class AnnouncementAsnTest extends TestCase
      *
      * @param  array<int, string>  $sorulan
      */
-    private function ripestatOnaylar(array &$sorulan): void
+    private function ripestatApproves(array &$asked): void
     {
-        Http::fake(function (Request $request) use (&$sorulan): mixed {
+        Http::fake(function (Request $request) use (&$asked): mixed {
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
-            $sorulan[] = (string) ($query['resource'] ?? '');
+            $asked[] = (string) ($query['resource'] ?? '');
 
             return Http::response(['data' => ['status' => 'valid', 'validating_roas' => []]]);
         });
@@ -81,8 +81,8 @@ final class AnnouncementAsnTest extends TestCase
     {
         NetworkSwitch::factory()->create(['autonomous_system' => '65000']);
 
-        $sorulan = [];
-        $this->ripestatOnaylar($sorulan);
+        $asked = [];
+        $this->ripestatApproves($asked);
         $this->irrd->fixture(self::PREFIX);
 
         $this->actingAs($this->operator())
@@ -90,7 +90,7 @@ final class AnnouncementAsnTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Denetim MÜŞTERİNİN numarasına sorulur, bizimkine değil.
-        $this->assertSame(['AS64496'], array_unique($sorulan));
+        $this->assertSame(['AS64496'], array_unique($asked));
         $this->assertSame('AS64496', AnnouncementMail::query()->value('asn'));
     }
 
@@ -101,8 +101,8 @@ final class AnnouncementAsnTest extends TestCase
      */
     public function test_yazim_farki_tek_bicime_indirilir(): void
     {
-        $sorulan = [];
-        $this->ripestatOnaylar($sorulan);
+        $asked = [];
+        $this->ripestatApproves($asked);
         $this->irrd->fixture(self::PREFIX);
 
         $this->actingAs($this->operator())
@@ -173,6 +173,6 @@ final class AnnouncementAsnTest extends TestCase
             ->assertOk()
             ->assertSee('AS65000')
             ->assertSee('Listede yok — elle gir')
-            ->assertSee('data-secim-elle', escape: false);
+            ->assertSee('data-selection-manual', escape: false);
     }
 }

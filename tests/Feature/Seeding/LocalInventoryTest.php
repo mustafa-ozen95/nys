@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 final class LocalInventoryTest extends TestCase
 {
-    private string $dizin;
+    private string $directory;
 
     /*
      * Kaynak GEÇİCİ BİR DİZİNE bağlanır.
@@ -35,18 +35,18 @@ final class LocalInventoryTest extends TestCase
     {
         parent::setUp();
 
-        $this->dizin = sys_get_temp_dir().'/nys-envanter-'.bin2hex(random_bytes(6));
-        mkdir($this->dizin);
+        $this->directory = sys_get_temp_dir().'/nys-envanter-'.bin2hex(random_bytes(6));
+        mkdir($this->directory);
 
-        LocalInventory::dizinAyarla($this->dizin);
+        LocalInventory::directoryConfigure($this->directory);
     }
 
     protected function tearDown(): void
     {
-        LocalInventory::dizinAyarla(null);
+        LocalInventory::directoryConfigure(null);
 
-        array_map(unlink(...), glob($this->dizin.'/*') ?: []);
-        @rmdir($this->dizin);
+        array_map(unlink(...), glob($this->directory.'/*') ?: []);
+        @rmdir($this->directory);
 
         parent::tearDown();
     }
@@ -58,24 +58,24 @@ final class LocalInventoryTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/inventory\.php/i');
 
-        LocalInventory::al('switchler');
+        LocalInventory::take('switchler');
     }
 
     public function test_uretim_disinda_dosya_yoksa_bos_doner(): void
     {
-        $this->assertSame([], LocalInventory::al('switchler'));
-        $this->assertSame([], LocalInventory::al('sunucular'));
+        $this->assertSame([], LocalInventory::take('switchler'));
+        $this->assertSame([], LocalInventory::take('sunucular'));
     }
 
     public function test_dosya_varsa_okunur(): void
     {
         file_put_contents(
-            $this->dizin.'/inventory.php',
+            $this->directory.'/inventory.php',
             "<?php return ['switchler' => [['hostname' => 'sw1']]];",
         );
 
-        LocalInventory::dizinAyarla($this->dizin);
+        LocalInventory::directoryConfigure($this->directory);
 
-        $this->assertSame([['hostname' => 'sw1']], LocalInventory::al('switchler'));
+        $this->assertSame([['hostname' => 'sw1']], LocalInventory::take('switchler'));
     }
 }

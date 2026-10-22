@@ -30,19 +30,19 @@ final class NetworkMaskedWrittenTest extends TestCase
 
     public function test_maske_ag_alanina_yazilirsa_ne_yapilacagi_soylenir(): void
     {
-        $yanit = $this->actingAs($this->operator())->post(route('addressing.store'), [
+        $response = $this->actingAs($this->operator())->post(route('addressing.store'), [
             'network' => '10.9.9.0/24',
             'prefix_length' => 24,
         ]);
 
-        $yanit->assertSessionHasErrors('network');
+        $response->assertSessionHasErrors('network');
 
-        $mesaj = session('errors')->getBag('default')->first('network');
+        $message = session('errors')->getBag('default')->first('network');
 
         /* Kural ve DÜZELTMESİ birlikte söylenmeli. */
-        $this->assertStringContainsString('yalnızca ağ adresi', $mesaj);
-        $this->assertStringContainsString('10.9.9.0', $mesaj);
-        $this->assertStringContainsString('/24', $mesaj);
+        $this->assertStringContainsString('yalnızca ağ adresi', $message);
+        $this->assertStringContainsString('10.9.9.0', $message);
+        $this->assertStringContainsString('/24', $message);
 
         $this->assertDatabaseCount('address_blocks', 0);
     }
@@ -72,13 +72,13 @@ final class NetworkMaskedWrittenTest extends TestCase
             'prefix_length' => 24,
         ]);
 
-        $govde = $this->actingAs($this->operator())
+        $body = $this->actingAs($this->operator())
             ->get(route('addressing.index'))
             ->assertOk()
             ->getContent();
 
-        $pencere = mb_substr($govde, (int) mb_strpos($govde, 'id="blok-ekle"'));
+        $window = mb_substr($body, (int) mb_strpos($body, 'id="block-add"'));
 
-        $this->assertStringContainsString('field__error', mb_substr($pencere, 0, 4000));
+        $this->assertStringContainsString('field__error', mb_substr($window, 0, 4000));
     }
 }

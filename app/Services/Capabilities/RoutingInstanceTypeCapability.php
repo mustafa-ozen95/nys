@@ -46,13 +46,13 @@ final class RoutingInstanceTypeCapability implements DeviceCapability
 
     public function candidates(JunosDialect $dialect, NetworkSwitch $switch): array
     {
-        $adaylar = [];
+        $candidates = [];
 
-        foreach (self::TYPES as $tur) {
-            $adaylar[$tur] = '<routing-instances><instance><name>'.self::NAME.'</name>'
-                .'<instance-type>'.$tur.'</instance-type></instance></routing-instances>';
+        foreach (self::TYPES as $round) {
+            $candidates[$round] = '<routing-instances><instance><name>'.self::NAME.'</name>'
+                .'<instance-type>'.$round.'</instance-type></instance></routing-instances>';
         }
 
-        return $adaylar;
+        return $candidates;
     }
 }

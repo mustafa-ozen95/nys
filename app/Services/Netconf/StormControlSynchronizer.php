@@ -28,16 +28,16 @@ class StormControlSynchronizer
         DB::transaction(function () use ($switch, $shutdown, $interfaces): void {
             $switch->forceFill(['storm_control_shutdown' => $shutdown])->save();
 
-            $tutulan = [];
+            $kept = [];
 
             foreach ($interfaces as $interface) {
-                $tutulan[] = $switch->stormControls()->updateOrCreate(
+                $kept[] = $switch->stormControls()->updateOrCreate(
                     ['interface_name' => $interface['interface_name']],
                     collect($interface)->except('interface_name')->all(),
                 )->id;
             }
 
-            $switch->stormControls()->whereNotIn('id', $tutulan)->delete();
+            $switch->stormControls()->whereNotIn('id', $kept)->delete();
         });
     }
 }

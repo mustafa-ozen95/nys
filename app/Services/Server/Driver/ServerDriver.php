@@ -17,19 +17,19 @@ use App\Services\Server\ServerSession;
 interface ServerDriver
 {
     /** Bu sürücü sunucuyu işleyebilir mi? Eksik alan varsa nedeni döner. */
-    public function engel(Server $sunucu): ?string;
+    public function engel(Server $server): ?string;
 
     /** Verilen kimlikle oturum açar. Açılamazsa RotationError atar. */
-    public function ac(Server $sunucu, string $kullanici, string $parola): ServerSession;
+    public function open(Server $server, string $user, string $password): ServerSession;
 
     /** Tam yetkili bir kurtarma hesabı açar. */
-    public function kurtarmaAc(ServerSession $oturum, string $kullanici, string $parola): void;
+    public function recoveryOpen(ServerSession $session, string $user, string $password): void;
 
     /** Bir hesabın parolasını değiştirir. */
-    public function parolaDegistir(ServerSession $oturum, string $kullanici, string $yeniParola): void;
+    public function passwordChange(ServerSession $session, string $user, string $newPassword): void;
 
     /** Kurtarma hesabını siler. */
-    public function kurtarmaSil(ServerSession $oturum, string $kullanici): void;
+    public function recoveryDelete(ServerSession $session, string $user): void;
 
     /**
      * Verilen kimlikle GERÇEKTEN girilebiliyor mu.
@@ -37,7 +37,7 @@ interface ServerDriver
      * İstisna ATMAZ, false döner: döndürücü bu yanıta bakıp geri alma kararı
      * veriyor; istisna atsaydı kurtarma yolu hiç çalışmazdı.
      */
-    public function dogrula(Server $sunucu, string $kullanici, string $parola): bool;
+    public function verify(Server $server, string $user, string $password): bool;
 
     /**
      * Bu platformda kurtarma hesabı açılabilir mi?
@@ -45,5 +45,5 @@ interface ServerDriver
      * Linux'ta açılabilir. Windows'ta VARSAYILAN OLARAK KAPALIDIR; gerekçesi
      * WindowsDriver'nde ölçümüyle birlikte yazılı.
      */
-    public function kurtarmaDestekler(): bool;
+    public function recoverySupports(): bool;
 }

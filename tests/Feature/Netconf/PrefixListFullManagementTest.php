@@ -341,11 +341,11 @@ final class PrefixListFullManagementTest extends TestCase
         $list = SwitchPrefixList::factory()->for($switch, 'switch')->create(['name' => 'radius']);
         $device = $this->fakeDevice();
 
-        $izleyici = User::factory()->create();
-        app(UserPermissionResolver::class)->syncResource($izleyici, 'switches', ['view']);
-        $this->grantDeviceView($izleyici);
+        $observer = User::factory()->create();
+        app(UserPermissionResolver::class)->syncResource($observer, 'switches', ['view']);
+        $this->grantDeviceView($observer);
 
-        $this->actingAs($izleyici->fresh())
+        $this->actingAs($observer->fresh())
             ->put(route('switches.prefix-lists.update', [$switch, $list]), [
                 'apply_paths' => ['system radius-server <*>'],
             ])

@@ -51,7 +51,7 @@ class ActivityLogController extends Controller implements HasMiddleware
              * Kadro listesi tek başına bilgidir. Değerler uuid taşır.
              */
             'users' => User::query()
-                ->when(! $request->user()->isAdmin(), fn ($sorgu) => $sorgu->whereKey($request->user()->getKey()))
+                ->when(! $request->user()->isAdmin(), fn ($query) => $query->whereKey($request->user()->getKey()))
                 ->orderBy('name')
                 ->pluck('name', 'uuid')
                 ->prepend('Tüm kullanıcılar', '')

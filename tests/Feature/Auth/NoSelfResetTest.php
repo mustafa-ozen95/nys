@@ -29,7 +29,7 @@ final class NoSelfResetTest extends TestCase
     /**
      * @return list<array{0: string}>
      */
-    public static function kaldirilanRotalar(): array
+    public static function removedRoutes(): array
     {
         return [
             'sıfırlama isteği' => ['password.request'],
@@ -40,12 +40,12 @@ final class NoSelfResetTest extends TestCase
         ];
     }
 
-    #[DataProvider('kaldirilanRotalar')]
-    public function test_kaldirilan_rota_tanimli_degil(string $ad): void
+    #[DataProvider('removedRoutes')]
+    public function test_kaldirilan_rota_tanimli_degil(string $name): void
     {
         $this->assertNull(
-            Route::getRoutes()->getByName($ad),
-            "{$ad} rotası geri gelmiş; kendi kendine parola sıfırlama ve kayıt YOKTUR.",
+            Route::getRoutes()->getByName($name),
+            "{$name} rotası geri gelmiş; kendi kendine parola sıfırlama ve kayıt YOKTUR.",
         );
     }
 
@@ -69,11 +69,11 @@ final class NoSelfResetTest extends TestCase
          * bir uç — yani unutulmuş olan — listeye hiç girmez ve test sessizce
          * geçerdi. Asıl aradığımız tam olarak o uç.
          */
-        $acik = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($rota): bool => ! collect($rota->gatherMiddleware())
-                ->contains(fn ($ara): bool => is_string($ara) && str_starts_with($ara, 'auth')))
-            ->reject(fn ($rota): bool => str_starts_with($rota->uri(), '_'))
-            ->map(fn ($rota): string => $rota->uri())
+        $open = collect(Route::getRoutes()->getRoutes())
+            ->filter(fn ($route): bool => ! collect($route->gatherMiddleware())
+                ->contains(fn ($between): bool => is_string($between) && str_starts_with($between, 'auth')))
+            ->reject(fn ($route): bool => str_starts_with($route->uri(), '_'))
+            ->map(fn ($route): string => $route->uri())
             ->unique()
             ->sort()
             ->values()
@@ -82,19 +82,19 @@ final class NoSelfResetTest extends TestCase
         /*
          * Kalan üç uç ve neden oturumsuz oldukları:
          *
-         *  - `ajax/uzak-oturum/dogrula`: nginx'in `auth_request` ile sorduğu
+         *  - `ajax/remote-session/verify`: nginx'in `auth_request` ile sorduğu
          *    bekçi. `auth` altına alınamaz — o katman kimliksiz isteği login'e
          *    YÖNLENDİRİR, nginx ise 2xx/401/403 dışındaki her yanıtı 500 sayar.
          *    Kimlik kontrolü controller içinde yapılır ve 401 döner.
          *
-         *  - `giris` ve merkez uçları: giriş akışının kendisi.
+         *  - `login` ve merkez uçları: giriş akışının kendisi.
          *
          *  - `up`: Laravel'in sağlık ucu; hiçbir veri döndürmez.
          *
          * API uçları burada YOK, çünkü `auth:api` taşıyorlar.
          */
         /*
-         * `api/kimlik/tazele` OTURUM TAŞIMAZ ve taşıyamaz.
+         * `api/identity/refresh` OTURUM TAŞIMAZ ve taşıyamaz.
          *
          * Çağıran bir insan değil, Kimlik Yönetim Merkezi'dir: "şu kimlik
          * değişti" der. Kimlik doğrulaması imzadır (istemciye verilen bildirim
@@ -102,14 +102,14 @@ final class NoSelfResetTest extends TestCase
          * merkezden kendi sorar. Oturum aransaydı bildirim hiç ulaşamazdı.
          */
         $this->assertSame([
-            'ajax/uzak-oturum/dogrula',
-            'api/kimlik/cikis',
-            'api/kimlik/tazele',
-            'giris',
-            'giris/merkez',
-            'giris/merkez/geri',
+            'ajax/remote-session/verify',
+            'api/identity/logout',
+            'api/identity/refresh',
+            'login',
+            'login/center',
+            'login/center/callback',
             'up',
-        ], $acik);
+        ], $open);
     }
 
     /**
@@ -129,8 +129,8 @@ final class NoSelfResetTest extends TestCase
      */
     public function test_eski_adresler_kapali(): void
     {
-        foreach (['/parola-sifirla', '/parola-sifirla/jeton', '/parola-yenile', '/kayit'] as $adres) {
-            $this->get($adres)->assertNotFound();
+        foreach (['/parola-sifirla', '/parola-sifirla/jeton', '/parola-yenile', '/kayit'] as $address) {
+            $this->get($address)->assertNotFound();
         }
     }
 
@@ -139,22 +139,22 @@ final class NoSelfResetTest extends TestCase
      */
     public function test_yonetici_kullanicinin_parolasini_degistirebilir(): void
     {
-        $yonetici = User::factory()->admin()->create();
-        $kullanici = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
 
-        $this->actingAs($yonetici)
-            ->put(route('users.update', $kullanici), [
-                'name' => $kullanici->name,
-                'email' => $kullanici->email,
-                'status' => $kullanici->status->value,
-                'role' => $kullanici->role?->uuid ?? Role::query()->value('uuid'),
+        $this->actingAs($admin)
+            ->put(route('users.update', $user), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'status' => $user->status->value,
+                'role' => $user->role?->uuid ?? Role::query()->value('uuid'),
                 'password' => 'yeni-parola-123456',
                 'password_confirmation' => 'yeni-parola-123456',
             ])
             ->assertSessionHasNoErrors();
 
         $this->assertTrue(
-            auth()->validate(['email' => $kullanici->email, 'password' => 'yeni-parola-123456']),
+            auth()->validate(['email' => $user->email, 'password' => 'yeni-parola-123456']),
         );
     }
 }

@@ -128,13 +128,13 @@ final class IpPickerTest extends TestCase
         $device = new FakeJunosDevice;
         $this->app->instance(NetconfTransport::class, $device);
 
-        $ikinciPort = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ge-0/0/22']);
+        $secondPort = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ge-0/0/22']);
 
         // Yalnızca portu değişiyor; adres aynı kalıyor ve reddedilmemeli.
         $this->actingAs($this->operator())
             ->put(route('switches.ip-addresses.update', [$switch, $address]), [
                 'attachment' => 'port',
-                'switch_port_id' => $ikinciPort->uuid,
+                'switch_port_id' => $secondPort->uuid,
                 'address' => '198.18.8.38',
             ])
             ->assertSessionHasNoErrors()

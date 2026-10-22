@@ -34,7 +34,7 @@ final class ServerPasswordRotationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function sunucu(array $ustune = []): Server
+    private function server(array $onto = []): Server
     {
         return Server::factory()->create([
             'short_name' => 'LNX-09',
@@ -45,42 +45,42 @@ final class ServerPasswordRotationTest extends TestCase
             'connection_username' => 'root',
             'connection_password' => 'ESKI-PAROLA',
             'status' => 'online',
-            ...$ustune,
+            ...$onto,
         ]);
     }
 
     /** Sürücüyü sahteleyip yerine koyar. */
-    private function surucuyuSahtele(ServerDriver $surucu): void
+    private function driverFake(ServerDriver $driver): void
     {
-        $secici = new class($surucu) extends DriverSelector
+        $selector = new class($driver) extends DriverSelector
         {
-            public function __construct(private ServerDriver $sahte) {}
+            public function __construct(private ServerDriver $fake) {}
 
-            public function icin(Server $sunucu): ServerDriver
+            public function for(Server $server): ServerDriver
             {
-                return $this->sahte;
+                return $this->fake;
             }
 
-            public function engel(Server $sunucu): ?string
+            public function engel(Server $server): ?string
             {
                 return null;
             }
         };
 
-        $this->app->instance(DriverSelector::class, $secici);
+        $this->app->instance(DriverSelector::class, $selector);
     }
 
     public function test_sira_kurtarma_hesabiyla_isler_ve_parola_kayda_yazilir(): void
     {
-        $sunucu = $this->sunucu();
+        $server = $this->server();
 
-        $surucu = new SahteSurucu;
-        $this->surucuyuSahtele($surucu);
+        $driver = new FakeDriver;
+        $this->driverFake($driver);
 
-        $tur = app(ServerPasswordRotator::class)->dondur($sunucu, null, 'yil sonu');
+        $round = app(ServerPasswordRotator::class)->rotate($server, null, 'yil sonu');
 
-        $this->assertSame(PasswordRotationStatus::Succeeded, $tur->status);
-        $this->assertSame(PasswordRotationStage::RecoveryRemoved, $tur->stage);
+        $this->assertSame(PasswordRotationStatus::Succeeded, $round->status);
+        $this->assertSame(PasswordRotationStage::RecoveryRemoved, $round->stage);
 
         /*
          * SIRA: kurtarma hesabı AÇILIR, kanıtlanır, parola KURTARMA HESABIYLA
@@ -90,94 +90,94 @@ final class ServerPasswordRotationTest extends TestCase
          */
         $this->assertSame(
             ['kurtarmaAc', 'parolaDegistir', 'kurtarmaSil'],
-            $surucu->yapilanlar,
+            $driver->done,
         );
 
-        $this->assertNotSame('root', $surucu->parolayiDegistiren, 'Parola kendi oturumundan değiştirilmemeli.');
-        $this->assertStringStartsWith('nys-kurtarma-', (string) $surucu->parolayiDegistiren);
+        $this->assertNotSame('root', $driver->passwordChanger, 'Parola kendi oturumundan değiştirilmemeli.');
+        $this->assertStringStartsWith('nys-kurtarma-', (string) $driver->passwordChanger);
 
         /* Kayıttaki parola ancak DOĞRULANDIKTAN sonra değişir. */
-        $sunucu->refresh();
-        $this->assertNotSame('ESKI-PAROLA', $sunucu->connection_password);
-        $this->assertSame($surucu->yazilanParola, $sunucu->connection_password);
+        $server->refresh();
+        $this->assertNotSame('ESKI-PAROLA', $server->connection_password);
+        $this->assertSame($driver->writtenPassword, $server->connection_password);
 
         /* Kurtarma hesabı silindi: paneldeki sırrı da silinmeli. */
-        $this->assertFalse($tur->recovery_active);
-        $this->assertNull($tur->recovery_password);
+        $this->assertFalse($round->recovery_active);
+        $this->assertNull($round->recovery_password);
     }
 
     public function test_kurtarma_hesabi_dogrulanamazsa_tur_iptal_edilir(): void
     {
-        $sunucu = $this->sunucu();
+        $server = $this->server();
 
-        $surucu = new SahteSurucu;
-        $surucu->kurtarmaDogrulanir = false;
-        $this->surucuyuSahtele($surucu);
+        $driver = new FakeDriver;
+        $driver->recoveryVerified = false;
+        $this->driverFake($driver);
 
-        $tur = app(ServerPasswordRotator::class)->dondur($sunucu);
+        $round = app(ServerPasswordRotator::class)->rotate($server);
 
-        $this->assertSame(PasswordRotationStatus::Failed, $tur->status);
+        $this->assertSame(PasswordRotationStatus::Failed, $round->status);
 
         /*
          * ÇALIŞMAYAN KURTARMA HESABI GÜVENCE DEĞİL, AÇIKTA DURAN FAZLADAN BİR
          * YETKİDİR: silinir ve asıl parolaya hiç dokunulmaz.
          */
-        $this->assertContains('kurtarmaSil', $surucu->yapilanlar);
-        $this->assertNotContains('parolaDegistir', $surucu->yapilanlar);
+        $this->assertContains('kurtarmaSil', $driver->done);
+        $this->assertNotContains('parolaDegistir', $driver->done);
 
-        $sunucu->refresh();
-        $this->assertSame('ESKI-PAROLA', $sunucu->connection_password);
+        $server->refresh();
+        $this->assertSame('ESKI-PAROLA', $server->connection_password);
     }
 
     public function test_yeni_parola_dogrulanamazsa_kayit_degismez(): void
     {
-        $sunucu = $this->sunucu();
+        $server = $this->server();
 
-        $surucu = new SahteSurucu;
-        $surucu->yeniParolaDogrulanir = false;
-        $this->surucuyuSahtele($surucu);
+        $driver = new FakeDriver;
+        $driver->newPasswordVerified = false;
+        $this->driverFake($driver);
 
-        $tur = app(ServerPasswordRotator::class)->dondur($sunucu);
+        $round = app(ServerPasswordRotator::class)->rotate($server);
 
-        $this->assertSame(PasswordRotationStatus::Failed, $tur->status);
+        $this->assertSame(PasswordRotationStatus::Failed, $round->status);
 
         /*
          * Kurtarma hesabı MAKİNEDE BIRAKILIR: makineye dönebileceğimiz kapı
          * açık kalmalı ve ekran bunu uyarı olarak göstermeli.
          */
-        $this->assertTrue($tur->recovery_active);
-        $this->assertNotNull($tur->recovery_password);
+        $this->assertTrue($round->recovery_active);
+        $this->assertNotNull($round->recovery_password);
 
-        $sunucu->refresh();
-        $this->assertSame('ESKI-PAROLA', $sunucu->connection_password);
+        $server->refresh();
+        $this->assertSame('ESKI-PAROLA', $server->connection_password);
     }
 
     public function test_kurtarma_destegi_olmayan_platformda_dogrudan_degistirilir(): void
     {
-        $sunucu = $this->sunucu(['os_type' => 'windows', 'connection_protocol' => 'rdp', 'connection_port' => 3389]);
+        $server = $this->server(['os_type' => 'windows', 'connection_protocol' => 'rdp', 'connection_port' => 3389]);
 
-        $surucu = new SahteSurucu;
-        $surucu->kurtarma = false;
-        $this->surucuyuSahtele($surucu);
+        $driver = new FakeDriver;
+        $driver->recovery = false;
+        $this->driverFake($driver);
 
-        $tur = app(ServerPasswordRotator::class)->dondur($sunucu);
+        $round = app(ServerPasswordRotator::class)->rotate($server);
 
-        $this->assertSame(PasswordRotationStatus::Succeeded, $tur->status);
-        $this->assertSame(['parolaDegistir'], $surucu->yapilanlar);
+        $this->assertSame(PasswordRotationStatus::Succeeded, $round->status);
+        $this->assertSame(['parolaDegistir'], $driver->done);
 
         /* Parola kendi oturumundan değişir; başka kapı yok. */
-        $this->assertSame('root', $surucu->parolayiDegistiren);
+        $this->assertSame('root', $driver->passwordChanger);
 
-        $sunucu->refresh();
-        $this->assertSame($surucu->yazilanParola, $sunucu->connection_password);
+        $server->refresh();
+        $this->assertSame($driver->writtenPassword, $server->connection_password);
     }
 
     public function test_yarida_kalan_tur_onarimda_kapatilir(): void
     {
-        $sunucu = $this->sunucu();
+        $server = $this->server();
 
-        $tur = ServerPasswordRotation::create([
-            'server_id' => $sunucu->id,
+        $round = ServerPasswordRotation::create([
+            'server_id' => $server->id,
             'status' => PasswordRotationStatus::Failed,
             'stage' => PasswordRotationStage::RecoveryCreated,
             'recovery_username' => 'nys-kurtarma-abc123',
@@ -185,26 +185,26 @@ final class ServerPasswordRotationTest extends TestCase
             'recovery_active' => true,
         ]);
 
-        $surucu = new SahteSurucu;
-        $this->surucuyuSahtele($surucu);
+        $driver = new FakeDriver;
+        $this->driverFake($driver);
 
-        $sonuc = app(ServerPasswordRotator::class)->onar($tur->fresh());
+        $result = app(ServerPasswordRotator::class)->repair($round->fresh());
 
-        $this->assertSame(PasswordRotationStatus::Succeeded, $sonuc->status);
-        $this->assertFalse($sonuc->recovery_active);
-        $this->assertNull($sonuc->recovery_password);
-        $this->assertContains('kurtarmaSil', $surucu->yapilanlar);
+        $this->assertSame(PasswordRotationStatus::Succeeded, $result->status);
+        $this->assertFalse($result->recovery_active);
+        $this->assertNull($result->recovery_password);
+        $this->assertContains('kurtarmaSil', $driver->done);
     }
 
     public function test_yetkisi_olmayan_tur_baslatamaz(): void
     {
-        $sunucu = $this->sunucu();
+        $server = $this->server();
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'servers', ['view', 'update']);
 
         $this->actingAs($user->fresh())
-            ->post(route('servers.password', $sunucu), ['reason' => 'denetim'])
+            ->post(route('servers.password', $server), ['reason' => 'denetim'])
             ->assertForbidden();
     }
 
@@ -212,13 +212,13 @@ final class ServerPasswordRotationTest extends TestCase
     {
         Queue::fake();
 
-        $sunucu = $this->sunucu();
+        $server = $this->server();
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'servers', ['view', 'rotate']);
 
         $this->actingAs($user->fresh())
-            ->post(route('servers.password', $sunucu), ['reason' => 'denetim'])
+            ->post(route('servers.password', $server), ['reason' => 'denetim'])
             ->assertRedirect();
 
         Queue::assertPushed(ServerPasswordRotateJob::class);
@@ -231,65 +231,65 @@ final class ServerPasswordRotationTest extends TestCase
  * Sıranın kendisini sınamak için yeterli: hangi işin hangi KİMLİKLE ve hangi
  * SIRAYLA yapıldığını kaydeder.
  */
-final class SahteSurucu implements ServerDriver
+final class FakeDriver implements ServerDriver
 {
     /** @var list<string> */
-    public array $yapilanlar = [];
+    public array $done = [];
 
-    public bool $kurtarma = true;
+    public bool $recovery = true;
 
-    public bool $kurtarmaDogrulanir = true;
+    public bool $recoveryVerified = true;
 
-    public bool $yeniParolaDogrulanir = true;
+    public bool $newPasswordVerified = true;
 
-    public ?string $parolayiDegistiren = null;
+    public ?string $passwordChanger = null;
 
-    public ?string $yazilanParola = null;
+    public ?string $writtenPassword = null;
 
-    private ?string $kurtarmaAdi = null;
+    private ?string $recoveryName = null;
 
-    public function engel(Server $sunucu): ?string
+    public function engel(Server $server): ?string
     {
         return null;
     }
 
-    public function kurtarmaDestekler(): bool
+    public function recoverySupports(): bool
     {
-        return $this->kurtarma;
+        return $this->recovery;
     }
 
-    public function ac(Server $sunucu, string $kullanici, string $parola): ServerSession
+    public function open(Server $server, string $user, string $password): ServerSession
     {
-        return new ServerSession(null, $kullanici, $parola, static fn () => null);
+        return new ServerSession(null, $user, $password, static fn () => null);
     }
 
-    public function kurtarmaAc(ServerSession $oturum, string $kullanici, string $parola): void
+    public function recoveryOpen(ServerSession $session, string $user, string $password): void
     {
-        $this->yapilanlar[] = 'kurtarmaAc';
-        $this->kurtarmaAdi = $kullanici;
+        $this->done[] = 'kurtarmaAc';
+        $this->recoveryName = $user;
     }
 
-    public function parolaDegistir(ServerSession $oturum, string $kullanici, string $yeniParola): void
+    public function passwordChange(ServerSession $session, string $user, string $newPassword): void
     {
-        $this->yapilanlar[] = 'parolaDegistir';
-        $this->parolayiDegistiren = $oturum->kullanici;
-        $this->yazilanParola = $yeniParola;
+        $this->done[] = 'parolaDegistir';
+        $this->passwordChanger = $session->user;
+        $this->writtenPassword = $newPassword;
     }
 
-    public function kurtarmaSil(ServerSession $oturum, string $kullanici): void
+    public function recoveryDelete(ServerSession $session, string $user): void
     {
-        $this->yapilanlar[] = 'kurtarmaSil';
+        $this->done[] = 'kurtarmaSil';
     }
 
-    public function dogrula(Server $sunucu, string $kullanici, string $parola): bool
+    public function verify(Server $server, string $user, string $password): bool
     {
-        if ($kullanici === $this->kurtarmaAdi) {
-            return $this->kurtarmaDogrulanir;
+        if ($user === $this->recoveryName) {
+            return $this->recoveryVerified;
         }
 
         /* Asıl hesap: yeni parola denenirken ayarlanabilir. */
-        return $parola === $this->yazilanParola
-            ? $this->yeniParolaDogrulanir
+        return $password === $this->writtenPassword
+            ? $this->newPasswordVerified
             : true;
     }
 }

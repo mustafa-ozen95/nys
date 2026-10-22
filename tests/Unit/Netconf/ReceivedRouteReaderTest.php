@@ -19,18 +19,18 @@ final class ReceivedRouteReaderTest extends TestCase
 {
     public function test_kabul_edilen_ve_reddedilen_ayrilir(): void
     {
-        $sonuc = $this->read($this->fixture('received-routes'));
+        $result = $this->read($this->fixture('received-routes'));
 
-        $this->assertSame(['192.168.50.0/24'], array_column($sonuc['accepted'], 'prefix'));
-        $this->assertSame(['192.168.51.0/24'], array_column($sonuc['rejected'], 'prefix'));
+        $this->assertSame(['192.168.50.0/24'], array_column($result['accepted'], 'prefix'));
+        $this->assertSame(['192.168.51.0/24'], array_column($result['rejected'], 'prefix'));
     }
 
     public function test_yol_ayrintilari_okunur(): void
     {
-        $kabul = $this->read($this->fixture('received-routes'))['accepted'][0];
+        $accept = $this->read($this->fixture('received-routes'))['accepted'][0];
 
-        $this->assertSame('65001 I', $kabul['as_path']);
-        $this->assertSame('198.18.8.37', $kabul['next_hop']);
+        $this->assertSame('65001 I', $accept['as_path']);
+        $this->assertSame('198.18.8.37', $accept['next_hop']);
     }
 
     /**
@@ -39,15 +39,15 @@ final class ReceivedRouteReaderTest extends TestCase
      */
     public function test_bos_active_tag_kabul_sayilmaz(): void
     {
-        $sonuc = $this->read($this->reply(
+        $result = $this->read($this->reply(
             '<route-information><route-table><table-name>inet.0</table-name>'
             .'<rt><rt-destination>10.1.0.0/24</rt-destination>'
             .'<rt-entry><active-tag> </active-tag></rt-entry></rt>'
             .'</route-table></route-information>'
         ));
 
-        $this->assertSame([], $sonuc['accepted']);
-        $this->assertCount(1, $sonuc['rejected']);
+        $this->assertSame([], $result['accepted']);
+        $this->assertCount(1, $result['rejected']);
     }
 
     /**
@@ -55,7 +55,7 @@ final class ReceivedRouteReaderTest extends TestCase
      */
     public function test_cihazin_ic_tablolari_atlanir(): void
     {
-        $sonuc = $this->read($this->reply(
+        $result = $this->read($this->reply(
             '<route-information>'
             .'<route-table><table-name>__juniper_private1__.inet.0</table-name>'
             .'<rt><rt-destination>10.9.9.0/24</rt-destination>'
@@ -63,16 +63,16 @@ final class ReceivedRouteReaderTest extends TestCase
             .'</route-information>'
         ));
 
-        $this->assertSame([], $sonuc['accepted']);
-        $this->assertSame([], $sonuc['rejected']);
+        $this->assertSame([], $result['accepted']);
+        $this->assertSame([], $result['rejected']);
     }
 
     public function test_hic_prefix_alinmamissa_bos_doner(): void
     {
-        $sonuc = $this->read($this->reply('<route-information/>'));
+        $result = $this->read($this->reply('<route-information/>'));
 
-        $this->assertSame([], $sonuc['accepted']);
-        $this->assertSame([], $sonuc['rejected']);
+        $this->assertSame([], $result['accepted']);
+        $this->assertSame([], $result['rejected']);
     }
 
     /**

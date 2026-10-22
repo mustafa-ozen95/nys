@@ -23,21 +23,21 @@ use Tests\TestCase;
  */
 final class WindowsAccountNameTest extends TestCase
 {
-    private function kacir(string $ad): string
+    private function miss(string $name): string
     {
-        $sinif = new ReflectionClass(WindowsDriver::class);
-        $yontem = $sinif->getMethod('adiKacir');
-        $yontem->setAccessible(true);
+        $class = new ReflectionClass(WindowsDriver::class);
+        $method = $class->getMethod('escapeName');
+        $method->setAccessible(true);
 
-        return $yontem->invoke($sinif->newInstanceWithoutConstructor(), $ad);
+        return $method->invoke($class->newInstanceWithoutConstructor(), $name);
     }
 
     public function test_unicode_hesap_adi_gecer(): void
     {
         /* Türkçe karakterli hesap adı Windows'ta geçerlidir. */
-        $this->assertSame('YÖNETİM', $this->kacir('YÖNETİM'));
-        $this->assertSame('administrator', $this->kacir('administrator'));
-        $this->assertSame('ad soyad', $this->kacir('ad soyad'));
+        $this->assertSame('YÖNETİM', $this->miss('YÖNETİM'));
+        $this->assertSame('administrator', $this->miss('administrator'));
+        $this->assertSame('ad soyad', $this->miss('ad soyad'));
     }
 
     public function test_tek_tirnak_ikilenir(): void
@@ -47,19 +47,19 @@ final class WindowsAccountNameTest extends TestCase
          * kuralı tırnağı İKİLEMEKTİR. Kaçırılmasaydı dizge erken kapanır ve
          * adın kalanı komut olarak okunurdu.
          */
-        $this->assertSame("o''neill", $this->kacir("o'neill"));
+        $this->assertSame("o''neill", $this->miss("o'neill"));
     }
 
-    #[DataProvider('gecersizAdlar')]
-    public function test_windowsun_yasakladiklari_reddedilir(string $ad): void
+    #[DataProvider('invalidNames')]
+    public function test_windowsun_yasakladiklari_reddedilir(string $name): void
     {
         $this->expectException(RotationError::class);
 
-        $this->kacir($ad);
+        $this->miss($name);
     }
 
     /** @return array<string, array{0: string}> */
-    public static function gecersizAdlar(): array
+    public static function invalidNames(): array
     {
         return [
             'bos' => [''],

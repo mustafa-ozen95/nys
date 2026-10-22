@@ -402,8 +402,8 @@ final class PortMirroringTest extends TestCase
     public function test_vlana_uye_port_cikis_olamaz(): void
     {
         $switch = $this->switch();
-        $hedef = $switch->ports()->firstWhere('name', 'ge-0/0/21');
-        $hedef->vlans()->attach($switch->vlans()->firstWhere('name', 'ofis'), ['is_untagged' => true]);
+        $target = $switch->ports()->firstWhere('name', 'ge-0/0/21');
+        $target->vlans()->attach($switch->vlans()->firstWhere('name', 'ofis'), ['is_untagged' => true]);
 
         $device = $this->device();
 
@@ -411,7 +411,7 @@ final class PortMirroringTest extends TestCase
             ->post(route('switches.mirroring.store', $switch), [
                 'name' => 'ayna',
                 'ingress_interfaces' => ['ge-0/0/5.0'],
-                'output_interface' => $hedef->name.'.0',
+                'output_interface' => $target->name.'.0',
             ])
             ->assertSessionHasErrors('output_interface');
 

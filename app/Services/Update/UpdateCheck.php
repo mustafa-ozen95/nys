@@ -14,7 +14,7 @@ use Throwable;
 /**
  * Panelin yeni sürümü var mı?
  *
- * Çalışan sürüm (imaja derlemede yazılan commit, UYGULAMA_SURUMU) GitHub'daki
+ * Çalışan sürüm (imaja derlemede yazılan commit, APP_VERSION) GitHub'daki
  * main dalının SON BAŞARILI İMAJ DERLEMESİYLE karşılaştırılır. Son commit
  * değil: imajı henüz derlenmemiş ya da derlemesi düşmüş bir commit
  * kurulamaz, onu "yeni sürüm" diye göstermek yanıltırdı.
@@ -39,31 +39,31 @@ use Throwable;
  */
 class UpdateCheck
 {
-    public const DURUMLAR = ['guncel', 'yeni', 'ileride', 'ayrisik', 'bilinmiyor', 'hata'];
+    public const STATUSES = ['guncel', 'yeni', 'ileride', 'ayrisik', 'bilinmiyor', 'hata'];
 
     /** Ekranda gösterilen yeni commit sayısı; fazlası "ve N commit daha" olur. */
-    private const EN_COK_COMMIT = 20;
+    private const MAX_COMMITS = 20;
 
     private const API = 'https://api.github.com';
 
-    private string $dizin;
+    private string $directory;
 
-    public function __construct(string $dizin = '')
+    public function __construct(string $directory = '')
     {
-        $this->dizin = $dizin !== '' ? rtrim($dizin, '/') : storage_path('app/update');
+        $this->directory = $directory !== '' ? rtrim($directory, '/') : storage_path('app/update');
     }
 
     /** Çalışan commit (40 haneli); imaj sürüm bilgisi olmadan derlendiyse null. */
-    public function surum(): ?string
+    public function version(): ?string
     {
-        $surum = strtolower(trim((string) config('update.surum')));
+        $version = strtolower(trim((string) config('update.version')));
 
-        return preg_match('/^[0-9a-f]{40}$/', $surum) === 1 ? $surum : null;
+        return preg_match('/^[0-9a-f]{40}$/', $version) === 1 ? $version : null;
     }
 
-    public function depo(): string
+    public function repository(): string
     {
-        return (string) config('update.depo');
+        return (string) config('update.repo');
     }
 
     /**
@@ -72,29 +72,29 @@ class UpdateCheck
      *
      * @return array<string, mixed>
      */
-    public function denetle(string $tetikleyen): array
+    public function check(string $triggering): array
     {
-        $sonuc = ['calisan' => $this->surum(), 'depo' => $this->depo(), 'tetikleyen' => $tetikleyen];
+        $result = ['calisan' => $this->version(), 'depo' => $this->repository(), 'tetikleyen' => $triggering];
 
         try {
-            $sonuc = [...$sonuc, ...$this->sor($sonuc['calisan'])];
+            $result = [...$result, ...$this->ask($result['calisan'])];
         } catch (Throwable $e) {
-            $sonuc = [...$sonuc, 'durum' => 'hata', 'aciklama' => $this->temiz($e->getMessage())];
+            $result = [...$result, 'durum' => 'hata', 'aciklama' => $this->clean($e->getMessage())];
         }
 
-        $sonuc['zaman'] = date('c');
-        $this->yaz($sonuc);
+        $result['zaman'] = date('c');
+        $this->write($result);
 
-        return $sonuc;
+        return $result;
     }
 
     /** @return array<string, mixed>|null */
-    public function son(): ?array
+    public function last(): ?array
     {
-        $yol = $this->dizin.'/state.json';
-        $veri = is_file($yol) ? json_decode((string) file_get_contents($yol), true) : null;
+        $path = $this->directory.'/state.json';
+        $veri = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
 
-        return is_array($veri) && in_array($veri['durum'] ?? null, self::DURUMLAR, true) ? $veri : null;
+        return is_array($veri) && in_array($veri['durum'] ?? null, self::STATUSES, true) ? $veri : null;
     }
 
     /**
@@ -102,29 +102,29 @@ class UpdateCheck
      * çalışan sürümle yapıldıysa. Panel güncellendikten sonra eski sonuç
      * yeniden kontrol beklemeden susar.
      */
-    public function yeniVar(): bool
+    public function hasNew(): bool
     {
-        $son = $this->son();
+        $last = $this->last();
 
-        return ($son['durum'] ?? null) === 'yeni' && ($son['calisan'] ?? null) === $this->surum();
+        return ($last['durum'] ?? null) === 'yeni' && ($last['calisan'] ?? null) === $this->version();
     }
 
     /** @return array<string, mixed> */
-    private function sor(?string $calisan): array
+    private function ask(?string $running): array
     {
-        $jeton = trim((string) config('update.jeton'));
+        $token = trim((string) config('update.token'));
 
         $http = Http::baseUrl(self::API)
             ->acceptJson()
             ->withHeaders(['X-GitHub-Api-Version' => '2022-11-28'])
             ->timeout(10);
 
-        if ($jeton !== '') {
-            $http = $http->withToken($jeton);
+        if ($token !== '') {
+            $http = $http->withToken($token);
         }
 
-        $is = $this->al($http, '/repos/'.$this->depo().'/actions/workflows/'.config('update.is', 'image.yml').'/runs', [
-            'branch' => config('update.dal', 'main'),
+        $is = $this->take($http, '/repos/'.$this->repository().'/actions/workflows/'.config('update.workflow', 'image.yml').'/runs', [
+            'branch' => config('update.branch', 'main'),
             'status' => 'success',
             'event' => 'push',
             'per_page' => 1,
@@ -134,23 +134,23 @@ class UpdateCheck
             return ['durum' => 'hata', 'aciklama' => 'Depoda başarılı bir imaj derlemesi bulunamadı.'];
         }
 
-        $son = ['son' => $is['head_sha'], 'son_tarih' => $is['updated_at'] ?? null];
+        $last = ['son' => $is['head_sha'], 'son_tarih' => $is['updated_at'] ?? null];
 
-        if ($calisan === null) {
-            return [...$son, 'durum' => 'bilinmiyor', 'aciklama' => 'Çalışan sürüm bilinmiyor: imaj sürüm bilgisi olmadan derlenmiş. Son derleme gösteriliyor.'];
+        if ($running === null) {
+            return [...$last, 'durum' => 'bilinmiyor', 'aciklama' => 'Çalışan sürüm bilinmiyor: imaj sürüm bilgisi olmadan derlenmiş. Son derleme gösteriliyor.'];
         }
 
-        if ($calisan === $is['head_sha']) {
-            return [...$son, 'durum' => 'guncel', 'geride' => 0, 'ileride' => 0, 'aciklama' => 'Panel son sürümde.'];
+        if ($running === $is['head_sha']) {
+            return [...$last, 'durum' => 'guncel', 'geride' => 0, 'ileride' => 0, 'aciklama' => 'Panel son sürümde.'];
         }
 
-        $fark = $this->al($http, '/repos/'.$this->depo().'/compare/'.$calisan.'...'.$is['head_sha']);
-        $geride = (int) ($fark['ahead_by'] ?? 0);
-        $ileride = (int) ($fark['behind_by'] ?? 0);
+        $diff = $this->take($http, '/repos/'.$this->repository().'/compare/'.$running.'...'.$is['head_sha']);
+        $behind = (int) ($diff['ahead_by'] ?? 0);
+        $later = (int) ($diff['behind_by'] ?? 0);
 
-        $commitler = collect($fark['commits'] ?? [])
+        $commits = collect($diff['commits'] ?? [])
             ->reverse()
-            ->take(self::EN_COK_COMMIT)
+            ->take(self::MAX_COMMITS)
             ->map(fn (array $c): array => [
                 'sha' => (string) ($c['sha'] ?? ''),
                 'baslik' => mb_substr(strtok((string) ($c['commit']['message'] ?? ''), "\n") ?: '', 0, 200),
@@ -159,11 +159,11 @@ class UpdateCheck
             ->values()
             ->all();
 
-        return [...$son, 'geride' => $geride, 'ileride' => $ileride, 'commitler' => $commitler, ...match ($fark['status'] ?? null) {
-            'ahead' => ['durum' => 'yeni', 'aciklama' => $geride.' commit geride.'],
+        return [...$last, 'geride' => $behind, 'ileride' => $later, 'commitler' => $commits, ...match ($diff['status'] ?? null) {
+            'ahead' => ['durum' => 'yeni', 'aciklama' => $behind.' commit geride.'],
             'identical' => ['durum' => 'guncel', 'aciklama' => 'Panel son sürümde.'],
-            'behind' => ['durum' => 'ileride', 'aciklama' => 'Çalışan sürüm son başarılı derlemeden '.$ileride.' commit ileride: daha yeni bir commit\'ten kurulmuş. "Güncellemek" geri almak olur.'],
-            default => ['durum' => 'ayrisik', 'aciklama' => 'Çalışan sürüm main dalında değil ('.$geride.' geride, '.$ileride.' ileride): ayrı bir daldan ya da elle derlenmiş.'],
+            'behind' => ['durum' => 'ileride', 'aciklama' => 'Çalışan sürüm son başarılı derlemeden '.$later.' commit ileride: daha yeni bir commit\'ten kurulmuş. "Güncellemek" geri almak olur.'],
+            default => ['durum' => 'ayrisik', 'aciklama' => 'Çalışan sürüm main dalında değil ('.$behind.' geride, '.$later.' ileride): ayrı bir daldan ya da elle derlenmiş.'],
         }];
     }
 
@@ -171,52 +171,52 @@ class UpdateCheck
      * @param  array<string, mixed>  $sorgu
      * @return array<string, mixed>
      */
-    private function al(PendingRequest $http, string $yol, array $sorgu = []): array
+    private function take(PendingRequest $http, string $path, array $query = []): array
     {
         try {
-            $yanit = $http->get($yol, $sorgu);
+            $response = $http->get($path, $query);
         } catch (ConnectionException) {
             throw new RuntimeException('GitHub\'a erişilemedi (ağ kapalı ya da yanıt yok).');
         }
 
-        $jetonsuz = trim((string) config('update.jeton')) === '';
+        $tokenless = trim((string) config('update.token')) === '';
 
         return match (true) {
-            $yanit->successful() => (array) $yanit->json(),
-            $yanit->status() === 401 => throw new RuntimeException('GitHub jetonu reddetti (401): süresi dolmuş ya da silinmiş olabilir.'),
-            $jetonsuz && $yanit->status() === 403 && $yanit->header('X-RateLimit-Remaining') === '0' => throw new RuntimeException('GitHub jetonsuz istek sınırı doldu (403, saatte 60): bir saat sonra yeniden deneyin ya da GUNCELLEME_JETONU tanımlayın.'),
-            $jetonsuz && in_array($yanit->status(), [403, 404], true) => throw new RuntimeException('Depo bulunamadı ya da özel ('.$yanit->status().'): '.$this->depo().' özelse GUNCELLEME_JETONU gerekir.'),
-            in_array($yanit->status(), [403, 404], true) => throw new RuntimeException('Jeton bu depoyu görmüyor ('.$yanit->status().'): '.$this->depo().' için Contents ve Actions okuma yetkisi gerekir.'),
-            default => throw new RuntimeException('GitHub yanıtı: '.$yanit->status().' '.$this->mesaj($yanit)),
+            $response->successful() => (array) $response->json(),
+            $response->status() === 401 => throw new RuntimeException('GitHub jetonu reddetti (401): süresi dolmuş ya da silinmiş olabilir.'),
+            $tokenless && $response->status() === 403 && $response->header('X-RateLimit-Remaining') === '0' => throw new RuntimeException('GitHub jetonsuz istek sınırı doldu (403, saatte 60): bir saat sonra yeniden deneyin ya da UPDATE_TOKEN tanımlayın.'),
+            $tokenless && in_array($response->status(), [403, 404], true) => throw new RuntimeException('Depo bulunamadı ya da özel ('.$response->status().'): '.$this->repository().' özelse UPDATE_TOKEN gerekir.'),
+            in_array($response->status(), [403, 404], true) => throw new RuntimeException('Jeton bu depoyu görmüyor ('.$response->status().'): '.$this->repository().' için Contents ve Actions okuma yetkisi gerekir.'),
+            default => throw new RuntimeException('GitHub yanıtı: '.$response->status().' '.$this->message($response)),
         };
     }
 
-    private function mesaj(Response $yanit): string
+    private function message(Response $response): string
     {
-        return mb_substr((string) ($yanit->json('message') ?? ''), 0, 200);
+        return mb_substr((string) ($response->json('message') ?? ''), 0, 200);
     }
 
     /** Jeton hiçbir iletide geçmez. */
-    private function temiz(string $ileti): string
+    private function clean(string $message): string
     {
-        $jeton = trim((string) config('update.jeton'));
+        $token = trim((string) config('update.token'));
 
-        return mb_substr($jeton !== '' ? str_replace($jeton, '***', $ileti) : $ileti, 0, 300);
+        return mb_substr($token !== '' ? str_replace($token, '***', $message) : $message, 0, 300);
     }
 
     /** @param  array<string, mixed>  $sonuc */
-    private function yaz(array $sonuc): void
+    private function write(array $result): void
     {
-        if (! is_dir($this->dizin) && ! @mkdir($this->dizin, 0700, true) && ! is_dir($this->dizin)) {
-            throw new RuntimeException('Dizin açılamadı: '.$this->dizin);
+        if (! is_dir($this->directory) && ! @mkdir($this->directory, 0700, true) && ! is_dir($this->directory)) {
+            throw new RuntimeException('Dizin açılamadı: '.$this->directory);
         }
 
-        $gecici = $this->dizin.'/.state.json.'.bin2hex(random_bytes(4));
+        $temporary = $this->directory.'/.state.json.'.bin2hex(random_bytes(4));
 
-        if (@file_put_contents($gecici, json_encode($sonuc, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false
-            || ! @rename($gecici, $this->dizin.'/state.json')) {
-            @unlink($gecici);
-            throw new RuntimeException('Yazılamadı: '.$this->dizin.'/state.json');
+        if (@file_put_contents($temporary, json_encode($result, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false
+            || ! @rename($temporary, $this->directory.'/state.json')) {
+            @unlink($temporary);
+            throw new RuntimeException('Yazılamadı: '.$this->directory.'/state.json');
         }
     }
 }

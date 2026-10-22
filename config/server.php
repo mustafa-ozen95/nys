@@ -23,7 +23,7 @@ return [
      * Cihaz parolalarıyla aynı üreteç kullanılır (Ayarlar > Cihaz parolası
      * oradaki sınıfları belirler); buradaki yalnızca uzunluktur.
      */
-    'parola_uzunlugu' => (int) env('SUNUCU_PAROLA_UZUNLUGU', 24),
+    'password_length' => (int) env('SERVER_PASSWORD_LENGTH', 24),
 
     /*
      * SSH komut zaman aşımı.
@@ -32,7 +32,7 @@ return [
      * saniyeyi aşabilir; tur "değiştiremedim" diyerek kapanır ama parola
      * makinede DEĞİŞMİŞ olur.
      */
-    'ssh_zaman_asimi' => (int) env('SUNUCU_SSH_ZAMAN_ASIMI', 30),
+    'ssh_timeout' => (int) env('SERVER_SSH_TIMEOUT', 30),
 
     /*
      * Kayıt başına kilidin ömrü.
@@ -40,19 +40,19 @@ return [
      * İşin zaman aşımından uzun tutulur: işi öldüren bir zaman aşımı
      * `finally` bloğunu çalıştırmayabilir ve kilit ancak süresi dolunca düşer.
      */
-    'kilit_saniye' => (int) env('SUNUCU_KILIT_SANIYE', 600),
+    'lock_seconds' => (int) env('SERVER_LOCK_SECONDS', 600),
 
     'winrm' => [
-        'python' => env('SUNUCU_PYTHON', '/usr/bin/python3'),
-        'runner' => env('SUNUCU_WINRM_RUNNER', resource_path('bin/winrm-runner.py')),
-        'openssl_conf' => env('SUNUCU_OPENSSL_CONF', resource_path('bin/openssl-legacy.cnf')),
+        'python' => env('SERVER_PYTHON', '/usr/bin/python3'),
+        'runner' => env('SERVER_WINRM_RUNNER', resource_path('bin/winrm-runner.py')),
+        'openssl_conf' => env('SERVER_OPENSSL_CONF', resource_path('bin/openssl-legacy.cnf')),
 
         /*
          * WinRM'İN KENDİ PORTU. Sunucu kaydındaki port RDP'ninkidir (3389) ve
          * WinRM oraya bağlanmaz; bu yüzden kayıttan okunmaz.
          */
-        'port' => (int) env('SUNUCU_WINRM_PORT', 5985),
-        'timeout' => (int) env('SUNUCU_WINRM_ZAMAN_ASIMI', 60),
+        'port' => (int) env('SERVER_WINRM_PORT', 5985),
+        'timeout' => (int) env('SERVER_WINRM_TIMEOUT', 60),
 
         /*
          * Kurtarma hesabı açılsın mı.
@@ -63,6 +63,6 @@ return [
          * aşamasında düşüp turu boşuna iptal ediyor. O kaydı 1 yapan
          * kurulumlarda açılabilir.
          */
-        'kurtarma' => (bool) env('SUNUCU_WINRM_KURTARMA', false),
+        'recovery' => (bool) env('SERVER_WINRM_RECOVERY', false),
     ],
 ];

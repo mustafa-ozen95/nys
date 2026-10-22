@@ -27,13 +27,13 @@ final class SettingsPermissionTest extends TestCase
         parent::setUp();
 
         /* Bu sınıf yetki düzeneğini sınıyor; üretimde kapalı (bkz. TestCase). */
-        $this->yetkiDagitimiAc();
+        $this->permissionDistributionOpen();
     }
 
     /** config/settings.php içindeki kalıcı yetki kimlikleri. */
-    private const OLCUM = 1;
+    private const MEASUREMENT = 1;
 
-    private const BAKIM = 10;
+    private const MAINTENANCE = 10;
 
     public function test_varsayilan_olarak_kapalidir(): void
     {
@@ -44,17 +44,17 @@ final class SettingsPermissionTest extends TestCase
 
     public function test_bolum_yetkisi_verilen_kullanici_o_bolumu_gorur(): void
     {
-        $user = $this->withSection('view', [self::OLCUM]);
+        $user = $this->withSection('view', [self::MEASUREMENT]);
 
-        $this->actingAs($user)->get(route('settings.show', 'olcum'))->assertOk();
-        $this->actingAs($user)->get(route('settings.show', 'bakim'))->assertForbidden();
+        $this->actingAs($user)->get(route('settings.show', 'measurement'))->assertOk();
+        $this->actingAs($user)->get(route('settings.show', 'maintenance'))->assertForbidden();
     }
 
     public function test_seritte_yalnizca_gorebildigi_bolumler_gorunur(): void
     {
-        $user = $this->withSection('view', [self::OLCUM]);
+        $user = $this->withSection('view', [self::MEASUREMENT]);
 
-        $tabs = collect(app(SettingsCatalog::class)->tabs('olcum', $user))->pluck('label');
+        $tabs = collect(app(SettingsCatalog::class)->tabs('measurement', $user))->pluck('label');
 
         $this->assertTrue($tabs->contains('Ölçüm kaynağı'));
         $this->assertFalse($tabs->contains('Bakım'));
@@ -66,21 +66,21 @@ final class SettingsPermissionTest extends TestCase
 
     public function test_gorme_yetkisi_yazma_yetkisi_degildir(): void
     {
-        $user = $this->withSection('view', [self::OLCUM]);
+        $user = $this->withSection('view', [self::MEASUREMENT]);
 
-        $this->actingAs($user)->get(route('settings.show', 'olcum'))->assertOk();
+        $this->actingAs($user)->get(route('settings.show', 'measurement'))->assertOk();
 
         $this->actingAs($user)
-            ->put(route('settings.update', 'olcum'), ['measurement__failure_ttl' => '120'])
+            ->put(route('settings.update', 'measurement'), ['measurement__failure_ttl' => '120'])
             ->assertForbidden();
     }
 
     public function test_yazma_yetkisi_verilen_bolum_kaydedilir(): void
     {
-        $user = $this->withSection(['view', 'update'], [self::OLCUM]);
+        $user = $this->withSection(['view', 'update'], [self::MEASUREMENT]);
 
         $this->actingAs($user)
-            ->put(route('settings.update', 'olcum'), ['measurement__failure_ttl' => '123'])
+            ->put(route('settings.update', 'measurement'), ['measurement__failure_ttl' => '123'])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
@@ -93,10 +93,10 @@ final class SettingsPermissionTest extends TestCase
      */
     public function test_baska_bolumun_alani_forma_ilistirilemez(): void
     {
-        $user = $this->withSection(['view', 'update'], [self::OLCUM]);
+        $user = $this->withSection(['view', 'update'], [self::MEASUREMENT]);
 
         $this->actingAs($user)
-            ->put(route('settings.update', 'olcum'), [
+            ->put(route('settings.update', 'measurement'), [
                 'measurement__failure_ttl' => '123',
                 'maintenance__activity_retention_days' => '1',
             ])
@@ -110,7 +110,7 @@ final class SettingsPermissionTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->get(route('settings.index'))->assertOk();
-        $this->actingAs($admin)->get(route('settings.show', 'bakim'))->assertOk();
+        $this->actingAs($admin)->get(route('settings.show', 'maintenance'))->assertOk();
 
         $tabs = collect(app(SettingsCatalog::class)->tabs(null, $admin))->pluck('label');
 
@@ -124,10 +124,10 @@ final class SettingsPermissionTest extends TestCase
      */
     public function test_yetki_ekrani_ayar_bolumlerini_listeler(): void
     {
-        $hedef = User::factory()->create();
+        $target = User::factory()->create();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('users.permissions', ['user' => $hedef, 'resource' => 'settings']))
+            ->get(route('users.permissions', ['user' => $target, 'resource' => 'settings']))
             ->assertOk()
             ->assertSee('Ölçüm kaynağı')
             ->assertSee('Bakım');

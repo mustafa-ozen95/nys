@@ -25,7 +25,7 @@ final class Ipv6AddressingTest extends TestCase
 
     public function test_ipv6_blok_eklenebilir(): void
     {
-        $this->actingAs($this->yonetici())
+        $this->actingAs($this->admin())
             ->post(route('addressing.store'), [
                 'network' => '2001:db8::',
                 'prefix_length' => 32,
@@ -34,12 +34,12 @@ final class Ipv6AddressingTest extends TestCase
             ->assertSessionHasNoErrors()
             ->assertRedirect();
 
-        $blok = AddressBlock::query()->firstWhere('network', '2001:db8::');
+        $block = AddressBlock::query()->firstWhere('network', '2001:db8::');
 
-        $this->assertNotNull($blok);
-        $this->assertSame(IpFamily::Inet6, $blok->family);
-        $this->assertSame(inet_pton('2001:db8::'), $blok->range_start);
-        $this->assertSame(inet_pton('2001:db8:ffff:ffff:ffff:ffff:ffff:ffff'), $blok->range_end);
+        $this->assertNotNull($block);
+        $this->assertSame(IpFamily::Inet6, $block->family);
+        $this->assertSame(inet_pton('2001:db8::'), $block->range_start);
+        $this->assertSame(inet_pton('2001:db8:ffff:ffff:ffff:ffff:ffff:ffff'), $block->range_end);
     }
 
     /**
@@ -47,7 +47,7 @@ final class Ipv6AddressingTest extends TestCase
      */
     public function test_ipv6_blok_32_den_dar_olabilir(): void
     {
-        $this->actingAs($this->yonetici())
+        $this->actingAs($this->admin())
             ->post(route('addressing.store'), [
                 'network' => '2001:db8::',
                 'prefix_length' => 64,
@@ -64,7 +64,7 @@ final class Ipv6AddressingTest extends TestCase
      */
     public function test_ipv6_ayrilmis_aralik_reddedilir(): void
     {
-        $this->actingAs($this->yonetici())
+        $this->actingAs($this->admin())
             ->post(route('addressing.store'), [
                 'network' => 'fe80::',
                 'prefix_length' => 64,
@@ -77,7 +77,7 @@ final class Ipv6AddressingTest extends TestCase
     {
         AddressBlock::factory()->network('2001:db8::/32')->create();
 
-        $this->actingAs($this->yonetici())
+        $this->actingAs($this->admin())
             ->post(route('addressing.store'), [
                 'network' => '2001:db8:1::',
                 'prefix_length' => 48,
@@ -94,7 +94,7 @@ final class Ipv6AddressingTest extends TestCase
     {
         AddressBlock::factory()->network('10.0.0.0/8')->create();
 
-        $this->actingAs($this->yonetici())
+        $this->actingAs($this->admin())
             ->post(route('addressing.store'), [
                 'network' => '2001:db8::',
                 'prefix_length' => 32,
@@ -109,18 +109,18 @@ final class Ipv6AddressingTest extends TestCase
      */
     public function test_ipv6_adres_adaylari_sinirli_uretilir(): void
     {
-        $blok = AddressBlock::factory()->network('2001:db8::/64')->create(['is_subnetted' => false]);
+        $block = AddressBlock::factory()->network('2001:db8::/64')->create(['is_subnetted' => false]);
 
-        $adresler = app(AddressCandidateService::class)->usable($blok);
+        $addresses = app(AddressCandidateService::class)->usable($block);
 
-        $this->assertNotEmpty($adresler);
-        $this->assertLessThanOrEqual(AddressCandidateService::BLOCK_LIMIT, count($adresler));
+        $this->assertNotEmpty($addresses);
+        $this->assertLessThanOrEqual(AddressCandidateService::BLOCK_LIMIT, count($addresses));
 
         // İlk kullanılabilir adres ağ adresi DEĞİLDİR (subnet-router anycast).
-        $this->assertSame('2001:db8::1', $adresler[0]);
+        $this->assertSame('2001:db8::1', $addresses[0]);
     }
 
-    private function yonetici(): User
+    private function admin(): User
     {
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'addressing', ['view', 'create', 'update', 'delete']);

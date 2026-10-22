@@ -30,25 +30,25 @@ class LinuxDriver implements ServerDriver
      */
     public function __construct(?int $timeout = null)
     {
-        $this->timeout = $timeout ?? (int) config('server.ssh_zaman_asimi', 30);
+        $this->timeout = $timeout ?? (int) config('server.ssh_timeout', 30);
     }
 
-    protected function varsayilanPort(): int
+    protected function defaultPort(): int
     {
         return 22;
     }
 
-    public function kurtarmaDestekler(): bool
+    public function recoverySupports(): bool
     {
         return true;
     }
 
-    public function engel(Server $sunucu): ?string
+    public function engel(Server $server): ?string
     {
         return match (true) {
-            blank($sunucu->ip_address) => 'Adres tanımlı değil.',
-            blank($sunucu->connection_username) => 'Kullanıcı adı tanımlı değil.',
-            blank($sunucu->connection_password) => 'Kayıtlı parola yok; güncelleme mevcut parolayla başlar.',
+            blank($server->ip_address) => 'Adres tanımlı değil.',
+            blank($server->connection_username) => 'Kullanıcı adı tanımlı değil.',
+            blank($server->connection_password) => 'Kayıtlı parola yok; güncelleme mevcut parolayla başlar.',
             default => null,
         };
     }
@@ -60,37 +60,37 @@ class LinuxDriver implements ServerDriver
      * yeter. Hesabın gerçekten işe yaradığı zaten ayrıca KANITLANIYOR
      * (bkz. ServerPasswordRotator), bu yüzden burada iki ihtimali denemek güvenli.
      */
-    public function kurtarmaAc(ServerSession $oturum, string $kullanici, string $parola): void
+    public function recoveryOpen(ServerSession $session, string $user, string $password): void
     {
-        $this->guardName($kullanici);
+        $this->guardName($user);
 
         $this->run(
-            $oturum,
-            "useradd -m -s /bin/sh {$kullanici} && (usermod -aG sudo {$kullanici} || usermod -aG wheel {$kullanici})",
+            $session,
+            "useradd -m -s /bin/sh {$user} && (usermod -aG sudo {$user} || usermod -aG wheel {$user})",
             'Kurtarma hesabı açılamadı.',
         );
 
-        $this->parolaDegistir($oturum, $kullanici, $parola);
+        $this->passwordChange($session, $user, $password);
     }
 
-    public function parolaDegistir(ServerSession $oturum, string $kullanici, string $yeniParola): void
+    public function passwordChange(ServerSession $session, string $user, string $newPassword): void
     {
-        $this->guardName($kullanici);
+        $this->guardName($user);
 
-        if (preg_match('/[\r\n:]/', $yeniParola) === 1) {
+        if (preg_match('/[\r\n:]/', $newPassword) === 1) {
             throw new RotationError('Parola bu yöntemle gönderilemeyecek bir karakter içeriyor.');
         }
 
         /* chpasswd "kullanıcı:parola" satırını standart girdiden okur. */
-        $this->run($oturum, 'chpasswd', 'Parola değiştirilemedi.', "{$kullanici}:{$yeniParola}\n");
+        $this->run($session, 'chpasswd', 'Parola değiştirilemedi.', "{$user}:{$newPassword}\n");
     }
 
-    public function kurtarmaSil(ServerSession $oturum, string $kullanici): void
+    public function recoveryDelete(ServerSession $session, string $user): void
     {
-        $this->guardName($kullanici);
+        $this->guardName($user);
 
         /* -f: hesap açık oturumdaysa da silinsin; -r: ev dizini de gitsin. */
-        $this->run($oturum, "userdel -r -f {$kullanici}", 'Kurtarma hesabı silinemedi.');
+        $this->run($session, "userdel -r -f {$user}", 'Kurtarma hesabı silinemedi.');
     }
 
     /**
@@ -114,9 +114,9 @@ class LinuxDriver implements ServerDriver
      * Girdi tüketen komutlar ayrıca boru sarmalıyla beslenir; sebebi
      * aşağıda yazılı (sudo-rs dosya-sonunu iletmiyor).
      */
-    private function run(ServerSession $oturum, string $command, string $failure, string $stdin = ''): void
+    private function run(ServerSession $session, string $command, string $failure, string $stdin = ''): void
     {
-        $root = $oturum->kullanici === 'root';
+        $root = $session->user === 'root';
 
         /*
          * Girdi tüketen komut BORUYLA beslenir.
@@ -143,18 +143,18 @@ class LinuxDriver implements ServerDriver
          * görünmez. Girdi alan komut zaten tek kabukta (yukarıda); diğerleri
          * burada sarılır.
          */
-        $yukseltilen = $stdin !== '' ? $command : 'sh -c '.escapeshellarg($command);
+        $escalated = $stdin !== '' ? $command : 'sh -c '.escapeshellarg($command);
 
         $output = $root
-            ? $this->execute($oturum, $command, $failure, $stdin)
+            ? $this->execute($session, $command, $failure, $stdin)
             : $this->execute(
-                $oturum,
-                'sudo -n '.$yukseltilen,
+                $session,
+                'sudo -n '.$escalated,
                 $failure,
                 $stdin,
                 /* Önce kimlik doğrulanır; sudo girdiye o aşamada dokunur. */
                 $this->sudoPrelude(),
-                $oturum->parola."\n",
+                $session->password."\n",
             );
 
         /*
@@ -178,9 +178,9 @@ class LinuxDriver implements ServerDriver
      * gerçekten var olduğunu göremez; gerçek sürücüyle koşan sınama
      * LinuxDriverRealTest'tedir.
      */
-    private function guardName(string $kullanici): void
+    private function guardName(string $user): void
     {
-        if (preg_match('/^[a-z_][a-z0-9_-]{0,30}$/', $kullanici) !== 1) {
+        if (preg_match('/^[a-z_][a-z0-9_-]{0,30}$/', $user) !== 1) {
             throw new RotationError('Hesap adı kabuğa gönderilemeyecek bir karakter içeriyor.');
         }
     }

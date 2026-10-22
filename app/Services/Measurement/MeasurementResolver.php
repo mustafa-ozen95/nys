@@ -46,11 +46,11 @@ class MeasurementResolver
         }
 
         foreach ($this->candidates() as $source) {
-            $hazir = $switches->filter(fn (NetworkSwitch $switch): bool => $source->supports($switch)
+            $ready = $switches->filter(fn (NetworkSwitch $switch): bool => $source->supports($switch)
                 && ! $this->circuit->isOpen($source->source(), $switch));
 
-            if ($hazir->isNotEmpty()) {
-                $source->prefetch($hazir);
+            if ($ready->isNotEmpty()) {
+                $source->prefetch($ready);
 
                 return;
             }

@@ -53,14 +53,14 @@ final class SwitchTargetTest extends TestCase
     {
         $switch = NetworkSwitch::factory()->create();
         Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 30, 'name' => 'kamera']);
-        $etiketsiz = Vlan::factory()->for($switch, 'switch')
+        $untagged = Vlan::factory()->for($switch, 'switch')
             ->create(['vlan_tag' => null, 'name' => 'V27', 'l3_interface' => 'vlan.28']);
 
         $this->actingAs($this->operator())
             ->getJson(route('ajax.switches.targets', $switch))
             ->assertOk()
             ->assertJsonCount(2, 'vlans')
-            ->assertJsonPath('vlans.1.value', $etiketsiz->uuid)
+            ->assertJsonPath('vlans.1.value', $untagged->uuid)
             ->assertJsonPath('vlans.1.label', 'etiketsiz · V27');
     }
 

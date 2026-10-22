@@ -88,11 +88,11 @@ class PortSynchronizer
          * bütün eşitleme geri sarılırdı. Etiketin boş kalabilmesi bu adımı
          * mümkün kılıyor.
          */
-        $gelen = array_filter(array_column($vlans, 'tag'), static fn (?int $tag): bool => $tag !== null);
+        $incoming = array_filter(array_column($vlans, 'tag'), static fn (?int $tag): bool => $tag !== null);
 
-        if ($gelen !== []) {
+        if ($incoming !== []) {
             $switch->vlans()
-                ->whereIn('vlan_tag', $gelen)
+                ->whereIn('vlan_tag', $incoming)
                 ->whereNotIn('name', array_keys($vlans))
                 ->update(['vlan_tag' => null]);
 
@@ -168,7 +168,7 @@ class PortSynchronizer
      */
     private function storeBundles(NetworkSwitch $switch, array $ports): void
     {
-        $kimlikler = $switch->ports()->pluck('id', 'name');
+        $identities = $switch->ports()->pluck('id', 'name');
 
         foreach ($ports as $port) {
             if ($port['interface_kind'] !== PortType::Physical) {
@@ -178,7 +178,7 @@ class PortSynchronizer
             $switch->ports()->where('name', $port['name'])->update([
                 'aggregate_port_id' => $port['bundle'] === null
                     ? null
-                    : $kimlikler[$port['bundle']] ?? null,
+                    : $identities[$port['bundle']] ?? null,
             ]);
         }
     }
@@ -194,12 +194,12 @@ class PortSynchronizer
      */
     private function pruneAggregates(NetworkSwitch $switch, array $ports): void
     {
-        $mevcut = array_column(
+        $current = array_column(
             array_filter($ports, static fn (array $port): bool => $port['interface_kind'] === PortType::Aggregated),
             'name',
         );
 
-        $switch->ports()->aggregated()->whereNotIn('name', $mevcut)->delete();
+        $switch->ports()->aggregated()->whereNotIn('name', $current)->delete();
     }
 
     /**

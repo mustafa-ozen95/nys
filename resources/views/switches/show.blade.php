@@ -78,13 +78,13 @@
                 <div class="detail__foot">
                     @can('connect', $switch)
                         <button type="button" class="btn btn--primary btn--sm"
-                                data-uzak-baglan="{{ route('ajax.remote.connect') }}"
-                                data-uzak-tur="switch"
-                                data-uzak-kimlik="{{ $switch->uuid }}">Bağlan</button>
+                                data-remote-connect="{{ route('ajax.remote.connect') }}"
+                                data-remote-type="switch"
+                                data-remote-id="{{ $switch->uuid }}">Bağlan</button>
                     @endcan
 
                     @can('update', $switch)
-                        <button type="button" class="btn btn--sm" data-modal-open="switch-duzenle">Düzenle</button>
+                        <button type="button" class="btn btn--sm" data-modal-open="switch-edit">Düzenle</button>
                     @endcan
 
                     {{--
@@ -108,7 +108,7 @@
     </div>
 
     @can('update', $switch)
-        <x-ui.modal id="switch-duzenle" :title="$switch->hostname.' düzenle'" wide>
+        <x-ui.modal id="switch-edit" :title="$switch->hostname.' düzenle'" wide>
             <form method="POST" action="{{ route('switches.update', $switch) }}"
                   data-confirm="{{ $switch->hostname }} envanter kaydı güncellenecek."
                   data-confirm-title="Switchi düzenle"

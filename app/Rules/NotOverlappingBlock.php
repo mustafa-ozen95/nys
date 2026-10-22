@@ -29,7 +29,7 @@ class NotOverlappingBlock implements ValidationRule
             return;
         }
 
-        $cakisan = AddressBlock::query()
+        $conflicting = AddressBlock::query()
             ->when(
                 $this->parent === null,
                 fn ($query) => $query->roots(),
@@ -38,8 +38,8 @@ class NotOverlappingBlock implements ValidationRule
             ->overlapping($cidr->addressStart(), $cidr->addressEnd(), $cidr->isIpv6 ? IpFamily::Inet6 : IpFamily::Inet)
             ->first();
 
-        if ($cakisan !== null) {
-            $fail("{$cidr} bloğu mevcut {$cakisan->cidr} bloğuyla çakışıyor.");
+        if ($conflicting !== null) {
+            $fail("{$cidr} bloğu mevcut {$conflicting->cidr} bloğuyla çakışıyor.");
         }
     }
 }

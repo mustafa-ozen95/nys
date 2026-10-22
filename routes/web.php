@@ -76,8 +76,8 @@ use Illuminate\Support\Facades\Route;
  * kilitli kalmaz (bkz. UserRequest).
  */
 Route::middleware('guest')->group(function (): void {
-    Route::get('/giris', [LoginController::class, 'create'])->name('login');
-    Route::post('/giris', [LoginController::class, 'store']);
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store']);
 
     /*
      * Kimlik Yönetim Merkezi ile giriş — İKİNCİ yol, tek yol değil.
@@ -90,8 +90,8 @@ Route::middleware('guest')->group(function (): void {
      * tarayıcı yönlendirmesiyle gelir, POST edemez. CSRF'in yerini oturumda
      * saklanan `state` tutar (bkz. CenterLoginController).
      */
-    Route::get('/giris/merkez', [CenterLoginController::class, 'baslat'])->name('kimlik.giris');
-    Route::get('/giris/merkez/geri', [CenterLoginController::class, 'geri'])->name('kimlik.donus');
+    Route::get('/login/center', [CenterLoginController::class, 'start'])->name('identity.login');
+    Route::get('/login/center/callback', [CenterLoginController::class, 'back'])->name('identity.callback');
 });
 
 /*
@@ -102,17 +102,17 @@ Route::middleware('guest')->group(function (): void {
  * Kimlik kontrolü controller içinde yapılır ve 401 döner.
  */
 Route::middleware('web')
-    ->get('ajax/uzak-oturum/dogrula', RemoteProxyGuardController::class)
+    ->get('ajax/remote-session/verify', RemoteProxyGuardController::class)
     ->name('ajax.remote.guard');
 
 Route::middleware('auth')->group(function (): void {
-    Route::post('/cikis', [LoginController::class, 'destroy'])->name('logout');
+    Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     /*
      * Panelin ayrıntı düzeyi. Kullanıcı yalnızca KENDİ görünüm tercihini
      * değiştirir; ayrı bir yetki gerekmez.
      */
-    Route::post('/gorunum-modu', PanelModeController::class)->name('panel-mode.toggle');
+    Route::post('/view-mode', PanelModeController::class)->name('panel-mode.toggle');
 
     Route::get('/', OverviewController::class)->name('overview');
 
@@ -126,7 +126,7 @@ Route::middleware('auth')->group(function (): void {
      * bölümü sanılırdı.
      */
     Route::controller(SwitchPasswordRotationController::class)
-        ->prefix('ayarlar/parolalar')
+        ->prefix('settings/passwords')
         ->name('settings.passwords')
         ->group(function (): void {
             Route::get('/', 'index')->name('');
@@ -135,15 +135,15 @@ Route::middleware('auth')->group(function (): void {
              * Süren turların aşaması — ekrandaki ilerleme çubuğu bunu yoklar.
              * GET: hiçbir şeyi değiştirmiyor, yalnızca aşama adı döndürüyor.
              */
-            Route::get('durum', 'progress')->name('.progress');
+            Route::get('status', 'progress')->name('.progress');
 
             Route::post('/', 'store')->name('.store');
             Route::put('{switch}', 'update')->name('.update');
 
             // Elle verilen parola: cihaza yaz ya da yalnızca panele kaydet.
-            Route::put('{switch}/elle', 'manual')->name('.manual');
+            Route::put('{switch}/manual', 'manual')->name('.manual');
 
-            Route::put('{rotation}/kurtarma', 'repair')->name('.repair');
+            Route::put('{rotation}/recovery', 'repair')->name('.repair');
         });
 
     /*
@@ -151,7 +151,7 @@ Route::middleware('auth')->group(function (): void {
      * "{section}" her şeyi yakalar ve "roller" bir ayar bölümü sanılırdı.
      */
     Route::controller(RoleController::class)
-        ->prefix('ayarlar/roller')
+        ->prefix('settings/roles')
         ->name('settings.roles')
         ->group(function (): void {
             Route::get('/', 'index')->name('');
@@ -160,7 +160,7 @@ Route::middleware('auth')->group(function (): void {
              * Süren turların aşaması — ekrandaki ilerleme çubuğu bunu yoklar.
              * GET: hiçbir şeyi değiştirmiyor, yalnızca aşama adı döndürüyor.
              */
-            Route::get('durum', 'progress')->name('.progress');
+            Route::get('status', 'progress')->name('.progress');
 
             Route::post('/', 'store')->name('.store');
             Route::get('{role}', 'show')->name('.show');
@@ -173,7 +173,7 @@ Route::middleware('auth')->group(function (): void {
      * çıkarmak yalnızca yöneticidedir.
      */
     Route::controller(ApiTokenController::class)
-        ->prefix('ayarlar/api')
+        ->prefix('settings/api')
         ->name('settings.api')
         ->group(function (): void {
             Route::get('/', 'index')->name('');
@@ -182,51 +182,51 @@ Route::middleware('auth')->group(function (): void {
              * Süren turların aşaması — ekrandaki ilerleme çubuğu bunu yoklar.
              * GET: hiçbir şeyi değiştirmiyor, yalnızca aşama adı döndürüyor.
              */
-            Route::get('durum', 'progress')->name('.progress');
+            Route::get('status', 'progress')->name('.progress');
 
             Route::post('/', 'store')->name('.store');
 
             // Belge {apiToken}'dan ÖNCE: yoksa "dokuman" bir uuid sanılırdı.
-            Route::get('dokuman', 'documentation')->name('.docs');
+            Route::get('docs', 'documentation')->name('.docs');
 
             Route::get('{apiToken}', 'show')->name('.show');
             Route::put('{apiToken}', 'update')->name('.update');
-            Route::put('{apiToken}/sir', 'rotate')->name('.rotate');
-            Route::put('{apiToken}/iptal', 'revoke')->name('.revoke');
+            Route::put('{apiToken}/secret', 'rotate')->name('.rotate');
+            Route::put('{apiToken}/revoke', 'revoke')->name('.revoke');
             Route::delete('{apiToken}', 'destroy')->name('.destroy');
         });
 
-    Route::controller(SettingController::class)->prefix('ayarlar')->name('settings.')->group(function (): void {
+    Route::controller(SettingController::class)->prefix('settings')->name('settings.')->group(function (): void {
         Route::get('/', 'index')->name('index');
 
         // Sınama ucu bölüm rotasından ÖNCE tanımlanır; aksi hâlde "sina"
         // bir bölüm adı sanılırdı.
-        Route::post('sina', 'test')->name('test');
+        Route::post('test', 'test')->name('test');
 
         /*
          * SERTİFİKA de bölüm rotasından ÖNCE: "sertifika" bir ayar bölümü
          * adı sanılırdı. Tur sunucuda koşar, panel yalnızca istek bırakır
          * (bkz. CertificateController ve kurulum tarafındaki sertifika ajanı).
          */
-        Route::get('sertifika', [CertificateController::class, 'index'])->name('sertifika');
-        Route::post('sertifika/tur', [CertificateController::class, 'baslat'])->name('sertifika.baslat');
-        Route::post('sertifika/onayla', [CertificateController::class, 'tamamla'])->name('sertifika.tamamla');
+        Route::get('certificate', [CertificateController::class, 'index'])->name('certificate');
+        Route::post('certificate/start', [CertificateController::class, 'start'])->name('certificate.start');
+        Route::post('certificate/confirm', [CertificateController::class, 'complete'])->name('certificate.confirm');
 
         /*
          * VERİTABANI de bölüm rotasından ÖNCE. Panel bağlantıyı sınar ve
          * taşıma isteğini bırakır; kopya yeniden başlatmada, panel kapalıyken
          * yapılır (bkz. DatabaseController ve ConnectionFile).
          */
-        Route::get('veritabani', [DatabaseController::class, 'index'])->name('veritabani');
-        Route::post('veritabani/sina', [DatabaseController::class, 'sina'])->name('veritabani.sina');
-        Route::post('veritabani/tasi', [DatabaseController::class, 'tasi'])->name('veritabani.tasi');
+        Route::get('database', [DatabaseController::class, 'index'])->name('database');
+        Route::post('database/test', [DatabaseController::class, 'sina'])->name('database.test');
+        Route::post('database/migrate', [DatabaseController::class, 'migrate'])->name('database.migrate');
 
         /*
          * GÜNCELLEME de bölüm rotasından ÖNCE. Yalnızca bakar: çalışan sürüm
          * GitHub'daki son başarılı derlemeyle karşılaştırılır (bkz. UpdateCheck).
          */
-        Route::get('guncelleme', [UpdateController::class, 'index'])->name('guncelleme');
-        Route::post('guncelleme', [UpdateController::class, 'denetle'])->name('guncelleme.denetle');
+        Route::get('update', [UpdateController::class, 'index'])->name('updates');
+        Route::post('update', [UpdateController::class, 'check'])->name('updates.check');
 
         Route::get('{section}', 'show')->name('show');
         Route::put('{section}', 'update')->name('update');
@@ -241,19 +241,19 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/', 'store')->name('store');
     });
 
-    Route::resource('switchler', NetworkSwitchController::class)
-        ->parameters(['switchler' => 'switch'])
+    Route::resource('switches', NetworkSwitchController::class)
+        ->parameters(['switches' => 'switch'])
         ->names('switches')
         // Ekleme ve düzenleme pencerede yapılır, ayrı sayfa yok.
         ->except(['create', 'edit']);
 
     // Cihaza YAZAN tek panel ucu. Yetkisi "configure", envanteri düzenleyen
     // "update"ten ayrıdır.
-    Route::put('switchler/{switch}/snmp-adi', SwitchSnmpIdentityController::class)
+    Route::put('switches/{switch}/snmp-name', SwitchSnmpIdentityController::class)
         ->name('switches.snmp-identity');
 
     // Yapılandırma yedeği: hedef adres ayarlardan gelir, cihaza yazılır.
-    Route::put('switchler/{switch}/yedek', SwitchArchivalController::class)
+    Route::put('switches/{switch}/backup', SwitchArchivalController::class)
         ->name('switches.archival');
 
     /*
@@ -265,10 +265,10 @@ Route::middleware('auth')->group(function (): void {
      * her gösterim kayda geçer ve adres POST'tur: tarayıcı geçmişine ve ön
      * yüklemeye takılmasın.
      */
-    Route::post('switchler/{switch}/parola', SwitchPasswordController::class)
+    Route::post('switches/{switch}/password', SwitchPasswordController::class)
         ->name('switches.password');
 
-    Route::get('switchler/{switch}/ayarlar', SwitchSettingsController::class)
+    Route::get('switches/{switch}/settings', SwitchSettingsController::class)
         ->name('switches.settings');
 
     /*
@@ -279,35 +279,35 @@ Route::middleware('auth')->group(function (): void {
      * Bildirim akışı: olan biten. HERKESE görünür — cihazda olan bir şey,
      * onu başlatan kişinin değil ağın olayıdır (bkz. NotificationFeed).
      */
-    Route::get('bildirimler', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('bildirimler/okundu', [NotificationController::class, 'seen'])->name('notifications.seen');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/seen', [NotificationController::class, 'seen'])->name('notifications.seen');
 
-    Route::get('switchler/{switch}/yazma-islemleri/{writeJob}', SwitchWriteJobController::class)
+    Route::get('switches/{switch}/write-jobs/{writeJob}', SwitchWriteJobController::class)
         ->scopeBindings()
         ->name('switches.write-jobs.show');
 
-    Route::get('switchler/{switch}/portlar', [SwitchPortController::class, 'index'])
+    Route::get('switches/{switch}/ports', [SwitchPortController::class, 'index'])
         ->name('switches.ports');
 
-    Route::put('switchler/{switch}/portlar/{port}', [SwitchPortController::class, 'update'])
+    Route::put('switches/{switch}/ports/{port}', [SwitchPortController::class, 'update'])
         ->scopeBindings()
         ->name('switches.ports.update');
 
-    Route::controller(VlanController::class)->prefix('switchler/{switch}/vlanlar')->name('switches.vlans')->scopeBindings()->group(function (): void {
+    Route::controller(VlanController::class)->prefix('switches/{switch}/vlans')->name('switches.vlans')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         Route::post('/', 'store')->name('.store');
         Route::put('{vlan}', 'update')->name('.update');
         Route::delete('{vlan}', 'destroy')->name('.destroy');
     });
 
-    Route::controller(SwitchIpAddressController::class)->prefix('switchler/{switch}/ip-adresleri')->name('switches.ip-addresses')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchIpAddressController::class)->prefix('switches/{switch}/ip-addresses')->name('switches.ip-addresses')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         Route::post('/', 'store')->name('.store');
         Route::put('{ipAddress}', 'update')->name('.update');
         Route::delete('{ipAddress}', 'destroy')->name('.destroy');
     });
 
-    Route::controller(SwitchRouteController::class)->prefix('switchler/{switch}/routelar')->name('switches.routes')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchRouteController::class)->prefix('switches/{switch}/routes')->name('switches.routes')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         Route::post('/', 'store')->name('.store');
         Route::put('{route}', 'update')->name('.update');
@@ -319,22 +319,22 @@ Route::middleware('auth')->group(function (): void {
      * Üçüncü parça (firewall terimi) kendi ekranında kalır; ayrı yönetilmesi
      * gereken bir nesne değil, oradaki bir eylem.
      */
-    Route::controller(SwitchForwardingController::class)->prefix('switchler/{switch}/filtre-yonlendirme')->name('switches.forwarding')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchForwardingController::class)->prefix('switches/{switch}/filter-forwarding')->name('switches.forwarding')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
 
-        Route::post('tablolar', 'storeInstance')->name('.instances.store');
-        Route::put('tablolar/{routingInstance}', 'updateInstance')->name('.instances.update');
-        Route::delete('tablolar/{routingInstance}', 'destroyInstance')->name('.instances.destroy');
+        Route::post('tables', 'storeInstance')->name('.instances.store');
+        Route::put('tables/{routingInstance}', 'updateInstance')->name('.instances.update');
+        Route::delete('tables/{routingInstance}', 'destroyInstance')->name('.instances.destroy');
 
-        Route::post('gruplar', 'storeGroup')->name('.groups.store');
-        Route::put('gruplar/{ribGroup}', 'updateGroup')->name('.groups.update');
-        Route::delete('gruplar/{ribGroup}', 'destroyGroup')->name('.groups.destroy');
+        Route::post('groups', 'storeGroup')->name('.groups.store');
+        Route::put('groups/{ribGroup}', 'updateGroup')->name('.groups.update');
+        Route::delete('groups/{ribGroup}', 'destroyGroup')->name('.groups.destroy');
 
         // Arayüz yollarının hangi gruba kopyalanacağı: FBF'nin sessiz parçası.
-        Route::put('baglama', 'bind')->name('.bind');
+        Route::put('binding', 'bind')->name('.bind');
     });
 
-    Route::controller(SwitchPrefixListController::class)->prefix('switchler/{switch}/prefix-listeler')->name('switches.prefix-lists')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchPrefixListController::class)->prefix('switches/{switch}/prefix-lists')->name('switches.prefix-lists')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         Route::post('/', 'store')->name('.store');
         // Listenin kendi ayarları: apply-path ifadeleri.
@@ -349,7 +349,7 @@ Route::middleware('auth')->group(function (): void {
      * ile açıktır. {firewallFilter} firewallFilters() ilişkisi üzerinden
      * çözülür: başka switchin filtresi eşleşmez.
      */
-    Route::controller(SwitchFirewallController::class)->prefix('switchler/{switch}/firewall')->name('switches.firewall')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchFirewallController::class)->prefix('switches/{switch}/firewall')->name('switches.firewall')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         Route::post('/', 'store')->name('.store');
 
@@ -365,10 +365,10 @@ Route::middleware('auth')->group(function (): void {
 
         Route::put('{firewallFilter}', 'update')->name('.update');
         Route::delete('{firewallFilter}', 'destroy')->name('.destroy');
-        Route::post('{firewallFilter}/terim', 'storeTerm')->name('.terms.store');
-        Route::put('{firewallFilter}/terim/{term}', 'updateTerm')->name('.terms.update');
-        Route::put('{firewallFilter}/siralama', 'reorderTerms')->name('.terms.order');
-        Route::delete('{firewallFilter}/terim/{term}', 'destroyTerm')->name('.terms.destroy');
+        Route::post('{firewallFilter}/term', 'storeTerm')->name('.terms.store');
+        Route::put('{firewallFilter}/term/{term}', 'updateTerm')->name('.terms.update');
+        Route::put('{firewallFilter}/order', 'reorderTerms')->name('.terms.order');
+        Route::delete('{firewallFilter}/term/{term}', 'destroyTerm')->name('.terms.destroy');
     });
 
     /*
@@ -377,7 +377,7 @@ Route::middleware('auth')->group(function (): void {
      * yoktur. {aggregate} parametresi aggregates() ilişkisi üzerinden çözülür;
      * fiziksel bir portun ya da başka switchin uuid'si eşleşmez.
      */
-    Route::controller(SwitchLinkAggregationController::class)->prefix('switchler/{switch}/toplama')->name('switches.aggregation')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchLinkAggregationController::class)->prefix('switches/{switch}/aggregation')->name('switches.aggregation')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         // "limit" {aggregate}'ten ÖNCE tanımlanır, yoksa uuid sanılır.
         Route::put('limit', 'deviceCount')->name('.device-count');
@@ -389,39 +389,39 @@ Route::middleware('auth')->group(function (): void {
      * Politikalar ve community'ler. BGP grubunun import/export alanı
      * buradaki adlara atıfta bulunur; tanımsız ada atıf commit'i düşürür.
      */
-    Route::controller(SwitchPolicyController::class)->prefix('switchler/{switch}/politikalar')->name('switches.policies')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchPolicyController::class)->prefix('switches/{switch}/policies')->name('switches.policies')->scopeBindings()->group(function (): void {
         Route::get('/', 'index');
         Route::post('/', 'store')->name('.store');
         Route::delete('{policyStatement}', 'destroy')->name('.destroy');
-        Route::post('{policyStatement}/terim', 'storeTerm')->name('.terms.store');
-        Route::put('{policyStatement}/terim/{term}', 'updateTerm')->name('.terms.update');
-        Route::put('{policyStatement}/siralama', 'reorderTerms')->name('.terms.order');
+        Route::post('{policyStatement}/term', 'storeTerm')->name('.terms.store');
+        Route::put('{policyStatement}/term/{term}', 'updateTerm')->name('.terms.update');
+        Route::put('{policyStatement}/order', 'reorderTerms')->name('.terms.order');
 
         /*
          * Politikanın KENDİ from/then'i: terimlerden sonra gelen varsayılan
          * davranış ("then reject;"). Terimlerden ayrı bir uçtur ama aynı
          * yazma yolunu kullanır — politika silinip yeniden yazılır.
          */
-        Route::put('{policyStatement}/varsayilan', 'updateDefaults')->name('.defaults');
-        Route::delete('{policyStatement}/terim/{term}', 'destroyTerm')->name('.terms.destroy');
+        Route::put('{policyStatement}/defaults', 'updateDefaults')->name('.defaults');
+        Route::delete('{policyStatement}/term/{term}', 'destroyTerm')->name('.terms.destroy');
     });
 
     /*
      * Cihazın kendi ayarları: adı, saat, isim/zaman/günlük sunucuları ve
      * SNMP community'leri. Hepsi cihaza yazar, hepsi "configure" ister.
      */
-    Route::put('switchler/{switch}/cihaz-ayarlari', SwitchDeviceSettingsController::class)
+    Route::put('switches/{switch}/device-settings', SwitchDeviceSettingsController::class)
         ->name('switches.device-settings');
 
     /*
      * Cihaz saatini NTP ile HEMEN düzeltir. Yapılandırma değişmediği için
      * yazma kuyruğundan geçmez (bkz. DeviceClockSynchronizer).
      */
-    Route::post('switchler/{switch}/cihaz-ayarlari/saat', [SwitchDeviceSettingsController::class, 'clock'])
+    Route::post('switches/{switch}/device-settings/clock', [SwitchDeviceSettingsController::class, 'clock'])
         ->name('switches.device-settings.clock');
 
     Route::controller(SwitchSnmpCommunityController::class)
-        ->prefix('switchler/{switch}/snmp-community')
+        ->prefix('switches/{switch}/snmp-community')
         ->name('switches.snmp-communities')
         ->scopeBindings()
         ->group(function (): void {
@@ -443,7 +443,7 @@ Route::middleware('auth')->group(function (): void {
      * silinmesi ise cihazdakine dokunmaz.
      */
     Route::controller(SwitchLoginUserController::class)
-        ->prefix('switchler/{switch}/cihaz-hesaplari')
+        ->prefix('switches/{switch}/device-accounts')
         ->name('switches.login-users')
         ->scopeBindings()
         ->group(function (): void {
@@ -457,24 +457,24 @@ Route::middleware('auth')->group(function (): void {
      * bir portta döngüyü değiştirebilir.
      */
     Route::controller(SwitchRstpController::class)
-        ->prefix('switchler/{switch}/spanning-tree')
+        ->prefix('switches/{switch}/spanning-tree')
         ->name('switches.rstp')
         ->scopeBindings()
         ->group(function (): void {
             Route::get('/', 'index')->name('');
             Route::put('kopru', 'bridge')->name('.bridge');
-            Route::post('arayuz', 'store')->name('.store');
-            Route::put('arayuz/{rstpInterface}', 'update')->name('.update');
-            Route::delete('arayuz/{rstpInterface}', 'destroy')->name('.destroy');
+            Route::post('interface', 'store')->name('.store');
+            Route::put('interface/{rstpInterface}', 'update')->name('.update');
+            Route::delete('interface/{rstpInterface}', 'destroy')->name('.destroy');
 
             /*
              * Fırtına denetimi aynı ekranda: ikisi de port korumasıdır ve
              * aynı yetkiye bağlıdır (yanlış eşik portu kullanılamaz yapar).
              */
-            Route::put('firtina', 'stormShutdown')->name('.storm.shutdown');
-            Route::post('firtina/arayuz', 'stormStore')->name('.storm.store');
-            Route::put('firtina/arayuz/{stormControl}', 'stormUpdate')->name('.storm.update');
-            Route::delete('firtina/arayuz/{stormControl}', 'stormDestroy')->name('.storm.destroy');
+            Route::put('storm', 'stormShutdown')->name('.storm.shutdown');
+            Route::post('storm/interface', 'stormStore')->name('.storm.store');
+            Route::put('storm/interface/{stormControl}', 'stormUpdate')->name('.storm.update');
+            Route::delete('storm/interface/{stormControl}', 'stormDestroy')->name('.storm.destroy');
         });
 
     /*
@@ -487,7 +487,7 @@ Route::middleware('auth')->group(function (): void {
      * kaydı eşleşmez.
      */
     Route::controller(SwitchMirroringController::class)
-        ->prefix('switchler/{switch}/port-aynalama')
+        ->prefix('switches/{switch}/port-mirroring')
         ->name('switches.mirroring')
         ->scopeBindings()
         ->group(function (): void {
@@ -497,7 +497,7 @@ Route::middleware('auth')->group(function (): void {
              * Süren turların aşaması — ekrandaki ilerleme çubuğu bunu yoklar.
              * GET: hiçbir şeyi değiştirmiyor, yalnızca aşama adı döndürüyor.
              */
-            Route::get('durum', 'progress')->name('.progress');
+            Route::get('status', 'progress')->name('.progress');
 
             Route::post('/', 'store')->name('.store');
             Route::put('{analyzer}', 'update')->name('.update');
@@ -513,14 +513,14 @@ Route::middleware('auth')->group(function (): void {
      * adından türetir ve switchte voipInterfaces() ilişkisi vardır.
      */
     Route::controller(SwitchVoipController::class)
-        ->prefix('switchler/{switch}/voip')
+        ->prefix('switches/{switch}/voip')
         ->name('switches.voip')
         ->scopeBindings()
         ->group(function (): void {
             Route::get('/', 'index')->name('');
-            Route::post('arayuz', 'store')->name('.store');
-            Route::put('arayuz/{voipInterface}', 'update')->name('.update');
-            Route::delete('arayuz/{voipInterface}', 'destroy')->name('.destroy');
+            Route::post('interface', 'store')->name('.store');
+            Route::put('interface/{voipInterface}', 'update')->name('.update');
+            Route::delete('interface/{voipInterface}', 'destroy')->name('.destroy');
         });
 
     /*
@@ -533,7 +533,7 @@ Route::middleware('auth')->group(function (): void {
      * kayda ait olmasını ZORUNLU kılar.
      */
     Route::controller(SwitchSecureAccessController::class)
-        ->prefix('switchler/{switch}/dhcp-snooping')
+        ->prefix('switches/{switch}/dhcp-snooping')
         ->name('switches.secure-access')
         ->scopeBindings()
         ->group(function (): void {
@@ -541,12 +541,12 @@ Route::middleware('auth')->group(function (): void {
             Route::post('vlan', 'vlanStore')->name('.vlan.store');
             Route::put('vlan/{secureVlan}', 'vlanUpdate')->name('.vlan.update');
             Route::delete('vlan/{secureVlan}', 'vlanDestroy')->name('.vlan.destroy');
-            Route::post('arayuz', 'interfaceStore')->name('.interface.store');
-            Route::put('arayuz/{secureInterface}', 'interfaceUpdate')->name('.interface.update');
-            Route::delete('arayuz/{secureInterface}', 'interfaceDestroy')->name('.interface.destroy');
+            Route::post('interface', 'interfaceStore')->name('.interface.store');
+            Route::put('interface/{secureInterface}', 'interfaceUpdate')->name('.interface.update');
+            Route::delete('interface/{secureInterface}', 'interfaceDestroy')->name('.interface.destroy');
         });
 
-    Route::controller(SwitchCommunityController::class)->prefix('switchler/{switch}/community')->name('switches.communities')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchCommunityController::class)->prefix('switches/{switch}/community')->name('switches.communities')->scopeBindings()->group(function (): void {
         Route::post('/', 'store')->name('.store');
         Route::put('{community}', 'update')->name('.update');
         Route::delete('{community}', 'destroy')->name('.destroy');
@@ -557,7 +557,7 @@ Route::middleware('auth')->group(function (): void {
      * ile bunlara atıfta bulunur; community'de olduğu gibi tanımsız ada atıf
      * commit'i düşürür.
      */
-    Route::controller(SwitchAsPathController::class)->prefix('switchler/{switch}/as-path')->name('switches.as-paths')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchAsPathController::class)->prefix('switches/{switch}/as-path')->name('switches.as-paths')->scopeBindings()->group(function (): void {
         Route::post('/', 'store')->name('.store');
         Route::put('{asPath}', 'update')->name('.update');
         Route::delete('{asPath}', 'destroy')->name('.destroy');
@@ -569,18 +569,18 @@ Route::middleware('auth')->group(function (): void {
      * ait olmasını ZORUNLU kılar. Bunsuz, A switchinde yetkisi olan biri B
      * switchinin grubunu değiştirebilirdi.
      */
-    Route::controller(SwitchBgpController::class)->prefix('switchler/{switch}/bgp')->name('switches.bgp')->group(function (): void {
+    Route::controller(SwitchBgpController::class)->prefix('switches/{switch}/bgp')->name('switches.bgp')->group(function (): void {
         Route::get('/', 'index');
-        Route::put('as-numarasi', 'autonomousSystem')->name('.autonomous-system');
+        Route::put('as-number', 'autonomousSystem')->name('.autonomous-system');
     });
 
-    Route::controller(SwitchBgpGroupController::class)->prefix('switchler/{switch}/bgp/gruplar')->name('switches.bgp.groups')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchBgpGroupController::class)->prefix('switches/{switch}/bgp/groups')->name('switches.bgp.groups')->scopeBindings()->group(function (): void {
         Route::post('/', 'store')->name('.store');
         Route::put('{bgpGroup}', 'update')->name('.update');
         Route::delete('{bgpGroup}', 'destroy')->name('.destroy');
     });
 
-    Route::controller(SwitchBgpNeighborController::class)->prefix('switchler/{switch}/bgp/gruplar/{bgpGroup}/komsular')->name('switches.bgp.neighbors')->scopeBindings()->group(function (): void {
+    Route::controller(SwitchBgpNeighborController::class)->prefix('switches/{switch}/bgp/groups/{bgpGroup}/neighbors')->name('switches.bgp.neighbors')->scopeBindings()->group(function (): void {
         Route::post('/', 'store')->name('.store');
         Route::put('{neighbor}', 'update')->name('.update');
         Route::delete('{neighbor}', 'destroy')->name('.destroy');
@@ -591,16 +591,16 @@ Route::middleware('auth')->group(function (): void {
      * çözülür, başka switchin commit'i eşleşmez.
      */
     Route::controller(SwitchCommitController::class)
-        ->prefix('switchler/{switch}/commitler')
+        ->prefix('switches/{switch}/commits')
         ->name('switches.commits')
         ->scopeBindings()
         ->group(function (): void {
             Route::get('/', 'index')->name('');
-            Route::put('{commit}/fark', 'preview')->name('.preview');
-            Route::put('{commit}/geri-al', 'rollback')->name('.rollback');
+            Route::put('{commit}/diff', 'preview')->name('.preview');
+            Route::put('{commit}/rollback', 'rollback')->name('.rollback');
         });
 
-    Route::get('ajax/switchler/{switch}/portlar/{port}/trafik', PortTrafficController::class)
+    Route::get('ajax/switches/{switch}/ports/{port}/traffic', PortTrafficController::class)
         ->scopeBindings()
         ->name('ajax.port.traffic');
 
@@ -613,7 +613,7 @@ Route::middleware('auth')->group(function (): void {
      * Yol 'sunucular/{server}' kalıbıyla çakışmasın diye ondan ÖNCE ve sabit
      * bir önekte; sonra tanımlansaydı "cikti" bir sunucu uuid'si sanılırdı.
      */
-    Route::post('cikti/baglanti', ConnectionOutputController::class)->name('export.connections');
+    Route::post('export/connections', ConnectionOutputController::class)->name('export.connections');
 
     /*
      * Sunucu parolası değiştirme.
@@ -622,62 +622,62 @@ Route::middleware('auth')->group(function (): void {
      * sunucu uuid'si sanılırdı.
      */
     Route::controller(ServerPasswordController::class)->group(function (): void {
-        Route::get('sunucular/parola/durum', 'durum')->name('servers.password.progress');
-        Route::post('sunucular/parola/toplu', 'toplu')->name('servers.password.bulk');
-        Route::post('sunucular/{server}/parola', 'dondur')->name('servers.password');
-        Route::post('parola-turu/{rotation}/onar', 'onar')->name('servers.password.repair');
+        Route::get('servers/password/status', 'status')->name('servers.password.progress');
+        Route::post('servers/password/bulk', 'bulk')->name('servers.password.bulk');
+        Route::post('servers/{server}/password', 'rotate')->name('servers.password');
+        Route::post('password-rounds/{rotation}/repair', 'repair')->name('servers.password.repair');
     });
 
-    Route::resource('sunucular', ServerController::class)
-        ->parameters(['sunucular' => 'server'])
+    Route::resource('servers', ServerController::class)
+        ->parameters(['servers' => 'server'])
         ->names('servers')
         ->except('show');
 
-    Route::controller(AddressBlockController::class)->prefix('adresleme')->name('addressing.')->group(function (): void {
+    Route::controller(AddressBlockController::class)->prefix('addressing')->name('addressing.')->group(function (): void {
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
-        Route::post('{block}/alt-ag', 'storeSubnet')->name('subnets.store');
+        Route::post('{block}/subnets', 'storeSubnet')->name('subnets.store');
         Route::put('{block}', 'update')->name('update');
         Route::delete('{block}', 'destroy')->name('destroy');
     });
 
-    Route::get('ajax/adresleme/{block}/yuvalar', AddressSlotController::class)->name('ajax.addressing.slots');
+    Route::get('ajax/addressing/{block}/slots', AddressSlotController::class)->name('ajax.addressing.slots');
 
-    Route::get('ajax/switchler/{switch}/hedefler', SwitchTargetController::class)->name('ajax.switches.targets');
+    Route::get('ajax/switches/{switch}/targets', SwitchTargetController::class)->name('ajax.switches.targets');
 
     /*
      * Komşudan alınan prefixler. Cihaza gidilir, bu yüzden sayfa yüklenirken
      * değil kullanıcı istediğinde çağrılır. {bgpNeighbor} bgpNeighbors()
      * ilişkisi üzerinden çözülür: başka switchin komşusu eşleşmez.
      */
-    Route::get('ajax/switchler/{switch}/bgp/{bgpNeighbor}/alinan', BgpReceivedRouteController::class)
+    Route::get('ajax/switches/{switch}/bgp/{bgpNeighbor}/received', BgpReceivedRouteController::class)
         ->scopeBindings()
         ->name('ajax.bgp.received');
 
     // Salt okunur genel bakış; yönetim switchin kendi BGP ekranındadır.
     Route::get('bgp', BgpOverviewController::class)->name('bgp.index');
 
-    Route::get('uzak-oturum/{token}', RemoteSessionPageController::class)->name('remote.session');
+    Route::get('remote-session/{token}', RemoteSessionPageController::class)->name('remote.session');
 
-    Route::prefix('ajax/uzak-oturum')->name('ajax.remote.')->group(function (): void {
-        Route::post('baglan', [RemoteSessionController::class, 'connect'])->name('connect');
-        Route::post('canli-tut', [RemoteSessionController::class, 'keepAlive'])->name('keep-alive');
-        Route::post('kapat', [RemoteSessionController::class, 'disconnect'])->name('disconnect');
+    Route::prefix('ajax/remote-session')->name('ajax.remote.')->group(function (): void {
+        Route::post('connect', [RemoteSessionController::class, 'connect'])->name('connect');
+        Route::post('keep-alive', [RemoteSessionController::class, 'keepAlive'])->name('keep-alive');
+        Route::post('disconnect', [RemoteSessionController::class, 'disconnect'])->name('disconnect');
     });
 
-    Route::resource('kullanicilar', UserController::class)
-        ->parameters(['kullanicilar' => 'user'])
+    Route::resource('users', UserController::class)
+        ->parameters(['users' => 'user'])
         ->names('users')
         ->except('show');
 
-    Route::controller(AnnouncementController::class)->prefix('prefix-anonsu')->name('announcements.')->group(function (): void {
+    Route::controller(AnnouncementController::class)->prefix('prefix-announcement')->name('announcements.')->group(function (): void {
         Route::get('/', 'create')->name('create');
-        Route::post('onizle', 'preview')->name('preview');
-        Route::post('gonder', 'send')->name('send');
+        Route::post('preview', 'preview')->name('preview');
+        Route::post('send', 'send')->name('send');
     });
 
     Route::controller(AnnouncementRecipientController::class)
-        ->prefix('prefix-anonsu/alicilar')
+        ->prefix('prefix-announcement/recipients')
         ->name('announcements.recipients.')
         ->group(function (): void {
             Route::get('/', 'index')->name('index');
@@ -689,35 +689,25 @@ Route::middleware('auth')->group(function (): void {
     /*
      * KAYITLAR: iki ekran, iki ayrı soru.
      *
-     *   etkinlik-kayitlari — kim ne yaptı (panelin kendi kaydı)
-     *   hata-kayitlari     — cihaz ne dedi (reddettiği, uyardığı işlemler)
+     *   logs/activity — kim ne yaptı (panelin kendi kaydı)
+     *   logs/device-operations — cihaz ne dedi (reddettiği, uyardığı işlemler)
      *
-     * İkisi de "kayitlar" altında durur: adres yapısı menüdeki adı yansıtır
+     * İkisi de "logs" altında durur: adres yapısı menüdeki adı yansıtır
      * ve hangisine bakıldığı adresten okunur. Yetki ikisinde de aynı
      * kaynaktan ("logs") gelir.
      */
-    Route::get('kayitlar/etkinlik-kayitlari', ActivityLogController::class)->name('logs.index');
+    Route::get('logs/activity', ActivityLogController::class)->name('logs.index');
 
-    Route::get('kayitlar/hata-kayitlari', DeviceOperationController::class)
+    Route::get('logs/device-operations', DeviceOperationController::class)
         ->name('logs.device-operations');
 
-    /*
-     * Eski adresler ölü bırakılmaz; yer imleri çalışmaya devam eder.
-     *
-     * "/kayitlar" ETKİNLİK kayıtlarıydı ve oraya gider: eski bir yer imini
-     * başka bir ekrana açmak, sessizce yanlış sayfayı göstermek olurdu.
-     */
-    Route::get('kayitlar', fn () => redirect()->route('logs.index', [], 301));
-    Route::get('kayitlar/cihaz-islemleri', fn () => redirect()->route('logs.device-operations', [], 301));
-    Route::get('hata-kayitlari', fn () => redirect()->route('logs.device-operations', [], 301));
-
-    Route::get('kullanicilar/{user}/yetkiler', [UserPermissionController::class, 'show'])
+    Route::get('users/{user}/permissions', [UserPermissionController::class, 'show'])
         ->name('users.permissions');
 
     // Rolün hazır şablonunu yeniden uygular; kişiye özel istisnaları
     // ezdiği için ayrı ve açık bir eylemdir.
 
-    Route::put('kullanicilar/{user}/yetkiler', [UserPermissionController::class, 'update'])
+    Route::put('users/{user}/permissions', [UserPermissionController::class, 'update'])
         ->name('users.permissions.update');
 });
 
@@ -726,8 +716,8 @@ Route::middleware('auth')->group(function (): void {
  *
  * Rol ve yetkiler burada değişmez; onlar yöneticinin ekranında durur.
  */
-Route::middleware('auth')->prefix('hesap')->name('hesap.')->group(function (): void {
-    Route::get('profil', [ProfileController::class, 'index'])->name('profil');
-    Route::put('profil', [ProfileController::class, 'update'])->name('profil.kaydet');
-    Route::put('parola', [ProfileController::class, 'parola'])->name('parola');
+Route::middleware('auth')->prefix('account')->name('account.')->group(function (): void {
+    Route::get('profile', [ProfileController::class, 'index'])->name('profile');
+    Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('password', [ProfileController::class, 'password'])->name('password');
 });

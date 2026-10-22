@@ -23,31 +23,31 @@ class DeviceSettingsSynchronizer
      */
     public function sync(NetworkSwitch $switch, NetconfSession $session): void
     {
-        $ayarlar = $this->reader->read($session);
+        $settings = $this->reader->read($session);
 
-        DB::transaction(function () use ($switch, $ayarlar): void {
+        DB::transaction(function () use ($switch, $settings): void {
             $switch->forceFill([
-                'snmp_location' => $ayarlar['snmp_location'],
-                'snmp_contact' => $ayarlar['snmp_contact'],
-                'time_zone' => $ayarlar['time_zone'],
-                'name_servers' => $ayarlar['name_servers'],
-                'ntp_servers' => $ayarlar['ntp_servers'],
-                'ntp_boot_server' => $ayarlar['ntp_boot_server'],
-                'lldp_interfaces' => $ayarlar['lldp_interfaces'],
-                'lldp_med_interfaces' => $ayarlar['lldp_med_interfaces'],
-                'igmp_snooping_vlans' => $ayarlar['igmp_snooping_vlans'],
-                'syslog_hosts' => $ayarlar['syslog_hosts'],
-                'rstp_configured' => $ayarlar['rstp']['configured'],
-                'rstp_enabled' => $ayarlar['rstp']['enabled'],
-                'rstp_bridge_priority' => $ayarlar['rstp']['bridge_priority'],
-                'rstp_bpdu_block_on_edge' => $ayarlar['rstp']['bpdu_block_on_edge'],
-                'alarm_ethernet_link_down' => $ayarlar['alarms']['ethernet'],
-                'alarm_management_link_down' => $ayarlar['alarms']['management'],
+                'snmp_location' => $settings['snmp_location'],
+                'snmp_contact' => $settings['snmp_contact'],
+                'time_zone' => $settings['time_zone'],
+                'name_servers' => $settings['name_servers'],
+                'ntp_servers' => $settings['ntp_servers'],
+                'ntp_boot_server' => $settings['ntp_boot_server'],
+                'lldp_interfaces' => $settings['lldp_interfaces'],
+                'lldp_med_interfaces' => $settings['lldp_med_interfaces'],
+                'igmp_snooping_vlans' => $settings['igmp_snooping_vlans'],
+                'syslog_hosts' => $settings['syslog_hosts'],
+                'rstp_configured' => $settings['rstp']['configured'],
+                'rstp_enabled' => $settings['rstp']['enabled'],
+                'rstp_bridge_priority' => $settings['rstp']['bridge_priority'],
+                'rstp_bpdu_block_on_edge' => $settings['rstp']['bpdu_block_on_edge'],
+                'alarm_ethernet_link_down' => $settings['alarms']['ethernet'],
+                'alarm_management_link_down' => $settings['alarms']['management'],
             ])->save();
 
-            $this->storeCommunities($switch, $ayarlar['communities']);
-            $this->storeLoginUsers($switch, $ayarlar['login_users']);
-            $this->storeRstpInterfaces($switch, $ayarlar['rstp']['interfaces']);
+            $this->storeCommunities($switch, $settings['communities']);
+            $this->storeLoginUsers($switch, $settings['login_users']);
+            $this->storeRstpInterfaces($switch, $settings['rstp']['interfaces']);
         });
     }
 
@@ -56,7 +56,7 @@ class DeviceSettingsSynchronizer
      */
     private function storeCommunities(NetworkSwitch $switch, array $communities): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($communities as $community) {
             /*
@@ -73,10 +73,10 @@ class DeviceSettingsSynchronizer
                 'clients' => $community['clients'],
             ])->save();
 
-            $tutulan[] = $model->id;
+            $kept[] = $model->id;
         }
 
-        $switch->snmpCommunities()->whereNotIn('id', $tutulan)->delete();
+        $switch->snmpCommunities()->whereNotIn('id', $kept)->delete();
     }
 
     /**
@@ -84,10 +84,10 @@ class DeviceSettingsSynchronizer
      */
     private function storeLoginUsers(NetworkSwitch $switch, array $users): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($users as $user) {
-            $tutulan[] = $switch->loginUsers()->updateOrCreate(
+            $kept[] = $switch->loginUsers()->updateOrCreate(
                 ['name' => $user['name']],
                 [
                     'full_name' => $user['full_name'],
@@ -98,7 +98,7 @@ class DeviceSettingsSynchronizer
             )->id;
         }
 
-        $switch->loginUsers()->whereNotIn('id', $tutulan)->delete();
+        $switch->loginUsers()->whereNotIn('id', $kept)->delete();
     }
 
     /**
@@ -106,10 +106,10 @@ class DeviceSettingsSynchronizer
      */
     private function storeRstpInterfaces(NetworkSwitch $switch, array $interfaces): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($interfaces as $interface) {
-            $tutulan[] = $switch->rstpInterfaces()->updateOrCreate(
+            $kept[] = $switch->rstpInterfaces()->updateOrCreate(
                 ['interface_name' => $interface['interface_name']],
                 [
                     'edge' => $interface['edge'],
@@ -120,6 +120,6 @@ class DeviceSettingsSynchronizer
             )->id;
         }
 
-        $switch->rstpInterfaces()->whereNotIn('id', $tutulan)->delete();
+        $switch->rstpInterfaces()->whereNotIn('id', $kept)->delete();
     }
 }

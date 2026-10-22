@@ -15,34 +15,34 @@ use Illuminate\Http\Request;
 /**
  * MERKEZDEN "bu kişi çıkış yaptı" bildirimi (bkz. SharedLogout).
  *
- * İmza anı da kapsar (`cikis|<subject>|<an>`); tutarsa an doğrudan
+ * İmza anı da kapsar (`logout|<subject>|<time>`); tutarsa zaman doğrudan
  * uygulanır, merkeze yeniden sorulmaz. Kimlik bildiriminden ayrı uç: o uç
  * kişi başına kısılıyor, çıkış kısılmamalı. Yanıt her durumda aynı.
  */
 class IdentityLogoutController extends Controller
 {
-    public function __invoke(Request $request, CenterClient $merkez): JsonResponse
+    public function __invoke(Request $request, CenterClient $center): JsonResponse
     {
         $subject = trim((string) $request->input('subject'));
-        $an = filter_var($request->input('an'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $sir = (string) config('identity.bildirim_sirri');
+        $time = filter_var($request->input('time'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $secret = (string) config('identity.notify_secret');
 
-        $imzali = $sir !== '' && $subject !== '' && $an !== false && hash_equals(
-            hash_hmac('sha256', 'cikis|'.$subject.'|'.$an, $sir),
-            (string) $request->header('X-Kimlik-Imza'),
+        $signed = $secret !== '' && $subject !== '' && $time !== false && hash_equals(
+            hash_hmac('sha256', 'logout|'.$subject.'|'.$time, $secret),
+            (string) $request->header('X-Identity-Signature'),
         );
 
-        if ($imzali && $merkez->acikMi()) {
+        if ($signed && $center->isOpen()) {
             $bag = UserIdentity::query()
-                ->where('provider', AccountMatcher::SAGLAYICI)
+                ->where('provider', AccountMatcher::PROVIDER)
                 ->where('subject', $subject)
                 ->first();
 
             if ($bag !== null) {
-                SharedLogout::isle($bag, $an);
+                SharedLogout::isle($bag, $time);
             }
         }
 
-        return response()->json(['sonuc' => 'alındı']);
+        return response()->json(['result' => 'received']);
     }
 }

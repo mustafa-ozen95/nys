@@ -33,17 +33,17 @@ final class GuacdEnvironmentTest extends TestCase
     #[Test]
     public function guacd_yazilabilir_bir_home_ile_baslatilir(): void
     {
-        $betik = file_get_contents(base_path('docker/rootfs/usr/local/bin/nsm-entrypoint'));
+        $script = file_get_contents(base_path('docker/rootfs/usr/local/bin/nsm-entrypoint'));
 
         $this->assertMatchesRegularExpression(
             '/\[program:guacd\](?:(?!\[program:).)*environment\s*=\s*[^\n]*HOME="[^"]+"/s',
-            $betik,
+            $script,
             'guacd supervisor bloğunda HOME tanımlı değil: FreeRDP sertifika deposunu açamaz.'
         );
 
         $this->assertStringContainsString(
             'chown -R nsm:nsm /var/lib/guacamole',
-            $betik,
+            $script,
             'HOME dizini nsm kullanıcısına verilmemiş: dizin açılamaz.'
         );
     }
@@ -52,7 +52,7 @@ final class GuacdEnvironmentTest extends TestCase
     public function rdp_kanal_eklentileri_imaja_kopyalanir(): void
     {
         $this->assertStringContainsString(
-            'COPY --from=guacd-derleme /usr/lib/x86_64-linux-gnu/freerdp2',
+            'COPY --from=guacd-build /usr/lib/x86_64-linux-gnu/freerdp2',
             file_get_contents(base_path('docker/Dockerfile')),
             'FreeRDP eklenti dizini imaja kopyalanmıyor: rdpdr/rdpsnd kanalları yüklenemez.'
         );

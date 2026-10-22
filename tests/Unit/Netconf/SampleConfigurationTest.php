@@ -38,25 +38,25 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_politika_yapilari_kayboluyor_mu(): void
     {
-        $politikalar = collect($this->oku(new PolicyStatementReader, 'sample-policy-options', 'statements'))
+        $policies = collect($this->read(new PolicyStatementReader, 'sample-policy-options', 'statements'))
             ->keyBy('name');
 
         // Rakamla başlayan politika adı (100-hepsi) okunabilmeli.
-        $this->assertTrue($politikalar->has('100-hepsi'));
+        $this->assertTrue($policies->has('100-hepsi'));
 
-        $musteri1 = $politikalar->get('prefixes-from-musteri1');
-        $terimler = collect($musteri1['terms'])->keyBy('name');
+        $customer1 = $policies->get('prefixes-from-musteri1');
+        $terms = collect($customer1['terms'])->keyBy('name');
 
         // "term clear" yalnızca "then" taşır; "from"u yoktur.
-        $this->assertSame('topluluk-a', $terimler['clear']['community_delete']);
+        $this->assertSame('topluluk-a', $terms['clear']['community_delete']);
 
         // prefix-list-filter kendi sütununa ayrılır, koşullara karışmaz.
-        $this->assertSame(['musteri1-PREFIXES'], $terimler['A']['match_prefix_lists']);
+        $this->assertSame(['musteri1-PREFIXES'], $terms['A']['match_prefix_lists']);
 
-        $self = collect($politikalar->get('self-all')['terms'])->keyBy('name');
+        $self = collect($policies->get('self-all')['terms'])->keyBy('name');
 
         // Çıplak "from prefix-list" ile "prefix-list-filter" AYRI şeylerdir.
-        $this->assertContains('filtre-hizmeti-a', $this->duzlestir($self['topluluk-a']['match_conditions']));
+        $this->assertContains('filtre-hizmeti-a', $this->flatten($self['topluluk-a']['match_conditions']));
 
         // route-filter prefix-length-range aralığı korunmalı.
         $this->assertNotEmpty($self['C']['match_conditions']);
@@ -68,11 +68,11 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_devre_disi_politika_isaretlenir(): void
     {
-        $politikalar = collect($this->oku(new PolicyStatementReader, 'sample-policy-options', 'statements'))
+        $policies = collect($this->read(new PolicyStatementReader, 'sample-policy-options', 'statements'))
             ->keyBy('name');
 
-        $this->assertTrue($politikalar->get('no-route')['is_inactive']);
-        $this->assertFalse($politikalar->get('100-hepsi')['is_inactive']);
+        $this->assertTrue($policies->get('no-route')['is_inactive']);
+        $this->assertFalse($policies->get('100-hepsi')['is_inactive']);
     }
 
     /**
@@ -81,37 +81,37 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_firewall_yapilari_kayboluyor_mu(): void
     {
-        $filtreler = collect($this->oku(new FirewallReader, 'sample-firewall', 'filters'))->keyBy('name');
+        $filters = collect($this->read(new FirewallReader, 'sample-firewall', 'filters'))->keyBy('name');
 
-        $udpFiltre = collect($filtreler->get('koru')['terms'])->keyBy('name')['udp-filtre'];
-        $this->assertSame(['100-120'], $udpFiltre['packet_lengths']);
-        $this->assertSame(['10-20'], $udpFiltre['ttls']);
-        $this->assertSame('udp-filtre-limit', $udpFiltre['policer']);
+        $udpFilter = collect($filters->get('koru')['terms'])->keyBy('name')['udp-filtre'];
+        $this->assertSame(['100-120'], $udpFilter['packet_lengths']);
+        $this->assertSame(['10-20'], $udpFilter['ttls']);
+        $this->assertSame('udp-filtre-limit', $udpFilter['policer']);
 
-        $icmp = collect($filtreler->get('koru1')['terms'])->keyBy('name')['icmp-stop'];
+        $icmp = collect($filters->get('koru1')['terms'])->keyBy('name')['icmp-stop'];
         $this->assertSame(['host-unreachable'], $icmp['icmp_codes']);
         $this->assertSame('icmp-stop', $icmp['count_name']);
 
-        $smtp = collect($filtreler->get('filtre-b-input')['terms'])->keyBy('name')['stop-smtp'];
+        $smtp = collect($filters->get('filtre-b-input')['terms'])->keyBy('name')['stop-smtp'];
         $this->assertTrue($smtp['is_tcp_initial']);
 
-        $parca = collect($filtreler->get('out-filter')['terms'])->keyBy('name')['fragment-drop'];
-        $this->assertTrue($parca['is_fragment']);
+        $fragment = collect($filters->get('out-filter')['terms'])->keyBy('name')['fragment-drop'];
+        $this->assertTrue($fragment['is_fragment']);
 
         // Filtre tabanlı yönlendirme: terim trafiği başka bir tabloya atar.
-        $fbf = collect($filtreler->get('siniflandir-a')['terms'])->keyBy('name')['tablo-a-musteri'];
+        $fbf = collect($filters->get('siniflandir-a')['terms'])->keyBy('name')['tablo-a-musteri'];
         $this->assertSame('tablo-a', $fbf['routing_instance']);
 
         /*
          * "from" var ama "then" YOK; Junos bu biçimi kabul ediyor.
          * Eylemi null okunmalı; terim düşmemeli.
          */
-        $meFilter = collect($filtreler->get('ORNEK-ME_FILTER')['terms'])->keyBy('name')['kabul'];
+        $meFilter = collect($filters->get('ORNEK-ME_FILTER')['terms'])->keyBy('name')['kabul'];
         $this->assertNull($meFilter['action']);
         $this->assertNotEmpty($meFilter['source_addresses']);
 
         // Devre dışı terim işaretlenmeli.
-        $this->assertTrue(collect($filtreler->get('koru1')['terms'])->keyBy('name')['allow']['is_inactive']);
+        $this->assertTrue(collect($filters->get('koru1')['terms'])->keyBy('name')['allow']['is_inactive']);
     }
 
     /**
@@ -119,8 +119,8 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_ipv6_filtresi_okunur(): void
     {
-        $filtreler = collect($this->oku(new FirewallReader, 'sample-firewall', 'filters'));
-        $v6 = $filtreler->firstWhere('name', 'V6-RE_FILTER');
+        $filters = collect($this->read(new FirewallReader, 'sample-firewall', 'filters'));
+        $v6 = $filters->firstWhere('name', 'V6-RE_FILTER');
 
         $this->assertNotNull($v6);
         $this->assertSame('inet6', $v6['family']->value);
@@ -132,7 +132,7 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_ipv6_route_rib_altindan_okunur(): void
     {
-        $routes = collect($this->oku(new RouteReader, 'sample-routing-options', 'configuredStatic'))
+        $routes = collect($this->read(new RouteReader, 'sample-routing-options', 'configuredStatic'))
             ->keyBy(static fn (array $route): string => $route['destination'].'/'.$route['prefix_length']);
 
         $v6 = $routes->get('2001:db8:f000::/36');
@@ -148,17 +148,17 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_devre_disi_bgp_grubu_isaretlenir(): void
     {
-        $gruplar = collect($this->oku(new BgpReader, 'sample-protocols', 'groups'))->keyBy('name');
+        $groups = collect($this->read(new BgpReader, 'sample-protocols', 'groups'))->keyBy('name');
 
-        $this->assertTrue($gruplar->get('router')['is_inactive']);
-        $this->assertFalse($gruplar->get('musteri1')['is_inactive']);
+        $this->assertTrue($groups->get('router')['is_inactive']);
+        $this->assertFalse($groups->get('musteri1')['is_inactive']);
 
         // IPv6 ailesi ve prefix-limit teardown/idle-timeout korunmalı.
-        $v6 = $gruplar->get('musteri1-v6');
-        $aile = collect($v6['families'])->firstWhere('family.value', 'inet6');
-        $this->assertNotNull($aile);
-        $this->assertSame(50, $aile['prefix_limit_maximum']);
-        $this->assertTrue($aile['teardown']);
+        $v6 = $groups->get('musteri1-v6');
+        $family = collect($v6['families'])->firstWhere('family.value', 'inet6');
+        $this->assertNotNull($family);
+        $this->assertSame(50, $family['prefix_limit_maximum']);
+        $this->assertTrue($family['teardown']);
     }
 
     /**
@@ -169,26 +169,26 @@ final class SampleConfigurationTest extends TestCase
      */
     public function test_arayuz_adresleri_kayboluyor_mu(): void
     {
-        $adresler = collect($this->oku(new IpAddressReader, 'sample-interfaces', 'addresses')['addresses']);
+        $addresses = collect($this->read(new IpAddressReader, 'sample-interfaces', 'addresses')['addresses']);
 
-        $cok = $adresler->where('interface_name', 'ge-0/1/0.0');
+        $many = $addresses->where('interface_name', 'ge-0/1/0.0');
 
         // Aynı birimde iki IPv4 ve bir IPv6.
-        $this->assertSame(['198.51.100.129', '198.18.5.109'], $cok->where('family', IpFamily::Inet)->pluck('address')->all());
-        $this->assertSame(['2001:db8:0:120::1'], $cok->where('family', IpFamily::Inet6)->pluck('address')->all());
+        $this->assertSame(['198.51.100.129', '198.18.5.109'], $many->where('family', IpFamily::Inet)->pluck('address')->all());
+        $this->assertSame(['2001:db8:0:120::1'], $many->where('family', IpFamily::Inet6)->pluck('address')->all());
 
         // /128 tekil IPv6 adresi.
-        $tekil = $adresler->firstWhere('address', '2001:db8:0:707::1');
-        $this->assertNotNull($tekil);
-        $this->assertSame(128, $tekil['prefix_length']);
+        $single = $addresses->firstWhere('address', '2001:db8:0:707::1');
+        $this->assertNotNull($single);
+        $this->assertSame(128, $single['prefix_length']);
 
         // ae arayüzünün kendi adresleri.
-        $ae = $adresler->where('interface_name', 'ae7.0');
+        $ae = $addresses->where('interface_name', 'ae7.0');
         $this->assertContains('198.51.100.142', $ae->pluck('address')->all());
         $this->assertContains('fd00:abcd:0002::2', $ae->pluck('address')->all());
 
         // L3 arayüzü (vlan.N) üstündeki adresler.
-        $l3 = $adresler->where('interface_name', 'vlan.910');
+        $l3 = $addresses->where('interface_name', 'vlan.910');
         $this->assertContains('203.0.113.134', $l3->pluck('address')->all());
         $this->assertContains('fd00:abcd:000b::2', $l3->pluck('address')->all());
     }
@@ -196,7 +196,7 @@ final class SampleConfigurationTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private function oku(object $reader, string $fixture, string $method): array
+    private function read(object $reader, string $fixture, string $method): array
     {
         $transport = new FakeNetconfTransport([$this->hello(), $this->fixture($fixture)]);
         $session = new NetconfSession($transport, new FramingNegotiator);
@@ -211,7 +211,7 @@ final class SampleConfigurationTest extends TestCase
      * @param  array<string, mixed>  $conditions
      * @return list<string>
      */
-    private function duzlestir(array $conditions): array
+    private function flatten(array $conditions): array
     {
         return Collection::make($conditions)
             ->flatten()

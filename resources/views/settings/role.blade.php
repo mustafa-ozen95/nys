@@ -21,50 +21,50 @@
 
                 <x-ui.panel title="Rol">
                     <div class="form-grid">
-                        <x-form.field name="label" label="Rol adı" id="rol-adi">
-                            <x-form.input name="label" id="rol-adi" :value="old('label', $role->label)" required />
+                        <x-form.field name="label" label="Rol adı" id="role-name">
+                            <x-form.input name="label" id="role-name" :value="old('label', $role->label)" required />
                         </x-form.field>
 
                         @if ($role->is_system)
                             {{-- Yerleşik rolün kod adı değişmez: kod ve seeder ona adıyla atıfta bulunuyor. --}}
-                            <x-form.field name="slug_readonly" label="Kod adı" id="rol-kod"
+                            <x-form.field name="slug_readonly" label="Kod adı" id="role-code"
                                           hint="Yerleşik rol; kod adı değiştirilemez.">
-                                <x-form.input name="slug_readonly" id="rol-kod" :value="$role->slug" mono disabled />
+                                <x-form.input name="slug_readonly" id="role-code" :value="$role->slug" mono disabled />
                             </x-form.field>
                         @else
-                            <x-form.field name="slug" label="Kod adı" id="rol-kod">
-                                <x-form.input name="slug" id="rol-kod" :value="old('slug', $role->slug)" mono required />
+                            <x-form.field name="slug" label="Kod adı" id="role-code">
+                                <x-form.input name="slug" id="role-code" :value="old('slug', $role->slug)" mono required />
                             </x-form.field>
                         @endif
 
-                        <x-form.field name="description" label="Açıklama" id="rol-aciklama" class="field--wide">
-                            <x-form.input name="description" id="rol-aciklama" :value="old('description', $role->description)" />
+                        <x-form.field name="description" label="Açıklama" id="role-description" class="field--wide">
+                            <x-form.input name="description" id="role-description" :value="old('description', $role->description)" />
                         </x-form.field>
 
-                        <x-form.field name="badge" label="Renk" id="rol-renk">
-                            <x-form.select name="badge" id="rol-renk" :options="$badgeOptions"
+                        <x-form.field name="badge" label="Renk" id="role-color">
+                            <x-form.select name="badge" id="role-color" :options="$badgeOptions"
                                            :selected="old('badge', $role->badge->value)" />
                         </x-form.field>
 
-                        <x-form.field name="position" label="Sıra" id="rol-sira"
+                        <x-form.field name="position" label="Sıra" id="role-order"
                                       hint="Listede küçükten büyüğe.">
-                            <x-form.input type="number" name="position" id="rol-sira" min="0" max="999"
+                            <x-form.input type="number" name="position" id="role-order" min="0" max="999"
                                           :value="old('position', $role->position)" />
                         </x-form.field>
 
-                        <x-form.field name="is_admin" label="Yönetici" id="rol-yonetici"
+                        <x-form.field name="is_admin" label="Yönetici" id="role-admin"
                                       hint="Bütün yetki kontrollerini geçer. En az bir yönetici rolü kalmak zorunda.">
                             <label class="checkbox">
-                                <input type="checkbox" name="is_admin" value="1" id="rol-yonetici"
+                                <input type="checkbox" name="is_admin" value="1" id="role-admin"
                                        @checked(old('is_admin', $role->is_admin))>
                                 <span>Bütün kontrolleri geçsin</span>
                             </label>
                         </x-form.field>
 
-                        <x-form.field name="is_default" label="Varsayılan rol" id="rol-varsayilan"
+                        <x-form.field name="is_default" label="Varsayılan rol" id="role-default"
                                       hint="Yönetici olmayan biri kullanıcı açtığında bu rol verilir. Tek bir rol varsayılan olabilir.">
                             <label class="checkbox">
-                                <input type="checkbox" name="is_default" value="1" id="rol-varsayilan"
+                                <input type="checkbox" name="is_default" value="1" id="role-default"
                                        @checked(old('is_default', $role->is_default))>
                                 <span>Yeni kullanıcıların varsayılanı</span>
                             </label>
@@ -80,7 +80,7 @@
                     <x-ui.panel title="Hazır yetkiler"
                                 subtitle="Şablon kullanıcıya yetki ekranından uygulanır; buradaki değişiklik mevcut kullanıcılara kendiliğinden yansımaz.">
                         @foreach ($resources as $resource)
-                            <div class="grid-row grid-row--static rol-kaynak">
+                            <div class="grid-row grid-row--static role-source">
                                 <span>{{ $resource['label'] }}</span>
                                 <span class="row row--wrap">
                                     @foreach ($resource['actions'] as $action)
@@ -102,13 +102,13 @@
                     <button type="submit" class="btn btn--primary">Kaydet</button>
 
                     @if ($role->isDeletable())
-                        <button type="submit" form="rol-sil" class="btn btn--danger">Sil</button>
+                        <button type="submit" form="role-delete" class="btn btn--danger">Sil</button>
                     @endif
                 </div>
             </form>
 
             @if ($role->isDeletable())
-                <form method="POST" id="rol-sil" hidden action="{{ route('settings.roles.destroy', $role) }}"
+                <form method="POST" id="role-delete" hidden action="{{ route('settings.roles.destroy', $role) }}"
                       data-confirm="{{ $role->label }} rolü silinecek."
                       data-confirm-title="Rolü sil" data-confirm-variant="danger"
                       data-confirm-verify="{{ $role->label }}">

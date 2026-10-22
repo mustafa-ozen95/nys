@@ -46,13 +46,13 @@ class CapabilityProbe
      */
     public function shouldProbe(NetworkSwitch $switch): bool
     {
-        $kayit = $switch->device_capabilities;
+        $record = $switch->device_capabilities;
 
-        if (! is_array($kayit) || $kayit === []) {
+        if (! is_array($record) || $record === []) {
             return true;
         }
 
-        return ($kayit[self::VERSION_KEY] ?? null) !== $switch->junos_version;
+        return ($record[self::VERSION_KEY] ?? null) !== $switch->junos_version;
     }
 
     /**
@@ -62,9 +62,9 @@ class CapabilityProbe
      */
     public function detect(NetconfSession $session, NetworkSwitch $switch): ?array
     {
-        $yetenekler = $this->capabilities();
+        $capabilities = $this->capabilities();
 
-        if ($yetenekler === []) {
+        if ($capabilities === []) {
             return null;
         }
 
@@ -83,12 +83,12 @@ class CapabilityProbe
             return null;
         }
 
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
-        $sonuc = [self::VERSION_KEY => $switch->junos_version];
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $result = [self::VERSION_KEY => $switch->junos_version];
 
         try {
-            foreach ($yetenekler as $yetenek) {
-                $sonuc[$yetenek->key()] = $this->measure($session, $yetenek->candidates($lehce, $switch));
+            foreach ($capabilities as $capability) {
+                $result[$capability->key()] = $this->measure($session, $capability->candidates($dialect, $switch));
             }
         } finally {
             /*
@@ -99,7 +99,7 @@ class CapabilityProbe
             $this->discard($session);
         }
 
-        return $sonuc;
+        return $result;
     }
 
     /**
@@ -108,17 +108,17 @@ class CapabilityProbe
      */
     private function measure(NetconfSession $session, array $candidates): array
     {
-        $kabul = [];
+        $accept = [];
 
-        foreach ($candidates as $deger => $belge) {
+        foreach ($candidates as $value => $document) {
             try {
                 $session->rpc(
                     '<load-configuration action="merge" format="xml"><configuration>'
-                    .$belge
+                    .$document
                     .'</configuration></load-configuration>'
                 );
 
-                $kabul[] = (string) $deger;
+                $accept[] = (string) $value;
             } catch (Throwable) {
                 /*
                  * Reddedilen değer sonucun kendisidir, hata değil. Kayda
@@ -127,7 +127,7 @@ class CapabilityProbe
             }
         }
 
-        return $kabul;
+        return $accept;
     }
 
     private function discard(NetconfSession $session): void
@@ -147,7 +147,7 @@ class CapabilityProbe
     private function capabilities(): array
     {
         return array_values(array_map(
-            static fn (string $sinif): DeviceCapability => app($sinif),
+            static fn (string $class): DeviceCapability => app($class),
             (array) config('capabilities.probes', []),
         ));
     }

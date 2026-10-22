@@ -126,16 +126,16 @@ class LinkAggregationConfigurator
      */
     private function membershipDocuments(SwitchPort $aggregate, array $memberNames): array
     {
-        $mevcut = $aggregate->members()->pluck('name')->all();
+        $current = $aggregate->members()->pluck('name')->all();
 
         $body = '';
 
-        foreach (array_diff($mevcut, $memberNames) as $cikarilan) {
-            $body .= $this->memberElement($cikarilan, null);
+        foreach (array_diff($current, $memberNames) as $removed) {
+            $body .= $this->memberElement($removed, null);
         }
 
-        foreach (array_diff($memberNames, $mevcut) as $eklenen) {
-            $body .= $this->memberElement($eklenen, $aggregate->name);
+        foreach (array_diff($memberNames, $current) as $added) {
+            $body .= $this->memberElement($added, $aggregate->name);
         }
 
         return $body === '' ? [] : [$this->wrap($body)];

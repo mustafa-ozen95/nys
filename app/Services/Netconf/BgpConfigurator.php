@@ -313,7 +313,7 @@ class BgpConfigurator
                 : '<multihop/>';
         }
 
-        $bayraklar = [
+        $flags = [
             'log-updown' => 'log_updown',
             'passive' => 'passive',
             'remove-private' => 'remove_private',
@@ -323,7 +323,7 @@ class BgpConfigurator
             'damping' => 'damping',
         ];
 
-        foreach ($bayraklar as $element => $key) {
+        foreach ($flags as $element => $key) {
             if (($attributes[$key] ?? false) === true) {
                 $body .= "<{$element}/>";
             }
@@ -422,14 +422,14 @@ class BgpConfigurator
     {
         $body = '<name>'.$this->escape((string) $attributes['address']).'</name>';
 
-        $metinler = [
+        $texts = [
             'description' => 'description',
             'peer-as' => 'peer_asn',
             'local-address' => 'local_address',
             'authentication-key' => 'authentication_key',
         ];
 
-        foreach ($metinler as $element => $key) {
+        foreach ($texts as $element => $key) {
             $value = $attributes[$key] ?? null;
 
             if ($this->filled($value)) {

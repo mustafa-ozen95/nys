@@ -24,8 +24,8 @@ import { $$, on } from '../lib/dom.js';
  * (BgpGroupRequest, BgpNeighborRequest).
  */
 
-function alan(form, ad) {
-    return form.querySelector(`[name="${ad}"]`);
+function field(form, name) {
+    return form.querySelector(`[name="${name}"]`);
 }
 
 /**
@@ -36,31 +36,31 @@ function alan(form, ad) {
  * kutu her zaman "işaretsiz" görünürdü — multihop açılınca TTL alanı hiç
  * açılmazdı.
  */
-function isaretli(form, ad) {
-    const kutu = form.querySelector(`[name="${ad}"][type="checkbox"]`);
+function marked(form, name) {
+    const box = form.querySelector(`[name="${name}"][type="checkbox"]`);
 
-    return kutu instanceof HTMLInputElement && kutu.checked;
+    return box instanceof HTMLInputElement && box.checked;
 }
 
 /**
  * Elemanın bütün koşulları sağlanıyor mu?
  */
-function gorunur(form, eleman) {
-    const tur = eleman.dataset.bgpTur;
+function visible(form, element) {
+    const type = element.dataset.bgpType;
 
-    if (tur && !tur.split(',').includes(alan(form, 'type')?.value ?? '')) {
+    if (type && !type.split(',').includes(field(form, 'type')?.value ?? '')) {
         return false;
     }
 
-    const onay = eleman.dataset.bgpOnay;
+    const approval = element.dataset.bgpApproval;
 
-    if (onay && !isaretli(form, onay)) {
+    if (approval && !marked(form, approval)) {
         return false;
     }
 
-    const onayDegil = eleman.dataset.bgpOnayDegil;
+    const approvalNot = element.dataset.bgpApprovalNot;
 
-    if (onayDegil && isaretli(form, onayDegil)) {
+    if (approvalNot && marked(form, approvalNot)) {
         return false;
     }
 
@@ -71,24 +71,24 @@ function gorunur(form, eleman) {
  * Gizlenen alanın girdileri devre dışı bırakılır: açık kalan alan sunucuya
  * çelişkili değer gönderir ve istek reddedilir.
  */
-function uygula(form) {
-    $$('[data-bgp-tur], [data-bgp-onay], [data-bgp-onay-degil]', form).forEach((eleman) => {
-        const acik = gorunur(form, eleman);
+function apply(form) {
+    $$('[data-bgp-type], [data-bgp-approval], [data-bgp-approval-not]', form).forEach((element) => {
+        const open = visible(form, element);
 
-        eleman.hidden = !acik;
+        element.hidden = !open;
 
-        $$('input, select, textarea', eleman).forEach((girdi) => {
-            girdi.disabled = !acik;
+        $$('input, select, textarea', element).forEach((input) => {
+            input.disabled = !open;
         });
     });
 }
 
-function formlar() {
-    return $$('[data-bgp-formu]');
+function forms() {
+    return $$('[data-bgp-form]');
 }
 
 export function init() {
-    formlar().forEach(uygula);
+    forms().forEach(apply);
 
-    on('change', '[data-bgp-formu]', (event, form) => uygula(form));
+    on('change', '[data-bgp-form]', (event, form) => apply(form));
 }

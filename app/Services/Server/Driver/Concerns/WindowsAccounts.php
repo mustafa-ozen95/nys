@@ -29,36 +29,36 @@ trait WindowsAccounts
     /** Yerleşik Administrators grubunun tanınmış kimliği. */
     private const ADMIN_GROUP_SID = 'S-1-5-32-544';
 
-    public function kurtarmaAc(ServerSession $oturum, string $kullanici, string $parola): void
+    public function recoveryOpen(ServerSession $session, string $user, string $password): void
     {
         /* Bu adı BİZ ürettik; dar süzgeçten geçmeli. */
-        $this->urettigimizAdiDenetle($kullanici);
+        $this->generatedNameCheck($user);
 
-        $ad = $this->adiKacir($kullanici);
+        $name = $this->escapeName($user);
 
-        $this->run($oturum, <<<PS
+        $this->run($session, <<<PS
             \$p = ConvertTo-SecureString ([Console]::In.ReadLine()) -AsPlainText -Force
-            New-LocalUser -Name '{$ad}' -Password \$p -PasswordNeverExpires -AccountNeverExpires | Out-Null
+            New-LocalUser -Name '{$name}' -Password \$p -PasswordNeverExpires -AccountNeverExpires | Out-Null
             \$grup = (Get-LocalGroup -SID '{$this->adminGroupSid()}').Name
-            Add-LocalGroupMember -Group \$grup -Member '{$ad}'
-            PS, 'Kurtarma hesabı açılamadı.', $parola);
+            Add-LocalGroupMember -Group \$grup -Member '{$name}'
+            PS, 'Kurtarma hesabı açılamadı.', $password);
     }
 
-    public function parolaDegistir(ServerSession $oturum, string $kullanici, string $yeniParola): void
+    public function passwordChange(ServerSession $session, string $user, string $newPassword): void
     {
-        $ad = $this->adiKacir($kullanici);
+        $name = $this->escapeName($user);
 
-        $this->run($oturum, <<<PS
+        $this->run($session, <<<PS
             \$p = ConvertTo-SecureString ([Console]::In.ReadLine()) -AsPlainText -Force
-            Set-LocalUser -Name '{$ad}' -Password \$p
-            PS, 'Parola değiştirilemedi.', $yeniParola);
+            Set-LocalUser -Name '{$name}' -Password \$p
+            PS, 'Parola değiştirilemedi.', $newPassword);
     }
 
-    public function kurtarmaSil(ServerSession $oturum, string $kullanici): void
+    public function recoveryDelete(ServerSession $session, string $user): void
     {
-        $ad = $this->adiKacir($kullanici);
+        $name = $this->escapeName($user);
 
-        $this->run($oturum, "Remove-LocalUser -Name '{$ad}'", 'Kurtarma hesabı silinemedi.');
+        $this->run($session, "Remove-LocalUser -Name '{$name}'", 'Kurtarma hesabı silinemedi.');
     }
 
     /**
@@ -71,17 +71,17 @@ trait WindowsAccounts
      *
      * Parola betiğe GİRMEZ; standart girdiden okunur.
      */
-    private function run(ServerSession $oturum, string $script, string $failure, ?string $stdin = null): void
+    private function run(ServerSession $session, string $script, string $failure, ?string $stdin = null): void
     {
         $wrapped = "\$ErrorActionPreference = 'Stop'\ntry {\n{$script}\n exit 0\n} catch { exit 1 }";
         $encoded = base64_encode(mb_convert_encoding($wrapped, 'UTF-16LE', 'UTF-8'));
 
-        $this->powerShellCalistir($oturum, $encoded, $failure, $stdin === null ? '' : $stdin."\n");
+        $this->powerShellRun($session, $encoded, $failure, $stdin === null ? '' : $stdin."\n");
     }
 
     /** Kodlanmış betiği taşımanın kendi yoluyla çalıştırır. */
-    abstract protected function powerShellCalistir(
-        ServerSession $oturum,
+    abstract protected function powerShellRun(
+        ServerSession $session,
         string $encodedCommand,
         string $failure,
         string $stdin,
@@ -107,25 +107,25 @@ trait WindowsAccounts
      * kuralı tırnağı İKİLEMEKTİR. Betik base64 (UTF-16LE) gidiyor; araya
      * kabuk girmiyor, bu yüzden başka kaçış gerekmiyor.
      */
-    private function adiKacir(string $kullanici): string
+    private function escapeName(string $user): string
     {
-        $ad = trim($kullanici);
+        $name = trim($user);
 
         /*
          * Yasaklı küme DÜZ LİSTE, düzenli ifade değil: aynı karakterlerin
          * yarısı hem PCRE'de hem PHP dizgesinde kaçış istiyor ve o kaçışların
          * biri eksik yazıldığında ifade sessizce bozuluyor (denendi).
          */
-        $yasak = '"/\\[]:;|=,+*?<>';
+        $forbidden = '"/\\[]:;|=,+*?<>';
 
-        if ($ad === ''
-            || mb_strlen($ad) > 20
-            || strpbrk($ad, $yasak) !== false
-            || preg_match('/[\x00-\x1F\x7F]/u', $ad) === 1) {
+        if ($name === ''
+            || mb_strlen($name) > 20
+            || strpbrk($name, $forbidden) !== false
+            || preg_match('/[\x00-\x1F\x7F]/u', $name) === 1) {
             throw new RotationError('Hesap adı Windows için geçersiz ya da gönderilemeyecek bir karakter içeriyor.');
         }
 
-        return str_replace("'", "''", $ad);
+        return str_replace("'", "''", $name);
     }
 
     /**
@@ -134,9 +134,9 @@ trait WindowsAccounts
      * Kurtarma hesabının adını panel seçiyor; beklenmedik bir şey çıkarsa bu
      * bizim hatamızdır ve makinede tuhaf adlı bir hesap açmadan önce durmalıyız.
      */
-    private function urettigimizAdiDenetle(string $kullanici): void
+    private function generatedNameCheck(string $user): void
     {
-        if (preg_match('/^[A-Za-z0-9._-]{1,20}$/', $kullanici) !== 1) {
+        if (preg_match('/^[A-Za-z0-9._-]{1,20}$/', $user) !== 1) {
             throw new RotationError('Üretilen kurtarma hesabı adı geçersiz.');
         }
     }

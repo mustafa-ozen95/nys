@@ -16,27 +16,27 @@ use Illuminate\Console\Command;
  */
 class SealActivityChainCommand extends Command
 {
-    protected $signature = 'network:log-seal {--onay : Mührü yaz (yoksa yalnızca neyin mühürleneceğini gösterir)}';
+    protected $signature = 'network:log-seal {--confirm : Mührü yaz (yoksa yalnızca neyin mühürleneceğini gösterir)}';
 
     protected $description = 'Bilinen eski zincir kırıklarını imzalı mühürle dondurur';
 
     public function handle(ActivityChain $chain): int
     {
-        if (! $this->option('onay')) {
-            $sonuc = $chain->verify();
-            $this->line("Şu an kırık: {$sonuc['broken_id']} ilk bozuk; mühürlenecek sayı --onay ile yazılırken gösterilir.");
-            $this->line('Yazmak için: network:log-seal --onay');
+        if (! $this->option('confirm')) {
+            $result = $chain->verify();
+            $this->line("Şu an kırık: {$result['broken_id']} ilk bozuk; mühürlenecek sayı --confirm ile yazılırken gösterilir.");
+            $this->line('Yazmak için: network:log-seal --confirm');
 
             return self::SUCCESS;
         }
 
-        $sonuc = $chain->seal('Bilinen eski kırıklar; satırlar değiştirilmedi');
+        $result = $chain->seal('Bilinen eski kırıklar; satırlar değiştirilmedi');
 
-        foreach ($sonuc['chains'] as $ad => $adet) {
-            $this->line("  {$ad}: {$adet} kırık satır mühürlendi");
+        foreach ($result['chains'] as $name => $count) {
+            $this->line("  {$name}: {$count} kırık satır mühürlendi");
         }
 
-        $this->info("Toplam {$sonuc['total']} satır mühürlendi.");
+        $this->info("Toplam {$result['total']} satır mühürlendi.");
 
         return self::SUCCESS;
     }

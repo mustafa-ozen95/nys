@@ -20,23 +20,23 @@ use Illuminate\Console\Command;
  */
 class IdentitySyncCommand extends Command
 {
-    protected $signature = 'ag:kimlik-esitle';
+    protected $signature = 'identity:sync';
 
     protected $description = 'Merkezdeki rol ve durum değişikliklerini yerel hesaplara uygular';
 
-    public function handle(CenterClient $merkez, IdentitySyncer $esitleyici): int
+    public function handle(CenterClient $center, IdentitySyncer $syncer): int
     {
-        if (! $merkez->acikMi()) {
+        if (! $center->isOpen()) {
             $this->warn('Kimlik Yönetim Merkezi yapılandırılmamış; eşitleme yapılmadı.');
 
             return self::SUCCESS;
         }
 
-        $sayac = $esitleyici->esitle();
+        $counter = $syncer->sync();
 
         $this->info(
-            "{$sayac['sorulan']} kimlik soruldu; {$sayac['kapatilan']} hesap kapatıldı, "
-            ."{$sayac['acilan']} hesap açıldı, {$sayac['rol_degisen']} hesabın rolü güncellendi."
+            "{$counter['sorulan']} kimlik soruldu; {$counter['kapatilan']} hesap kapatıldı, "
+            ."{$counter['acilan']} hesap açıldı, {$counter['rol_degisen']} hesabın rolü güncellendi."
         );
 
         return self::SUCCESS;

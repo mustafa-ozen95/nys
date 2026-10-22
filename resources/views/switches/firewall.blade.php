@@ -9,8 +9,8 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchFirewall', $switch)
-                    <button type="button" class="btn btn--sm" data-modal-open="policer-ekle">Policer ekle</button>
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="filtre-ekle">Filtre ekle</button>
+                    <button type="button" class="btn btn--sm" data-modal-open="policer-add">Policer ekle</button>
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="filter-add">Filtre ekle</button>
                 @endcan
             </div>
 
@@ -32,7 +32,7 @@
                     <x-ui.panel title="Policer'lar"
                                 subtitle="Terimlerin çağırdığı hız sınırları. Cihazda filtrenin dışında dururlar.">
                         @forelse ($policers as $policer)
-                            <div class="grid-row ayar-row">
+                            <div class="grid-row setting-row">
                                 <span class="mono">{{ $policer->name }}</span>
                                 <x-ui.badge :variant="$policer->badge">{{ $policer->state_label }}</x-ui.badge>
                                 <span class="text-sm text-muted">{{ $policer->summary }}</span>
@@ -109,13 +109,13 @@
                                 kazanır. Satırlar sürüklenerek sıralanır ve
                                 bırakma anında cihaza yazılır.
                             --}}
-                            <div @can('updateSwitchFirewall', $switch) data-sira="{{ route('switches.firewall.terms.order', [$switch, $filter]) }}" @endcan>
+                            <div @can('updateSwitchFirewall', $switch) data-order="{{ route('switches.firewall.terms.order', [$switch, $filter]) }}" @endcan>
                             @foreach ($filter->terms as $term)
                                 <div class="grid-row term-row"
-                                     @can('updateSwitchFirewall', $switch) draggable="true" data-sira-kimlik="{{ $term->uuid }}" @endcan>
+                                     @can('updateSwitchFirewall', $switch) draggable="true" data-order-id="{{ $term->uuid }}" @endcan>
                                     <span class="term-row__grip" aria-hidden="true">⠿</span>
-                                    <span class="mono term-row__ad">{{ $loop->iteration }}. {{ $term->name }}</span>
-                                    <span class="text-sm text-muted term-row__ozet">{{ $term->summary }}</span>
+                                    <span class="mono term-row__name">{{ $loop->iteration }}. {{ $term->name }}</span>
+                                    <span class="text-sm text-muted term-row__summary">{{ $term->summary }}</span>
                                     <x-ui.inactive-badge :inactive="$term->is_inactive" />
 
                                     @can('updateSwitchFirewall', $switch)
@@ -146,14 +146,14 @@
     </div>
 
     @can('createSwitchFirewall', $switch)
-        <x-ui.modal id="filtre-ekle" title="Yeni firewall filtresi" wide>
+        <x-ui.modal id="filter-add" title="Yeni firewall filtresi" wide>
             <form method="POST" action="{{ route('switches.firewall.store', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar. Yeni filtre bir arayüze bağlanana kadar trafiği etkilemez."
                   data-confirm-title="Cihaza yaz">
                 @csrf
                 <div class="modal__body stack">
-                    <x-form.field name="filter_name" label="Filtre adı" id="fw-ad">
-                        <x-form.input name="filter_name" id="fw-ad" mono required placeholder="koruma" />
+                    <x-form.field name="filter_name" label="Filtre adı" id="fw-name">
+                        <x-form.input name="filter_name" id="fw-name" mono required placeholder="koruma" />
                     </x-form.field>
 
                     {{--
@@ -162,13 +162,13 @@
                         ethernet-switching'de bulunur. Aynı kısıt sunucuda da
                         vardır; alanı gizlemek koruma değildir.
                     --}}
-                    <x-form.field kural="switch_firewall.filtre:family" name="family" label="Adres ailesi" id="fw-aile"
+                    <x-form.field rule="switch_firewall.filtre:family" name="family" label="Adres ailesi" id="fw-family"
                                   hint="Ailenin koşulları farklıdır; seçime göre aşağıdaki alanlar değişir.">
-                        <x-form.select name="family" id="fw-aile" :options="$familyOptions" selected="inet"
+                        <x-form.select name="family" id="fw-family" :options="$familyOptions" selected="inet"
                                        data-fw-family />
                     </x-form.field>
 
-                    <x-form.field kural="switch_firewall.filtre:interface_specific" name="interface_specific" label="Sayaç kapsamı" id="fw-is">
+                    <x-form.field rule="switch_firewall.filtre:interface_specific" name="interface_specific" label="Sayaç kapsamı" id="fw-is">
                         <label class="checkbox">
                             <input type="hidden" name="interface_specific" value="0">
                             <input type="checkbox" name="interface_specific" id="fw-is" value="1">
@@ -195,7 +195,7 @@
             </form>
         </x-ui.modal>
 
-        <x-ui.modal id="policer-ekle" title="Yeni policer">
+        <x-ui.modal id="policer-add" title="Yeni policer">
             <form method="POST" action="{{ route('switches.firewall.policers.store', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar. Policer bir terim tarafından çağrılana kadar trafiği etkilemez."
                   data-confirm-title="Cihaza yaz">
@@ -292,7 +292,7 @@
                     @method('PUT')
                     <x-form.version :record="$filter" />
                     <div class="modal__body stack">
-                        <x-form.field kural="switch_firewall.filtre:interface_specific" name="interface_specific" label="Sayaç kapsamı"
+                        <x-form.field rule="switch_firewall.filtre:interface_specific" name="interface_specific" label="Sayaç kapsamı"
                                       :id="'fwa'.$filter->uuid"
                                       hint="Açıkken sayaçlar filtrenin bağlı olduğu her arayüz için ayrı tutulur.">
                             <label class="checkbox">

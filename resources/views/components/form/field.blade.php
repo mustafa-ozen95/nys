@@ -12,14 +12,14 @@
     salt okunur tek satır. Basit mod sadeleştirir, gerçeği saklamaz.
 --}}
 @if ($locked())
-    <div {{ $attributes->except('id')->class('field field--kilitli') }}>
+    <div {{ $attributes->except('id')->class('field field--locked') }}>
         <span class="field__label">{{ $label }}</span>
-        <span class="field__deger">{{ $current }}</span>
+        <span class="field__value">{{ $current }}</span>
         <span class="field__hint">Cihazda tanımlı. Değiştirmek için gelişmiş moda geçin.</span>
     </div>
 @else
     {{-- Basit modda kapatılmış alan: görünmez ama girdisi formda kalır (bkz. Field::gizli). --}}
-    <div {{ $attributes->except(['id', 'kural'])->class(['field', 'field--basit-gizli' => $gizli()]) }}>
+    <div {{ $attributes->except(['id', 'kural'])->class(['field', 'field--simple-hidden' => $hidden()]) }}>
         <label class="field__label" for="{{ $id ?? $name }}">{{ $label }}</label>
 
         {{ $slot }}

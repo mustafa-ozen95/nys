@@ -55,26 +55,26 @@ class PrefixListAssignmentService
          * Sonradan sorulsaydı, yazma sırasında değişen bir duruma göre karar
          * verilmiş olurdu.
          */
-        $bekciler = $this->guards($previous?->switch_id ?? $current?->switch_id);
+        $guards = $this->guards($previous?->switch_id ?? $current?->switch_id);
 
-        $yapilanlar = [];
+        $done = [];
 
         if ($previous !== null) {
-            $yapilanlar = [
-                ...$yapilanlar,
+            $done = [
+                ...$done,
                 ...$this->remove($previous, $block->cidr),
-                ...$this->guard($bekciler, $previous, $block->cidr, add: false),
+                ...$this->guard($guards, $previous, $block->cidr, add: false),
             ];
         }
 
         if ($current !== null) {
             $this->lists->addEntry($current->switch, $current, $block->cidr);
-            $yapilanlar[] = "{$block->cidr} → {$current->name} ({$current->switch->hostname})";
+            $done[] = "{$block->cidr} → {$current->name} ({$current->switch->hostname})";
 
-            $yapilanlar = [...$yapilanlar, ...$this->guard($bekciler, $current, $block->cidr, add: true)];
+            $done = [...$done, ...$this->guard($guards, $current, $block->cidr, add: true)];
         }
 
-        return $yapilanlar;
+        return $done;
     }
 
     /**
@@ -97,9 +97,9 @@ class PrefixListAssignmentService
             return [];
         }
 
-        $bekciler = $this->guards($list->switch_id);
+        $guards = $this->guards($list->switch_id);
 
-        return [...$this->remove($list, $block->cidr), ...$this->guard($bekciler, $list, $block->cidr, add: false)];
+        return [...$this->remove($list, $block->cidr), ...$this->guard($guards, $list, $block->cidr, add: false)];
     }
 
     /**
@@ -114,27 +114,27 @@ class PrefixListAssignmentService
      *
      * @throws NetconfException
      */
-    private function guard(Collection $bekciler, SwitchPrefixList $chosen, string $cidr, bool $add): array
+    private function guard(Collection $guards, SwitchPrefixList $chosen, string $cidr, bool $add): array
     {
-        $yapilanlar = [];
+        $done = [];
 
-        foreach ($bekciler as $bekci) {
+        foreach ($guards as $guard) {
             // Seçilen listenin kendisi bekçiyse iki kez yazılmaz.
-            if ($bekci->id === $chosen->id) {
+            if ($guard->id === $chosen->id) {
                 continue;
             }
 
             if ($add) {
-                $this->lists->addEntry($bekci->switch, $bekci, $cidr);
-                $yapilanlar[] = "{$cidr} → {$bekci->name} (çıkış izni)";
+                $this->lists->addEntry($guard->switch, $guard, $cidr);
+                $done[] = "{$cidr} → {$guard->name} (çıkış izni)";
 
                 continue;
             }
 
-            $yapilanlar = [...$yapilanlar, ...$this->remove($bekci, $cidr)];
+            $done = [...$done, ...$this->remove($guard, $cidr)];
         }
 
-        return $yapilanlar;
+        return $done;
     }
 
     /**

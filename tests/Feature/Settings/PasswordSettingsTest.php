@@ -61,7 +61,7 @@ final class PasswordSettingsTest extends TestCase
     public function test_secim_kaydedilir_ve_uretimde_kullanilir(): void
     {
         $this->actingAs($this->admin())
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__length' => '32',
                 'credentials__rotation__symbols' => '1',
             ]))
@@ -71,10 +71,10 @@ final class PasswordSettingsTest extends TestCase
         $this->assertDatabaseHas('settings', ['key' => 'credentials.rotation.length']);
         $this->assertSame(32, (int) config('credentials.rotation.length'));
 
-        $parola = (new PasswordGenerator)->generate();
+        $password = (new PasswordGenerator)->generate();
 
-        $this->assertSame(32, mb_strlen($parola));
-        $this->assertMatchesRegularExpression('/[!#%+,\-.:=?@^_~]/', $parola);
+        $this->assertSame(32, mb_strlen($password));
+        $this->assertMatchesRegularExpression('/[!#%+,\-.:=?@^_~]/', $password);
     }
 
     /**
@@ -84,7 +84,7 @@ final class PasswordSettingsTest extends TestCase
     public function test_kapatilan_sinif_kaydedilir(): void
     {
         $this->actingAs($this->admin())
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__uppercase' => '0',
             ]))
             ->assertRedirect()
@@ -92,13 +92,13 @@ final class PasswordSettingsTest extends TestCase
 
         $this->assertFalse((bool) config('credentials.rotation.uppercase'));
 
-        $hepsi = '';
+        $all = '';
 
         for ($i = 0; $i < 20; $i++) {
-            $hepsi .= (new PasswordGenerator)->generate();
+            $all .= (new PasswordGenerator)->generate();
         }
 
-        $this->assertDoesNotMatchRegularExpression('/[A-Z]/', $hepsi);
+        $this->assertDoesNotMatchRegularExpression('/[A-Z]/', $all);
     }
 
     /**
@@ -110,15 +110,15 @@ final class PasswordSettingsTest extends TestCase
         foreach ([
             ['uppercase' => '0', 'digits' => '0', 'symbols' => '0'],
             ['lowercase' => '0', 'uppercase' => '0', 'symbols' => '0'],
-        ] as $secim) {
-            $gonderi = [];
+        ] as $selection) {
+            $submission = [];
 
-            foreach ($secim as $ad => $deger) {
-                $gonderi["credentials__rotation__{$ad}"] = $deger;
+            foreach ($selection as $name => $value) {
+                $submission["credentials__rotation__{$name}"] = $value;
             }
 
             $this->actingAs($this->admin())
-                ->put(route('settings.update', 'cihaz-parolasi'), $this->payload($gonderi))
+                ->put(route('settings.update', 'device-password'), $this->payload($submission))
                 ->assertSessionHasErrors();
         }
 
@@ -133,7 +133,7 @@ final class PasswordSettingsTest extends TestCase
     public function test_zayif_kalan_birlesim_kaydedilemez(): void
     {
         $this->actingAs($this->admin())
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__length' => '8',
                 'credentials__rotation__uppercase' => '0',
             ]))
@@ -155,7 +155,7 @@ final class PasswordSettingsTest extends TestCase
 
         // Önce geçerli bir ara durum: büyük harf kapalı, rakam açık.
         $this->actingAs($admin)
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__uppercase' => '0',
                 'credentials__rotation__length' => '16',
             ]))
@@ -165,7 +165,7 @@ final class PasswordSettingsTest extends TestCase
 
         // Sonra YALNIZCA rakamı kapatan tek alanlık bir istek.
         $this->actingAs($admin)
-            ->put(route('settings.update', 'cihaz-parolasi'), [
+            ->put(route('settings.update', 'device-password'), [
                 'credentials__rotation__digits' => '0',
             ])
             ->assertSessionHasErrors();
@@ -177,7 +177,7 @@ final class PasswordSettingsTest extends TestCase
     public function test_hicbir_sinif_acik_birakilamaz(): void
     {
         $this->actingAs($this->admin())
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__lowercase' => '0',
                 'credentials__rotation__uppercase' => '0',
                 'credentials__rotation__digits' => '0',
@@ -190,7 +190,7 @@ final class PasswordSettingsTest extends TestCase
     public function test_cok_kisa_uzunluk_reddedilir(): void
     {
         $this->actingAs($this->admin())
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__length' => '4',
             ]))
             ->assertSessionHasErrors('credentials__rotation__length');
@@ -210,7 +210,7 @@ final class PasswordSettingsTest extends TestCase
             ->assertSee('küçük harf, büyük harf ve rakam');
 
         $this->actingAs($admin)
-            ->put(route('settings.update', 'cihaz-parolasi'), $this->payload([
+            ->put(route('settings.update', 'device-password'), $this->payload([
                 'credentials__rotation__length' => '16',
                 'credentials__rotation__symbols' => '1',
             ]))

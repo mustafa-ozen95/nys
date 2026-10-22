@@ -265,8 +265,8 @@ final class NetconfSession
      */
     private function rpcName(string $body): ?string
     {
-        return preg_match('/^\s*<\s*([A-Za-z0-9_.:-]+)/', $body, $eslesme) === 1
-            ? $eslesme[1]
+        return preg_match('/^\s*<\s*([A-Za-z0-9_.:-]+)/', $body, $match) === 1
+            ? $match[1]
             : null;
     }
 }

@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
 final class RowComponentTest extends TestCase
 {
     /** Izgara şablonu tanımlayan satır sınıfları. */
-    private const IZGARA_SINIFLARI = [
+    private const GRID_CLASSES = [
         'switch-row', 'port-row', 'server-row', 'block-row',
         'bgp-row', 'peer-row', 'community-row', 'vlan-row', 'ip-row',
         'term-row', 'recipient-row',
@@ -32,19 +32,19 @@ final class RowComponentTest extends TestCase
 
     public function test_izgara_satiri_esnek_satir_siniflariyla_karistirilmaz(): void
     {
-        $hatalar = [];
+        $errors = [];
 
-        foreach ($this->bladeDosyalari() as $dosya) {
-            foreach ($this->classNitelikleri(file_get_contents($dosya)) as $satirNo => $siniflar) {
-                if ($this->hemEsnekHemIzgara($siniflar)) {
-                    $hatalar[] = basename($dosya).':'.$satirNo.' → '.$siniflar;
+        foreach ($this->bladeFiles() as $file) {
+            foreach ($this->classAttributes(file_get_contents($file)) as $rowNo => $classes) {
+                if ($this->bothFlexibleAndGrid($classes)) {
+                    $errors[] = basename($file).':'.$rowNo.' → '.$classes;
                 }
             }
         }
 
-        $this->assertSame([], $hatalar, implode("\n", [
+        $this->assertSame([], $errors, implode("\n", [
             'Izgara satırı "row" ile birlikte kullanılmış; ızgara şablonu uygulanmaz.',
-            ...$hatalar,
+            ...$errors,
         ]));
     }
 
@@ -55,59 +55,59 @@ final class RowComponentTest extends TestCase
             glob(__DIR__.'/../../../resources/css/components/*.css') ?: [],
         ));
 
-        foreach (self::IZGARA_SINIFLARI as $sinif) {
+        foreach (self::GRID_CLASSES as $class) {
             $this->assertMatchesRegularExpression(
-                '/\.'.preg_quote($sinif, '/').'\s*\{[^}]*grid-template-columns/s',
+                '/\.'.preg_quote($class, '/').'\s*\{[^}]*grid-template-columns/s',
                 $css,
-                "{$sinif} bir ızgara sınıfı ama grid-template-columns tanımlamıyor.",
+                "{$class} bir ızgara sınıfı ama grid-template-columns tanımlamıyor.",
             );
         }
     }
 
-    private function hemEsnekHemIzgara(string $siniflar): bool
+    private function bothFlexibleAndGrid(string $classes): bool
     {
-        $liste = preg_split('/\s+/', trim($siniflar)) ?: [];
+        $liste = preg_split('/\s+/', trim($classes)) ?: [];
 
         if (! in_array('row', $liste, true)) {
             return false;
         }
 
-        return array_intersect($liste, self::IZGARA_SINIFLARI) !== [];
+        return array_intersect($liste, self::GRID_CLASSES) !== [];
     }
 
     /**
      * @return array<int, string> satır numarası => class değeri
      */
-    private function classNitelikleri(string $icerik): array
+    private function classAttributes(string $content): array
     {
-        $bulunan = [];
+        $found = [];
 
-        foreach (explode("\n", $icerik) as $sira => $satir) {
-            if (preg_match('/class="([^"{}]*)"/', $satir, $eslesme) === 1) {
-                $bulunan[$sira + 1] = $eslesme[1];
+        foreach (explode("\n", $content) as $order => $row) {
+            if (preg_match('/class="([^"{}]*)"/', $row, $match) === 1) {
+                $found[$order + 1] = $match[1];
             }
         }
 
-        return $bulunan;
+        return $found;
     }
 
     /**
      * @return list<string>
      */
-    private function bladeDosyalari(): array
+    private function bladeFiles(): array
     {
-        $dizin = new \RecursiveIteratorIterator(
+        $directory = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator(__DIR__.'/../../../resources/views'),
         );
 
-        $dosyalar = [];
+        $files = [];
 
-        foreach ($dizin as $dosya) {
-            if ($dosya->isFile() && str_ends_with($dosya->getFilename(), '.blade.php')) {
-                $dosyalar[] = $dosya->getPathname();
+        foreach ($directory as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), '.blade.php')) {
+                $files[] = $file->getPathname();
             }
         }
 
-        return $dosyalar;
+        return $files;
     }
 }

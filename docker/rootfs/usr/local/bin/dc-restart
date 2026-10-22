@@ -13,11 +13,11 @@
 # =============================================================================
 set -u
 
-ISTEK="${UYGULAMA:-/uygulama}/storage/app/database/restart"
+REQUEST_FILE="${APP_ROOT:-/uygulama}/storage/app/database/restart"
 
 while sleep 2; do
-    if [[ -e "${ISTEK}" || -L "${ISTEK}" ]]; then
-        rm -f "${ISTEK}"
+    if [[ -e "${REQUEST_FILE}" || -L "${REQUEST_FILE}" ]]; then
+        rm -f "${REQUEST_FILE}"
         echo "[dc-restart] Panel yeniden başlatma istedi; süreç yöneticisi kapatılıyor."
         exec supervisorctl -c /etc/supervisor/supervisord.conf shutdown
     fi

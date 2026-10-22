@@ -29,24 +29,24 @@ final class BgpReaderTest extends TestCase
 {
     public function test_grup_alanlari_cozumlenir(): void
     {
-        $groups = $this->okuGruplar($this->fixture('bgp-configuration'));
+        $groups = $this->readGroups($this->fixture('bgp-configuration'));
 
         $this->assertCount(2, $groups);
 
-        $ic = $groups[0];
-        $this->assertSame('ic', $ic['name']);
-        $this->assertSame(BgpGroupType::Internal, $ic['type']);
-        $this->assertSame('198.18.8.38', $ic['local_address']);
-        $this->assertTrue($ic['passive']);
-        $this->assertFalse($ic['multihop']);
+        $inner = $groups[0];
+        $this->assertSame('ic', $inner['name']);
+        $this->assertSame(BgpGroupType::Internal, $inner['type']);
+        $this->assertSame('198.18.8.38', $inner['local_address']);
+        $this->assertTrue($inner['passive']);
+        $this->assertFalse($inner['multihop']);
     }
 
     public function test_multihop_ttl_ile_okunur(): void
     {
-        $dis = $this->okuGruplar($this->fixture('bgp-configuration'))[1];
+        $outer = $this->readGroups($this->fixture('bgp-configuration'))[1];
 
-        $this->assertTrue($dis['multihop']);
-        $this->assertSame(5, $dis['multihop_ttl']);
+        $this->assertTrue($outer['multihop']);
+        $this->assertSame(5, $outer['multihop_ttl']);
     }
 
     /**
@@ -55,7 +55,7 @@ final class BgpReaderTest extends TestCase
      */
     public function test_ttlsiz_multihop_acik_sayilir(): void
     {
-        $group = $this->okuGruplar($this->reply('<protocols><bgp><group>'
+        $group = $this->readGroups($this->reply('<protocols><bgp><group>'
             .'<name>x</name><type>external</type><multihop></multihop>'
             .'</group></bgp></protocols>'))[0];
 
@@ -71,7 +71,7 @@ final class BgpReaderTest extends TestCase
      */
     public function test_devre_disi_grup_ve_komsu_okunur(): void
     {
-        $group = $this->okuGruplar($this->reply('<protocols><bgp>'
+        $group = $this->readGroups($this->reply('<protocols><bgp>'
             .'<group inactive="inactive"><name>router</name><type>internal</type>'
             .'<neighbor inactive="inactive"><name>198.51.100.141</name></neighbor>'
             .'</group></bgp></protocols>'))[0];
@@ -82,7 +82,7 @@ final class BgpReaderTest extends TestCase
 
     public function test_etkin_grup_devre_disi_isaretlenmez(): void
     {
-        $group = $this->okuGruplar($this->reply('<protocols><bgp><group>'
+        $group = $this->readGroups($this->reply('<protocols><bgp><group>'
             .'<name>x</name><type>external</type>'
             .'<neighbor><name>198.51.100.134</name></neighbor>'
             .'</group></bgp></protocols>'))[0];
@@ -93,18 +93,18 @@ final class BgpReaderTest extends TestCase
 
     public function test_birden_fazla_import_politikasi_sirasiyla_okunur(): void
     {
-        $dis = $this->okuGruplar($this->fixture('bgp-configuration'))[1];
+        $outer = $this->readGroups($this->fixture('bgp-configuration'))[1];
 
-        $this->assertSame(['p1', 'p2'], $dis['import_policies']);
-        $this->assertSame(['e1'], $dis['export_policies']);
+        $this->assertSame(['p1', 'p2'], $outer['import_policies']);
+        $this->assertSame(['e1'], $outer['export_policies']);
     }
 
     public function test_local_as_ve_peer_as_ayri_okunur(): void
     {
-        $dis = $this->okuGruplar($this->fixture('bgp-configuration'))[1];
+        $outer = $this->readGroups($this->fixture('bgp-configuration'))[1];
 
-        $this->assertSame('65001', $dis['peer_asn']);
-        $this->assertSame('65009', $dis['local_asn']);
+        $this->assertSame('65001', $outer['peer_asn']);
+        $this->assertSame('65009', $outer['local_asn']);
     }
 
     /**
@@ -113,11 +113,11 @@ final class BgpReaderTest extends TestCase
      */
     public function test_prefix_siniri_unicast_ve_any_altinda_bulunur(): void
     {
-        $dis = $this->okuGruplar($this->fixture('bgp-configuration'))[1];
+        $outer = $this->readGroups($this->fixture('bgp-configuration'))[1];
 
-        $this->assertCount(2, $dis['families']);
+        $this->assertCount(2, $outer['families']);
 
-        [$inet, $inet6] = $dis['families'];
+        [$inet, $inet6] = $outer['families'];
 
         $this->assertSame(IpFamily::Inet, $inet['family']);
         // Cihazda "unicast" yazıyordu; geri yazarken "any"ye dönüşmemeli.
@@ -141,7 +141,7 @@ final class BgpReaderTest extends TestCase
      */
     public function test_idle_timeout_forever_dakikali_halden_ayrilir(): void
     {
-        $groups = $this->okuGruplar($this->fixture('bgp-configuration-backbone'));
+        $groups = $this->readGroups($this->fixture('bgp-configuration-backbone'));
 
         $v6 = collect($groups)->firstWhere('name', 'musteri1-v6');
 
@@ -152,36 +152,36 @@ final class BgpReaderTest extends TestCase
 
     public function test_omurga_grubu_cozumlenir(): void
     {
-        $groups = $this->okuGruplar($this->fixture('bgp-configuration-backbone'));
+        $groups = $this->readGroups($this->fixture('bgp-configuration-backbone'));
 
-        $musteri1 = collect($groups)->firstWhere('name', 'musteri1');
+        $customer1 = collect($groups)->firstWhere('name', 'musteri1');
 
-        $this->assertNotNull($musteri1);
-        $this->assertSame(BgpGroupType::External, $musteri1['type']);
-        $this->assertSame('64497', $musteri1['peer_asn']);
-        $this->assertSame('198.51.100.133', $musteri1['local_address']);
-        $this->assertTrue($musteri1['log_updown']);
-        $this->assertTrue($musteri1['multihop']);
-        $this->assertSame(['prefixes-from-musteri1'], $musteri1['import_policies']);
-        $this->assertSame(['only-default'], $musteri1['export_policies']);
-        $this->assertSame(200, $musteri1['families'][0]['prefix_limit_maximum']);
-        $this->assertSame('198.51.100.134', $musteri1['neighbors'][0]['address']);
+        $this->assertNotNull($customer1);
+        $this->assertSame(BgpGroupType::External, $customer1['type']);
+        $this->assertSame('64497', $customer1['peer_asn']);
+        $this->assertSame('198.51.100.133', $customer1['local_address']);
+        $this->assertTrue($customer1['log_updown']);
+        $this->assertTrue($customer1['multihop']);
+        $this->assertSame(['prefixes-from-musteri1'], $customer1['import_policies']);
+        $this->assertSame(['only-default'], $customer1['export_policies']);
+        $this->assertSame(200, $customer1['families'][0]['prefix_limit_maximum']);
+        $this->assertSame('198.51.100.134', $customer1['neighbors'][0]['address']);
     }
 
     public function test_komsu_kendi_degerleriyle_okunur(): void
     {
-        $dis = $this->okuGruplar($this->fixture('bgp-configuration'))[1];
+        $outer = $this->readGroups($this->fixture('bgp-configuration'))[1];
 
-        $this->assertCount(1, $dis['neighbors']);
-        $this->assertSame('198.18.8.37', $dis['neighbors'][0]['address']);
-        $this->assertSame('dis komsu', $dis['neighbors'][0]['description']);
-        $this->assertSame('65002', $dis['neighbors'][0]['peer_asn']);
-        $this->assertSame('198.18.8.38', $dis['neighbors'][0]['local_address']);
+        $this->assertCount(1, $outer['neighbors']);
+        $this->assertSame('198.18.8.37', $outer['neighbors'][0]['address']);
+        $this->assertSame('dis komsu', $outer['neighbors'][0]['description']);
+        $this->assertSame('65002', $outer['neighbors'][0]['peer_asn']);
+        $this->assertSame('198.18.8.38', $outer['neighbors'][0]['local_address']);
     }
 
     public function test_bgp_yoksa_bos_doner(): void
     {
-        $this->assertSame([], $this->okuGruplar($this->reply('<protocols/>')));
+        $this->assertSame([], $this->readGroups($this->reply('<protocols/>')));
     }
 
     /**
@@ -247,9 +247,9 @@ final class BgpReaderTest extends TestCase
     /**
      * @return list<array<string, mixed>>
      */
-    private function okuGruplar(string $reply): array
+    private function readGroups(string $reply): array
     {
-        return (new BgpReader)->groups($this->session($reply));
+        return (new BgpReader)->groups($this->makeSession($reply));
     }
 
     /**
@@ -259,7 +259,7 @@ final class BgpReaderTest extends TestCase
      */
     public function test_ileri_grup_ayarlari_okunur(): void
     {
-        $group = $this->okuGruplar($this->reply('<protocols><bgp><group>'
+        $group = $this->readGroups($this->reply('<protocols><bgp><group>'
             .'<name>transit</name><type>external</type>'
             .'<authentication-key>$9$gizli</authentication-key>'
             .'<hold-time>30</hold-time>'
@@ -289,18 +289,18 @@ final class BgpReaderTest extends TestCase
      */
     public function test_graceful_restart_uc_durumu_ayrilir(): void
     {
-        $oku = fn (string $body): BgpGracefulRestart => $this->okuGruplar($this->reply(
+        $read = fn (string $body): BgpGracefulRestart => $this->readGroups($this->reply(
             '<protocols><bgp><group><name>x</name><type>external</type>'.$body.'</group></bgp></protocols>'
         ))[0]['graceful_restart'];
 
-        $this->assertSame(BgpGracefulRestart::Inherit, $oku(''));
-        $this->assertSame(BgpGracefulRestart::Enabled, $oku('<graceful-restart/>'));
-        $this->assertSame(BgpGracefulRestart::Disabled, $oku('<graceful-restart><disable/></graceful-restart>'));
+        $this->assertSame(BgpGracefulRestart::Inherit, $read(''));
+        $this->assertSame(BgpGracefulRestart::Enabled, $read('<graceful-restart/>'));
+        $this->assertSame(BgpGracefulRestart::Disabled, $read('<graceful-restart><disable/></graceful-restart>'));
     }
 
     public function test_komsu_seviyesindeki_ayarlar_okunur(): void
     {
-        $neighbor = $this->okuGruplar($this->reply('<protocols><bgp><group>'
+        $neighbor = $this->readGroups($this->reply('<protocols><bgp><group>'
             .'<name>transit</name><type>external</type><neighbor>'
             .'<name>198.51.100.134</name>'
             .'<authentication-key>$9$komsu</authentication-key>'
@@ -323,10 +323,10 @@ final class BgpReaderTest extends TestCase
      */
     private function states(string $reply): array
     {
-        return (new BgpReader)->neighborStates($this->session($reply));
+        return (new BgpReader)->neighborStates($this->makeSession($reply));
     }
 
-    private function session(string $reply): NetconfSession
+    private function makeSession(string $reply): NetconfSession
     {
         $transport = new FakeNetconfTransport([$this->hello(), $reply]);
         $session = new NetconfSession($transport, new FramingNegotiator);

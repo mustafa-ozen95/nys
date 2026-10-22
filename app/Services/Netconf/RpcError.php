@@ -52,9 +52,9 @@ final class RpcError
      */
     public function line(): string
     {
-        $yer = $this->path !== null ? ' ('.trim(preg_replace('/\s+/', ' ', $this->path) ?? '').')' : '';
+        $place = $this->path !== null ? ' ('.trim(preg_replace('/\s+/', ' ', $this->path) ?? '').')' : '';
 
-        return $this->message.$yer;
+        return $this->message.$place;
     }
 
     /**

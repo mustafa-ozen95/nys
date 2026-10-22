@@ -75,7 +75,7 @@ class Topbar extends Component
             ['label' => 'Sunucular', 'route' => 'servers.index', 'ability' => 'viewAny', 'model' => Server::class],
             ['label' => 'Kullanıcılar', 'route' => 'users.index', 'ability' => 'viewAny', 'model' => User::class],
             /*
-             * "Kayıtlar" iki ekranın ORTAK adıdır ve ikisi de /kayitlar
+             * "Kayıtlar" iki ekranın ORTAK adıdır ve ikisi de /logs
              * altında durur; menü sahada aranana, hata kayıtlarına açılır.
              * Etkinlik kaydı oradan bir tıkla ulaşılabilir ve iki ekran
              * birbirine bağlı.

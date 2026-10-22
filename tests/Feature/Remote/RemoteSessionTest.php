@@ -27,13 +27,13 @@ final class RemoteSessionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private array $baslatilanlar = [];
+    private array $started = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->baslatilanlar = [];
+        $this->started = [];
 
         config([
             'remote.guacamole.url' => 'https://guacamole.test/guacamole',
@@ -45,9 +45,9 @@ final class RemoteSessionTest extends TestCase
             '*/api/tokens' => Http::response(['authToken' => 'sahte-jeton', 'dataSource' => 'json']),
         ]);
 
-        $this->app->instance(TtydManager::class, new class($this->baslatilanlar) extends TtydManager
+        $this->app->instance(TtydManager::class, new class($this->started) extends TtydManager
         {
-            public function __construct(public array &$kayit)
+            public function __construct(public array &$record)
             {
                 // Üst sınıfın bağımlılığı kasıtlı olarak kurulmaz: bu sahte
                 // uygulama hiçbir süreç başlatmaz.
@@ -55,14 +55,14 @@ final class RemoteSessionTest extends TestCase
 
             public function start(RemoteTarget $target, string $token): array
             {
-                $this->kayit[] = ['host' => $target->host, 'token' => $token];
+                $this->record[] = ['host' => $target->host, 'token' => $token];
 
                 return ['port' => 7700, 'path' => '/ssh-proxy/7700/'];
             }
 
             public function stop(int $port): void
             {
-                $this->kayit[] = ['stopped' => $port];
+                $this->record[] = ['stopped' => $port];
             }
         });
     }
@@ -95,7 +95,7 @@ final class RemoteSessionTest extends TestCase
             ->postJson(route('ajax.remote.connect'), ['type' => 'switch', 'id' => $switch->uuid])
             ->assertForbidden();
 
-        $this->assertSame([], $this->baslatilanlar);
+        $this->assertSame([], $this->started);
     }
 
     public function test_a_permitted_user_opens_a_session(): void
@@ -108,7 +108,7 @@ final class RemoteSessionTest extends TestCase
             ->assertJsonStructure(['token', 'label', 'protocol', 'url'])
             ->assertJson(['label' => 'sw-test-1', 'protocol' => 'ssh']);
 
-        $this->assertSame('198.18.30.39', $this->baslatilanlar[0]['host']);
+        $this->assertSame('198.18.30.39', $this->started[0]['host']);
     }
 
     public function test_opening_a_session_is_recorded(): void
@@ -187,7 +187,7 @@ final class RemoteSessionTest extends TestCase
             ->postJson(route('ajax.remote.connect'), ['type' => 'switch', 'id' => $switch->uuid])
             ->assertForbidden();
 
-        $this->assertSame([], $this->baslatilanlar);
+        $this->assertSame([], $this->started);
     }
 
     public function test_an_offline_server_cannot_be_connected_to(): void
@@ -208,7 +208,7 @@ final class RemoteSessionTest extends TestCase
             ->assertOk()
             ->assertJson(['protocol' => 'ssh']);
 
-        $this->assertSame('192.0.2.50', $this->baslatilanlar[0]['host']);
+        $this->assertSame('192.0.2.50', $this->started[0]['host']);
     }
 
     public function test_an_rdp_server_goes_to_guacamole_not_the_ssh_terminal(): void
@@ -224,7 +224,7 @@ final class RemoteSessionTest extends TestCase
             ->assertJson(['protocol' => 'rdp']);
 
         // RDP hedefine SSH terminali açılmamalı: eski davranış buydu.
-        $this->assertSame([], $this->baslatilanlar);
+        $this->assertSame([], $this->started);
 
         Http::assertSent(fn ($request): bool => str_contains($request->url(), '/api/tokens'));
     }
@@ -283,20 +283,20 @@ final class RemoteSessionTest extends TestCase
 
     public function test_the_switch_page_offers_a_connect_button_only_when_reachable(): void
     {
-        $baglanilir = $this->switch();
-        $kimliksiz = NetworkSwitch::factory()->create(['hostname' => 'KIMLIKSIZ']);
+        $connectable = $this->switch();
+        $identityless = NetworkSwitch::factory()->create(['hostname' => 'KIMLIKSIZ']);
 
         $this->actingAs($this->operator())
-            ->get(route('switches.show', $baglanilir))
+            ->get(route('switches.show', $connectable))
             ->assertOk()
-            ->assertSee('data-uzak-baglan', escape: false)
+            ->assertSee('data-remote-connect', escape: false)
             ->assertSee('Bağlan');
 
         // Kimlik bilgisi olmayan switche bağlanılamaz, düğme de çıkmaz.
         $this->actingAs($this->operator())
-            ->get(route('switches.show', $kimliksiz))
+            ->get(route('switches.show', $identityless))
             ->assertOk()
-            ->assertDontSee('data-uzak-baglan', escape: false);
+            ->assertDontSee('data-remote-connect', escape: false);
     }
 
     public function test_an_unknown_target_type_is_rejected(): void
@@ -325,7 +325,7 @@ final class RemoteSessionTest extends TestCase
             ->assertOk();
 
         $this->assertNull(app(RemoteSessionStore::class)->get($token));
-        $this->assertContains(['stopped' => 7700], $this->baslatilanlar);
+        $this->assertContains(['stopped' => 7700], $this->started);
     }
 
     public function test_keeping_an_unknown_session_alive_reports_it_as_dead(): void
@@ -352,9 +352,9 @@ final class RemoteSessionTest extends TestCase
     public function test_baskasinin_oturumu_kapatilamaz_ve_uzatilamaz(): void
     {
         $switch = $this->switch();
-        $sahibi = $this->operator();
+        $owner = $this->operator();
 
-        $jeton = $this->actingAs($sahibi)
+        $token = $this->actingAs($owner)
             ->postJson(route('ajax.remote.connect'), [
                 'type' => 'switch',
                 'id' => $switch->uuid,
@@ -362,20 +362,20 @@ final class RemoteSessionTest extends TestCase
             ->assertOk()
             ->json('token');
 
-        $baskasi = $this->operator();
+        $other = $this->operator();
 
-        $this->actingAs($baskasi)
-            ->postJson(route('ajax.remote.keep-alive'), ['token' => $jeton])
+        $this->actingAs($other)
+            ->postJson(route('ajax.remote.keep-alive'), ['token' => $token])
             ->assertOk()
             ->assertJson(['alive' => false]);
 
-        $this->actingAs($baskasi)
-            ->postJson(route('ajax.remote.disconnect'), ['token' => $jeton])
+        $this->actingAs($other)
+            ->postJson(route('ajax.remote.disconnect'), ['token' => $token])
             ->assertNotFound();
 
         /* Sahibi hâlâ kullanabiliyor. */
-        $this->actingAs($sahibi)
-            ->postJson(route('ajax.remote.keep-alive'), ['token' => $jeton])
+        $this->actingAs($owner)
+            ->postJson(route('ajax.remote.keep-alive'), ['token' => $token])
             ->assertOk()
             ->assertJson(['alive' => true]);
     }

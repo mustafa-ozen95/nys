@@ -18,26 +18,26 @@ final class QueueScopeTest extends TestCase
 {
     public function test_her_is_kuyrugunu_acikca_secer(): void
     {
-        $eksik = [];
+        $missing = [];
 
-        foreach (glob(app_path('Jobs/*.php')) as $dosya) {
-            $kod = $this->yorumsuz((string) file_get_contents($dosya));
+        foreach (glob(app_path('Jobs/*.php')) as $file) {
+            $code = $this->uncommented((string) file_get_contents($file));
 
             // Kuyruğa girmeyen sınıf (varsa) bu kuralın dışındadır.
-            if (! str_contains($kod, 'ShouldQueue')) {
+            if (! str_contains($code, 'ShouldQueue')) {
                 continue;
             }
 
-            if (! str_contains($kod, 'onQueue(') && ! str_contains($kod, '$queue')) {
-                $eksik[] = basename($dosya);
+            if (! str_contains($code, 'onQueue(') && ! str_contains($code, '$queue')) {
+                $missing[] = basename($file);
             }
         }
 
         $this->assertSame(
             [],
-            $eksik,
+            $missing,
             "Bu işler kuyruğunu seçmiyor; \"default\" kuyruğuna düşerler ve onları dinleyen işçi yok:\n  "
-            .implode("\n  ", $eksik),
+            .implode("\n  ", $missing),
         );
     }
 
@@ -48,19 +48,19 @@ final class QueueScopeTest extends TestCase
      * satırına almak testi geçiriyordu — yani kural görünüşte duruyor, gerçekte
      * yok. Metin araması değil KOD araması gerekiyor.
      */
-    private function yorumsuz(string $kaynak): string
+    private function uncommented(string $source): string
     {
-        $kod = '';
+        $code = '';
 
-        foreach (token_get_all($kaynak) as $parca) {
-            if (is_array($parca) && in_array($parca[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+        foreach (token_get_all($source) as $fragment) {
+            if (is_array($fragment) && in_array($fragment[0], [T_COMMENT, T_DOC_COMMENT], true)) {
                 continue;
             }
 
-            $kod .= is_array($parca) ? $parca[1] : $parca;
+            $code .= is_array($fragment) ? $fragment[1] : $fragment;
         }
 
-        return $kod;
+        return $code;
     }
 
     /**
@@ -70,9 +70,9 @@ final class QueueScopeTest extends TestCase
     public function test_secilen_kuyruklarin_dinleyicisi_var(): void
     {
         // systemd birimi + zamanlayıcının açtığı işçiler.
-        $dinlenen = ['nms-switch-write', config('zabbix.queue')];
+        $listened = ['nms-switch-write', config('zabbix.queue')];
 
-        $secilen = [
+        $selected = [
             'announcements.queue' => config('announcements.queue'),
             'netconf.write_queue' => config('netconf.write_queue'),
             'netconf.queue' => config('netconf.queue'),
@@ -80,11 +80,11 @@ final class QueueScopeTest extends TestCase
             'credentials.rotation.queue' => config('credentials.rotation.queue'),
         ];
 
-        foreach ($secilen as $anahtar => $kuyruk) {
+        foreach ($selected as $key => $queue) {
             $this->assertContains(
-                $kuyruk,
-                $dinlenen,
-                "{$anahtar} = \"{$kuyruk}\" kuyruğunu dinleyen bir işçi yok.",
+                $queue,
+                $listened,
+                "{$key} = \"{$queue}\" kuyruğunu dinleyen bir işçi yok.",
             );
         }
     }

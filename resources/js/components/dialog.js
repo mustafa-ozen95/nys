@@ -3,10 +3,10 @@ import { $, on } from '../lib/dom.js';
 /**
  * Form pencerelerini açıp kapatır.
  *
- * Açmak için: <button data-modal-open="blok-ekle">
+ * Açmak için: <button data-modal-open="block-add">
  * Kapatmak için: data-modal-close, Escape veya zemine tıklama.
  *
- * Sunucudan doğrulama hatasıyla dönen pencere data-modal-acik ile açık gelir.
+ * Sunucudan doğrulama hatasıyla dönen pencere data-modal-open ile açık gelir.
  */
 
 function open(id) {
@@ -40,9 +40,9 @@ function close(box) {
 
     box.querySelectorAll('form').forEach((form) => form.reset());
 
-    box.querySelectorAll('.field__error').forEach((hata) => hata.remove());
-    box.querySelectorAll('[aria-invalid="true"]').forEach((alan) => {
-        alan.setAttribute('aria-invalid', 'false');
+    box.querySelectorAll('.field__error').forEach((error) => error.remove());
+    box.querySelectorAll('[aria-invalid="true"]').forEach((field) => {
+        field.setAttribute('aria-invalid', 'false');
     });
 }
 
@@ -70,7 +70,7 @@ export function init() {
         }
     });
 
-    $('[data-modal-acik]')?.removeAttribute('hidden');
+    $('[data-modal-open]')?.removeAttribute('hidden');
 
     /*
      * DOĞRULAMA HATASI OLAN PENCERE KENDİLİĞİNDEN AÇILIR.
@@ -84,11 +84,11 @@ export function init() {
      * içinde hata olan pencere kendini açar. Yirmi forma tek tek gizli alan
      * eklemek, birini unutmaya açık olurdu.
      */
-    const hatali = $('[data-modal] .field__error')?.closest('[data-modal]');
+    const invalid = $('[data-modal] .field__error')?.closest('[data-modal]');
 
-    if (hatali) {
-        hatali.hidden = false;
-        hatali.querySelector('.field__error')
+    if (invalid) {
+        invalid.hidden = false;
+        invalid.querySelector('.field__error')
             ?.closest('.field')
             ?.querySelector('input, select, textarea')
             ?.focus();

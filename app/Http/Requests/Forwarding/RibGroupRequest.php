@@ -30,10 +30,10 @@ class RibGroupRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $satirlar = preg_split('/\r\n|\r|\n/', (string) $this->input('import_ribs', '')) ?: [];
+        $rows = preg_split('/\r\n|\r|\n/', (string) $this->input('import_ribs', '')) ?: [];
 
         $this->merge([
-            'import_ribs' => array_values(array_filter(array_map(trim(...), $satirlar), 'strlen')),
+            'import_ribs' => array_values(array_filter(array_map(trim(...), $rows), 'strlen')),
         ]);
     }
 
@@ -43,15 +43,15 @@ class RibGroupRequest extends FormRequest
     public function rules(): array
     {
         $switchId = $this->route('switch')->id;
-        $mevcut = $this->route('ribGroup');
+        $current = $this->route('ribGroup');
 
         return [
             'name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:63', 'regex:/^[A-Za-z0-9_.-]+$/',
                 Rule::unique(SwitchRibGroup::class, 'name')
                     ->where('switch_id', $switchId)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             /*

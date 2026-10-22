@@ -119,9 +119,9 @@ class DeviceWriteScenarios
     private function stormControl(NetworkSwitch $switch): array
     {
         $storm = app(StormControlConfigurator::class);
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
 
-        $arayuz = $lehce->supportsAllKeyword()
+        $interface = $dialect->supportsAllKeyword()
             ? 'all'
             : $switch->ports()
                 ->where('interface_kind', PortType::Physical)
@@ -129,32 +129,32 @@ class DeviceWriteScenarios
                 ->orderBy('if_index')
                 ->value('name');
 
-        if ($arayuz === null) {
-            $atla = static function (): never {
+        if ($interface === null) {
+            $skip = static function (): never {
                 throw new ScenarioNotApplicable(
                     'Bu lehçe "all" kısayolunu kabul etmiyor ve cihazda anahtarlama portu yok.',
                 );
             };
 
             return [
-                'firtina · yüzde eşiği' => $atla,
-                'firtina · kbps eşiği' => $atla,
-                'firtina · trafik türü muafiyeti' => $atla,
-                'firtina · korunan ham satır' => $atla,
+                'firtina · yüzde eşiği' => $skip,
+                'firtina · kbps eşiği' => $skip,
+                'firtina · trafik türü muafiyeti' => $skip,
+                'firtina · korunan ham satır' => $skip,
                 'firtina · eşik aşılınca kapat' => fn () => $storm->applyShutdown($switch, true),
                 'firtina · kapatmayı geri al' => fn () => $storm->applyShutdown($switch, false),
             ];
         }
 
         return [
-            'firtina · yüzde eşiği' => fn () => $storm->apply($switch, $arayuz, ['level' => 80]),
-            'firtina · kbps eşiği' => fn () => $storm->apply($switch, $arayuz, ['bandwidth' => 10000]),
-            'firtina · trafik türü muafiyeti' => fn () => $storm->apply($switch, $arayuz, [
+            'firtina · yüzde eşiği' => fn () => $storm->apply($switch, $interface, ['level' => 80]),
+            'firtina · kbps eşiği' => fn () => $storm->apply($switch, $interface, ['bandwidth' => 10000]),
+            'firtina · trafik türü muafiyeti' => fn () => $storm->apply($switch, $interface, [
                 'level' => 70,
                 'no_broadcast' => true,
                 'no_multicast' => true,
             ]),
-            'firtina · korunan ham satır' => fn () => $storm->apply($switch, $arayuz, [
+            'firtina · korunan ham satır' => fn () => $storm->apply($switch, $interface, [
                 'level' => 60,
                 'residual_xml' => ['<no-unknown-unicast/>'],
             ]),
@@ -175,9 +175,9 @@ class DeviceWriteScenarios
     private function portMode(NetworkSwitch $switch, SwitchPort $port): array
     {
         $ports = app(PortConfigurator::class);
-        $filtre = $switch->firewallFilters()->where('family', FirewallFamily::Inet)->value('name');
+        $inetFilter = $switch->firewallFilters()->where('family', FirewallFamily::Inet)->value('name');
 
-        $senaryolar = [
+        $scenarios = [
             'port · yönlendirmeye çevir (adressiz inet)' => fn () => $ports->apply($switch, $port, [
                 'mode' => PortMode::Routed,
                 'enabled' => true,
@@ -189,27 +189,27 @@ class DeviceWriteScenarios
             ]),
         ];
 
-        $blok = app(SwitchAddressCandidateService::class)->groupedOptions($switch);
-        $adres = collect($blok)->flatMap(fn (array $liste): array => array_keys($liste))->first();
+        $block = app(SwitchAddressCandidateService::class)->groupedOptions($switch);
+        $address = collect($block)->flatMap(fn (array $liste): array => array_keys($liste))->first();
 
-        if ($adres !== null) {
+        if ($address !== null) {
             // Adres port ekranından da verilebiliyor; aynı commit'te yazılır.
-            $senaryolar['port · yönlendirme + adres (tek commit)'] = fn () => $ports->apply($switch, $port, [
+            $scenarios['port · yönlendirme + adres (tek commit)'] = fn () => $ports->apply($switch, $port, [
                 'mode' => PortMode::Routed,
                 'enabled' => true,
-                'ip_address' => app(SwitchAddressCandidateService::class)->cidrFor($switch, (string) $adres),
+                'ip_address' => app(SwitchAddressCandidateService::class)->cidrFor($switch, (string) $address),
             ]);
         }
 
-        if ($filtre !== null) {
-            $senaryolar['port · filtre bağlaması (giriş + çıkış)'] = fn () => $ports->apply($switch, $port, [
+        if ($inetFilter !== null) {
+            $scenarios['port · filtre bağlaması (giriş + çıkış)'] = fn () => $ports->apply($switch, $port, [
                 'mode' => PortMode::Routed,
                 'enabled' => true,
-                'input_filter' => $filtre,
-                'output_filter' => $filtre,
+                'input_filter' => $inetFilter,
+                'output_filter' => $inetFilter,
             ]);
 
-            $senaryolar['port · filtre bağlamasını kaldır'] = fn () => $ports->apply($switch, $port, [
+            $scenarios['port · filtre bağlamasını kaldır'] = fn () => $ports->apply($switch, $port, [
                 'mode' => PortMode::Routed,
                 'enabled' => true,
                 'input_filter' => null,
@@ -217,7 +217,7 @@ class DeviceWriteScenarios
             ]);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -243,7 +243,7 @@ class DeviceWriteScenarios
          * interface ... should be different"). Panel bunu zaten reddediyor;
          * senaryo o yasağı delerse raporda panel hatası gibi görünür.
          */
-        $kullanilan = $switch->ports()
+        $used = $switch->ports()
             ->with('vlans')
             ->get()
             ->flatMap(fn (SwitchPort $p): array => $p->vlans
@@ -254,7 +254,7 @@ class DeviceWriteScenarios
             ->all();
 
         $vlan = $switch->vlans()
-            ->when($kullanilan !== [], fn ($q) => $q->whereNotIn('name', $kullanilan))
+            ->when($used !== [], fn ($q) => $q->whereNotIn('name', $used))
             ->orderBy('name')
             ->first();
 
@@ -269,23 +269,23 @@ class DeviceWriteScenarios
         }
 
         $voip = app(VoipConfigurator::class);
-        $ad = (string) $vlan->name;
+        $name = (string) $vlan->name;
 
         return [
-            'voip · ses vlanı' => fn () => $voip->apply($switch, 'access-ports', ['vlan_name' => $ad]),
+            'voip · ses vlanı' => fn () => $voip->apply($switch, 'access-ports', ['vlan_name' => $name]),
             'voip · vlan + iletim sınıfı' => fn () => $voip->apply($switch, 'access-ports', [
-                'vlan_name' => $ad,
+                'vlan_name' => $name,
                 'forwarding_class' => 'expedited-forwarding',
             ]),
             'voip · korunan ham satır' => fn () => $voip->apply($switch, 'access-ports', [
-                'vlan_name' => $ad,
+                'vlan_name' => $name,
                 'residual_xml' => ['<forwarding-class>best-effort</forwarding-class>'],
             ]),
             'voip · ayarı sil' => fn () => $voip->delete(
                 $switch,
                 new SwitchVoipInterface(['interface_name' => 'access-ports']),
             ),
-            ...$this->voipGercekPort($switch, $ad),
+            ...$this->voipRealPort($switch, $name),
         ];
     }
 
@@ -294,7 +294,7 @@ class DeviceWriteScenarios
      *
      * @return array<string, callable|Scenario>
      */
-    private function voipGercekPort(NetworkSwitch $switch, string $vlanAdi): array
+    private function voipRealPort(NetworkSwitch $switch, string $vlanName): array
     {
         $port = $switch->ports()
             ->where('interface_kind', PortType::Physical)
@@ -313,7 +313,7 @@ class DeviceWriteScenarios
         $voip = app(VoipConfigurator::class);
 
         return [
-            'voip · gerçek port' => fn () => $voip->apply($switch, $port.'.0', ['vlan_name' => $vlanAdi]),
+            'voip · gerçek port' => fn () => $voip->apply($switch, $port.'.0', ['vlan_name' => $vlanName]),
         ];
     }
 
@@ -340,7 +340,7 @@ class DeviceWriteScenarios
          * Senaryonun ölçmek istediği ŞEMA, cihazın bu semantik kuralları
          * değil; ikisi de panelde ayrıca doğrulanır.
          */
-        $anahtarlama = $switch->ports()
+        $switching = $switch->ports()
             ->where('interface_kind', PortType::Physical)
             ->whereIn('port_mode', [PortMode::Access->value, PortMode::Trunk->value])
             ->whereDoesntHave('vlans')
@@ -354,44 +354,44 @@ class DeviceWriteScenarios
          * commit check geçti (bkz. .ai/rules/junos.md). Uygun port bulunan
          * bir cihazda bu senaryolar kendiliğinden çalışır.
          */
-        if ($anahtarlama->count() < 2) {
+        if ($switching->count() < 2) {
             return [];
         }
 
         $analyzer = app(AnalyzerConfigurator::class);
-        $mantiksal = static fn (string $ad): string => str_contains($ad, '.') ? $ad : "{$ad}.0";
+        $logical = static fn (string $name): string => str_contains($name, '.') ? $name : "{$name}.0";
 
-        $kaynak = $mantiksal((string) $anahtarlama->first());
-        $hedef = $mantiksal((string) $anahtarlama->last());
+        $source = $logical((string) $switching->first());
+        $outputTarget = $logical((string) $switching->last());
         $vlan = (string) ($switch->vlans()->value('name') ?? 'default');
 
         return [
             'aynalama · port kaynağı + port hedefi' => fn () => $analyzer->apply($switch, 'dogrulama-ayna', [
-                'ingress_interfaces' => [$kaynak],
-                'egress_interfaces' => [$kaynak],
-                'output_interface' => $hedef,
+                'ingress_interfaces' => [$source],
+                'egress_interfaces' => [$source],
+                'output_interface' => $outputTarget,
             ]),
             'aynalama · oran + kayıp önceliği' => fn () => $analyzer->apply($switch, 'dogrulama-ayna', [
-                'ingress_interfaces' => [$kaynak],
-                'output_interface' => $hedef,
+                'ingress_interfaces' => [$source],
+                'output_interface' => $outputTarget,
                 'ratio' => 2,
                 'loss_priority' => 'low',
             ]),
             'aynalama · vlan kaynağı' => fn () => $analyzer->apply($switch, 'dogrulama-ayna', [
                 'ingress_vlans' => [$vlan],
-                'output_interface' => $hedef,
+                'output_interface' => $outputTarget,
             ]),
 
             // ÖLÇÜM: çıkış VLAN'ının yazımı (name mi düz metin mi) doğrulanmadı.
             'aynalama · ölçüm: çıkış VLAN (uzak aynalama)' => fn () => $analyzer->apply($switch, 'dogrulama-ayna', [
-                'ingress_interfaces' => [$kaynak],
+                'ingress_interfaces' => [$source],
                 'output_vlan' => $vlan,
             ]),
 
             // ÖLÇÜM: Junos'un oran üst sınırı panelde uydurulmadı.
             'aynalama · ölçüm: oran 2048' => fn () => $analyzer->apply($switch, 'dogrulama-ayna', [
-                'ingress_interfaces' => [$kaynak],
-                'output_interface' => $hedef,
+                'ingress_interfaces' => [$source],
+                'output_interface' => $outputTarget,
                 'ratio' => 2048,
             ]),
         ];
@@ -410,13 +410,13 @@ class DeviceWriteScenarios
     private function secureAccessPort(NetworkSwitch $switch): array
     {
         $secure = app(SecureAccessPortConfigurator::class);
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
 
-        $vlanAdi = $lehce->supportsAllKeyword()
+        $vlanName = $dialect->supportsAllKeyword()
             ? 'all'
             : $switch->vlans()->orderBy('vlan_tag')->value('name');
 
-        $portAdi = $lehce->supportsAllKeyword()
+        $portName = $dialect->supportsAllKeyword()
             ? 'all'
             : $switch->ports()
                 ->where('interface_kind', PortType::Physical)
@@ -424,8 +424,8 @@ class DeviceWriteScenarios
                 ->orderBy('if_index')
                 ->value('name');
 
-        if ($vlanAdi === null || $portAdi === null) {
-            $atla = static function (): never {
+        if ($vlanName === null || $portName === null) {
+            $skip = static function (): never {
                 throw new ScenarioNotApplicable(
                     'Bu lehçe "all" kısayolunu kabul etmiyor ve cihazda kullanılabilir VLAN/port yok.',
                 );
@@ -439,39 +439,39 @@ class DeviceWriteScenarios
                 'port güvenliği · no-dhcp-trusted',
                 'port güvenliği · ölçüm: mac-limit shutdown',
                 'port güvenliği · ölçüm: allowed-mac listesi',
-            ], $atla);
+            ], $skip);
         }
 
         return [
-            'snooping · vlan examine-dhcp' => fn () => $secure->applyVlan($switch, $vlanAdi, [
+            'snooping · vlan examine-dhcp' => fn () => $secure->applyVlan($switch, $vlanName, [
                 'examine_dhcp' => true,
             ]),
-            'snooping · vlan tam koruma' => fn () => $secure->applyVlan($switch, $vlanAdi, [
+            'snooping · vlan tam koruma' => fn () => $secure->applyVlan($switch, $vlanName, [
                 'examine_dhcp' => true,
                 'arp_inspection' => true,
                 'ip_source_guard' => true,
             ]),
 
             // ÖLÇÜM: mac-move-limit + action yazımı doğrulanmadı.
-            'snooping · ölçüm: mac-move-limit' => fn () => $secure->applyVlan($switch, $vlanAdi, [
+            'snooping · ölçüm: mac-move-limit' => fn () => $secure->applyVlan($switch, $vlanName, [
                 'examine_dhcp' => true,
                 'mac_move_limit' => 5,
                 'mac_move_action' => 'drop',
             ]),
 
-            'port güvenliği · dhcp-trusted' => fn () => $secure->applyInterface($switch, $portAdi, [
+            'port güvenliği · dhcp-trusted' => fn () => $secure->applyInterface($switch, $portName, [
                 'dhcp_trusted' => true,
             ]),
-            'port güvenliği · no-dhcp-trusted' => fn () => $secure->applyInterface($switch, $portAdi, [
+            'port güvenliği · no-dhcp-trusted' => fn () => $secure->applyInterface($switch, $portName, [
                 'dhcp_trusted' => false,
             ]),
 
             // ÖLÇÜM: mac-limit + action ve allowed-mac yazımları doğrulanmadı.
-            'port güvenliği · ölçüm: mac-limit shutdown' => fn () => $secure->applyInterface($switch, $portAdi, [
+            'port güvenliği · ölçüm: mac-limit shutdown' => fn () => $secure->applyInterface($switch, $portName, [
                 'mac_limit' => 4,
                 'mac_limit_action' => 'shutdown',
             ]),
-            'port güvenliği · ölçüm: allowed-mac listesi' => fn () => $secure->applyInterface($switch, $portAdi, [
+            'port güvenliği · ölçüm: allowed-mac listesi' => fn () => $secure->applyInterface($switch, $portName, [
                 'allowed_macs' => ['00:11:22:33:44:55', '00:11:22:33:44:66'],
             ]),
         ];
@@ -486,9 +486,9 @@ class DeviceWriteScenarios
     {
         $settings = app(DeviceSettingsWriter::class);
         $communities = app(SnmpCommunityConfigurator::class);
-        $mevcut = $switch->snmpCommunities()->first();
+        $current = $switch->snmpCommunities()->first();
 
-        $senaryolar = [
+        $scenarios = [
             'cihaz ayarı · ad + saat + dns' => fn () => $settings->apply($switch, [
                 'hostname' => $switch->hostname,
                 'time_zone' => 'Europe/Istanbul',
@@ -512,12 +512,12 @@ class DeviceWriteScenarios
             ]),
         ];
 
-        if ($mevcut !== null) {
-            $senaryolar['snmp community · güncelle'] = fn () => $communities->update($switch, $mevcut, 'read-only', []);
-            $senaryolar['snmp community · sil'] = fn () => $communities->delete($switch, $mevcut);
+        if ($current !== null) {
+            $scenarios['snmp community · güncelle'] = fn () => $communities->update($switch, $current, 'read-only', []);
+            $scenarios['snmp community · sil'] = fn () => $communities->delete($switch, $current);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -533,7 +533,7 @@ class DeviceWriteScenarios
     {
         $users = app(LoginUserConfigurator::class);
 
-        $senaryolar = [
+        $scenarios = [
             'hesap · ekle (salt okunur)' => fn () => $users->create(
                 $switch,
                 'dogrulama',
@@ -557,7 +557,7 @@ class DeviceWriteScenarios
          * ATILMAZ (harness yalnızca "commit check" yapar); sınanan şey
          * Junos'un bu biçimleri kabul edip etmediğidir.
          */
-        $senaryolar['parola · kurtarma hesabi'] = fn () => $users->create(
+        $scenarios['parola · kurtarma hesabi'] = fn () => $users->create(
             $switch,
             (string) config('credentials.rotation.recovery_username'),
             JunosUserClass::SuperUser->value,
@@ -569,7 +569,7 @@ class DeviceWriteScenarios
         $panel = $switch->loginUsers->first(fn (SwitchLoginUser $user): bool => $user->is_panel_account);
 
         if ($panel !== null) {
-            $senaryolar['parola · panel hesabi'] = fn () => $users->update(
+            $scenarios['parola · panel hesabi'] = fn () => $users->update(
                 $switch,
                 $panel,
                 (string) $panel->class,
@@ -578,20 +578,20 @@ class DeviceWriteScenarios
             );
         }
 
-        $silinebilir = $switch->loginUsers->first(fn (SwitchLoginUser $user): bool => ! $user->is_panel_account);
+        $deletable = $switch->loginUsers->first(fn (SwitchLoginUser $user): bool => ! $user->is_panel_account);
 
-        if ($silinebilir !== null) {
-            $senaryolar['hesap · güncelle'] = fn () => $users->update(
+        if ($deletable !== null) {
+            $scenarios['hesap · güncelle'] = fn () => $users->update(
                 $switch,
-                $silinebilir,
+                $deletable,
                 JunosUserClass::ReadOnly->value,
                 'Guncellendi',
                 null,
             );
-            $senaryolar['hesap · sil'] = fn () => $users->delete($switch, $silinebilir);
+            $scenarios['hesap · sil'] = fn () => $users->delete($switch, $deletable);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -602,9 +602,9 @@ class DeviceWriteScenarios
     private function rstp(NetworkSwitch $switch, SwitchPort $port): array
     {
         $rstp = app(RstpConfigurator::class);
-        $mevcut = $switch->rstpInterfaces()->first();
+        $current = $switch->rstpInterfaces()->first();
 
-        $senaryolar = [
+        $scenarios = [
             'rstp · köprü (açık + öncelik)' => fn () => $rstp->applyBridge($switch, true, '8k', true),
             'rstp · köprü (kapalı)' => fn () => $rstp->applyBridge($switch, false, null, false),
             /*
@@ -622,11 +622,11 @@ class DeviceWriteScenarios
             'rstp · arayüz (all)' => fn () => $rstp->applyInterface($switch, 'all', false, true, null, null),
         ];
 
-        if ($mevcut !== null) {
-            $senaryolar['rstp · arayüz sil'] = fn () => $rstp->deleteInterface($switch, $mevcut);
+        if ($current !== null) {
+            $scenarios['rstp · arayüz sil'] = fn () => $rstp->deleteInterface($switch, $current);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -687,33 +687,33 @@ class DeviceWriteScenarios
      * Cihazın kabul ettiği tablo türü; FBF'nin tercih ettiği "forwarding"
      * varsa o, yoksa ölçülmüş ilk tür. Hiç ölçülmemişse "forwarding".
      */
-    private function desteklenenTabloTuru(NetworkSwitch $switch): ?string
+    private function supportedTableType(NetworkSwitch $switch): ?string
     {
-        $olculen = app(DeviceCapabilities::class)->values($switch, 'routing.instance_types');
+        $measured = app(DeviceCapabilities::class)->values($switch, 'routing.instance_types');
 
-        if ($olculen === null) {
+        if ($measured === null) {
             return 'forwarding';
         }
 
-        return in_array('forwarding', $olculen, true) ? 'forwarding' : ($olculen[0] ?? null);
+        return in_array('forwarding', $measured, true) ? 'forwarding' : ($measured[0] ?? null);
     }
 
     /**
      * Cihazın kabul ettiği en yüksek hız; ölçüm yoksa lehçenin en yükseği.
      * Hiçbiri yoksa null döner ve senaryo otomatik anlaşmayı ölçer.
      */
-    private function desteklenenHiz(NetworkSwitch $switch): ?string
+    private function supportedSpeed(NetworkSwitch $switch): ?string
     {
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
-        $hizlar = array_map(strval(...), array_keys($lehce->speedValues()));
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $speeds = array_map(strval(...), array_keys($dialect->speedValues()));
 
-        $olculen = app(DeviceCapabilities::class)->values($switch, 'port.speeds');
+        $measured = app(DeviceCapabilities::class)->values($switch, 'port.speeds');
 
-        if ($olculen !== null) {
-            $hizlar = array_values(array_intersect($hizlar, $olculen));
+        if ($measured !== null) {
+            $speeds = array_values(array_intersect($speeds, $measured));
         }
 
-        return $hizlar === [] ? null : (string) max(array_map(intval(...), $hizlar));
+        return $speeds === [] ? null : (string) max(array_map(intval(...), $speeds));
     }
 
     /**
@@ -728,14 +728,14 @@ class DeviceWriteScenarios
          * ölçüldü). Sabit yazmak, panelde hata yokken kırmızı satır
          * üretirdi — ölçülmüş kümeden seçilir.
          */
-        $hiz = $this->desteklenenHiz($switch);
+        $speed = $this->supportedSpeed($switch);
 
         return [
             'port · access + hız + açıklama' => fn () => $ports->apply($switch, $port, [
                 'description' => 'dogrulama',
                 'enabled' => true,
-                'speed' => $hiz,
-                'autonegotiation' => $hiz === null,
+                'speed' => $speed,
+                'autonegotiation' => $speed === null,
                 'mode' => PortMode::Access,
                 'vlans' => [],
                 'untagged' => null,
@@ -813,7 +813,7 @@ class DeviceWriteScenarios
              * cihaza yazsaydı raporda panel hatası gibi görünürdü; L3
              * arayüzü VARSA etiket kaldırma denenmez.
              */
-            ...$this->vlanEtiketKaldirma($switch, $vlan),
+            ...$this->vlanTagRemoval($switch, $vlan),
 
             'vlan · sil' => fn () => $vlans->delete($switch, $vlan),
         ];
@@ -822,11 +822,11 @@ class DeviceWriteScenarios
     /**
      * @return array<string, callable>
      */
-    private function vlanEtiketKaldirma(NetworkSwitch $switch, Vlan $vlan): array
+    private function vlanTagRemoval(NetworkSwitch $switch, Vlan $vlan): array
     {
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
 
-        if ($lehce->requiresVlanIdForL3() && filled($vlan->l3_interface)) {
+        if ($dialect->requiresVlanIdForL3() && filled($vlan->l3_interface)) {
             return [
                 'vlan · etiketi kaldır' => static function (): never {
                     throw new ScenarioNotApplicable(
@@ -849,9 +849,9 @@ class DeviceWriteScenarios
     private function addresses(NetworkSwitch $switch, SwitchPort $port): array
     {
         $addresses = app(IpAddressConfigurator::class);
-        $mevcut = $switch->ipAddresses()->whereNotNull('switch_port_id')->first();
+        $current = $switch->ipAddresses()->whereNotNull('switch_port_id')->first();
 
-        $senaryolar = [
+        $scenarios = [
             'ip · porta adres ver' => fn () => $addresses->add($switch, $port->name.'.0', '192.0.2.1/30'),
 
             /*
@@ -866,17 +866,17 @@ class DeviceWriteScenarios
             'ip · ipv6 adres ver' => fn () => $addresses->add($switch, $port->name.'.0', '2001:db8::1/64'),
         ];
 
-        if ($mevcut !== null) {
-            $senaryolar['ip · adres değiştir'] = fn () => $addresses->replace(
+        if ($current !== null) {
+            $scenarios['ip · adres değiştir'] = fn () => $addresses->replace(
                 $switch,
-                $mevcut,
-                $mevcut->interface_name,
+                $current,
+                $current->interface_name,
                 '192.0.2.5/30',
             );
-            $senaryolar['ip · adres sil'] = fn () => $addresses->remove($switch, $mevcut);
+            $scenarios['ip · adres sil'] = fn () => $addresses->remove($switch, $current);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -886,8 +886,8 @@ class DeviceWriteScenarios
      */
     private function routingInstances(NetworkSwitch $switch): array
     {
-        $tablolar = app(RoutingInstanceConfigurator::class);
-        $mevcut = $switch->routingInstances()->first()
+        $tables = app(RoutingInstanceConfigurator::class);
+        $current = $switch->routingInstances()->first()
             ?? new SwitchRoutingInstance(['name' => 'dogrulama-tablo']);
 
         /*
@@ -896,10 +896,10 @@ class DeviceWriteScenarios
          * Ölçülmüş kümeden seçilir; sabit yazmak olmayan bir panel hatası
          * gösterirdi.
          */
-        $tur = $this->desteklenenTabloTuru($switch);
+        $round = $this->supportedTableType($switch);
 
-        if ($tur === null) {
-            $atla = static function (): never {
+        if ($round === null) {
+            $skip = static function (): never {
                 throw new ScenarioNotApplicable('Cihaz panelin kurduğu tablo türlerinden hiçbirini kabul etmiyor.');
             };
 
@@ -907,19 +907,19 @@ class DeviceWriteScenarios
                 'tablo · oluştur',
                 'tablo · açıklamayı temizle',
                 'tablo · sil',
-            ], $atla);
+            ], $skip);
         }
 
         return [
-            'tablo · oluştur' => fn () => $tablolar->apply($switch, 'dogrulama-tablo', [
-                'instance_type' => $tur,
+            'tablo · oluştur' => fn () => $tables->apply($switch, 'dogrulama-tablo', [
+                'instance_type' => $round,
                 'description' => 'Dogrulama',
             ]),
-            'tablo · açıklamayı temizle' => fn () => $tablolar->apply($switch, 'dogrulama-tablo', [
-                'instance_type' => $tur,
+            'tablo · açıklamayı temizle' => fn () => $tables->apply($switch, 'dogrulama-tablo', [
+                'instance_type' => $round,
                 'description' => null,
             ]),
-            'tablo · sil' => fn () => $tablolar->delete($switch, $mevcut),
+            'tablo · sil' => fn () => $tables->delete($switch, $current),
         ];
     }
 
@@ -930,8 +930,8 @@ class DeviceWriteScenarios
      */
     private function ribGroups(NetworkSwitch $switch): array
     {
-        $gruplar = app(RibGroupConfigurator::class);
-        $mevcut = $switch->ribGroups()->first() ?? new SwitchRibGroup(['name' => 'dogrulama-grup']);
+        $groups = app(RibGroupConfigurator::class);
+        $current = $switch->ribGroups()->first() ?? new SwitchRibGroup(['name' => 'dogrulama-grup']);
 
         /*
          * Bağlama, grubun CİHAZDA tanımlı olmasını ister. Her senaryo kendi
@@ -939,25 +939,25 @@ class DeviceWriteScenarios
          * grup burada YOKTUR; "dogrulama-grup" yazmak "ribgroup not defined
          * for INET" verir ve raporda panel hatası gibi görünürdü.
          */
-        $tanimli = $switch->ribGroups()->value('name');
+        $defined = $switch->ribGroups()->value('name');
 
-        $baglama = $tanimli === null
+        $binding = $defined === null
             ? [
                 'rib grubu · arayüz yollarını bağla' => static function (): never {
                     throw new ScenarioNotApplicable('Cihazda tanımlı bir rib grubu yok; bağlama ölçülemez.');
                 },
             ]
             : [
-                'rib grubu · arayüz yollarını bağla' => fn () => $gruplar->applyInterfaceRoutes($switch, $tanimli),
+                'rib grubu · arayüz yollarını bağla' => fn () => $groups->applyInterfaceRoutes($switch, $defined),
             ];
 
         return [
-            'rib grubu · oluştur' => fn () => $gruplar->apply($switch, 'dogrulama-grup', [
+            'rib grubu · oluştur' => fn () => $groups->apply($switch, 'dogrulama-grup', [
                 'import_ribs' => ['inet.0'],
             ]),
-            ...$baglama,
-            'rib grubu · bağı kaldır' => fn () => $gruplar->applyInterfaceRoutes($switch, null),
-            'rib grubu · sil' => fn () => $gruplar->delete($switch, $mevcut),
+            ...$binding,
+            'rib grubu · bağı kaldır' => fn () => $groups->applyInterfaceRoutes($switch, null),
+            'rib grubu · sil' => fn () => $groups->delete($switch, $current),
         ];
     }
 
@@ -967,12 +967,12 @@ class DeviceWriteScenarios
     private function routes(NetworkSwitch $switch): array
     {
         $routes = app(RouteConfigurator::class);
-        $mevcut = $switch->routes()->first() ?? new SwitchRoute([
+        $current = $switch->routes()->first() ?? new SwitchRoute([
             'destination' => '192.0.2.0',
             'prefix_length' => 24,
             'next_hop' => '198.18.8.37',
         ]);
-        $mevcut->switch_id = $switch->id;
+        $current->switch_id = $switch->id;
 
         return [
             'route · ekle' => fn () => $routes->create($switch, '192.0.2.0', 24, ['next_hops' => ['198.18.8.37']]),
@@ -1022,8 +1022,8 @@ class DeviceWriteScenarios
                 'residual_xml' => ['<no-retain/>'],
             ]),
 
-            'route · değiştir' => fn () => $routes->replace($switch, $mevcut, '192.0.2.0', 24, ['next_hops' => ['198.18.8.37']]),
-            'route · sil' => fn () => $routes->delete($switch, $mevcut),
+            'route · değiştir' => fn () => $routes->replace($switch, $current, '192.0.2.0', 24, ['next_hops' => ['198.18.8.37']]),
+            'route · sil' => fn () => $routes->delete($switch, $current),
         ];
     }
 
@@ -1083,7 +1083,7 @@ class DeviceWriteScenarios
         $filters = app(FirewallConfigurator::class);
         $filter = $switch->firewallFilters()->with('terms')->first();
 
-        $terim = [
+        $term = [
             'name' => 'dogrulama',
             'source_addresses' => ['192.0.2.0/24'],
             'destination_addresses' => [],
@@ -1099,15 +1099,15 @@ class DeviceWriteScenarios
             'is_logged' => false,
         ];
 
-        $senaryolar = [
-            'firewall · filtre oluştur' => fn () => $filters->create($switch, IpFamily::Inet, 'dogrulama-filtre', [$terim]),
+        $scenarios = [
+            'firewall · filtre oluştur' => fn () => $filters->create($switch, IpFamily::Inet, 'dogrulama-filtre', [$term]),
 
             // Filtre SEVİYESİNDEKİ ayar: arayüz başına sayaç için gerekir.
             'firewall · interface-specific' => fn () => $filters->create(
                 $switch,
                 IpFamily::Inet,
                 'dogrulama-ifspec',
-                [$terim + ['count_name' => 'dogrulama_sayac']],
+                [$term + ['count_name' => 'dogrulama_sayac']],
                 ['interface_specific' => true],
             ),
 
@@ -1116,7 +1116,7 @@ class DeviceWriteScenarios
                 $switch,
                 IpFamily::Inet,
                 'dogrulama-genis',
-                [array_merge($terim, [
+                [array_merge($term, [
                     'tcp_flags' => 'syn',
                     'dscps' => ['ef'],
                     'packet_lengths' => ['1400'],
@@ -1132,7 +1132,7 @@ class DeviceWriteScenarios
                 'dogrulama-next',
                 [
                     ['name' => 'a', 'goes_to_next_term' => true],
-                    $terim + ['name' => 'b'],
+                    $term + ['name' => 'b'],
                 ],
             ),
 
@@ -1168,20 +1168,20 @@ class DeviceWriteScenarios
                 $switch,
                 IpFamily::Inet,
                 'dogrulama-artik',
-                [$terim],
+                [$term],
                 ['residual_xml' => ['<interface-specific/>']],
             ),
         ];
 
         if ($filter !== null) {
-            $senaryolar['firewall · filtre güncelle'] = fn () => $filters->update($switch, $filter, [$terim]);
-            $senaryolar['firewall · filtre sil (arayüze bağlıyken)'] = Scenario::expectsRejection(
+            $scenarios['firewall · filtre güncelle'] = fn () => $filters->update($switch, $filter, [$term]);
+            $scenarios['firewall · filtre sil (arayüze bağlıyken)'] = Scenario::expectsRejection(
                 'Filtre bir arayüze bağlı; cihaz silinmesine izin vermemeli.',
                 fn () => $filters->delete($switch, $filter),
             );
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -1193,7 +1193,7 @@ class DeviceWriteScenarios
         $statement = $switch->policyStatements()->with('terms')->first();
         $community = $switch->communities()->first();
 
-        $terim = [
+        $term = [
             'name' => 'dogrulama',
             'match_prefix_lists' => $switch->prefixLists()->pluck('name')->take(1)->all(),
             'match_type' => PrefixMatchType::OrLonger,
@@ -1201,8 +1201,8 @@ class DeviceWriteScenarios
             'community_delete' => null,
         ];
 
-        $senaryolar = [
-            'politika · oluştur' => fn () => $policies->create($switch, 'dogrulama-politika', [$terim]),
+        $scenarios = [
+            'politika · oluştur' => fn () => $policies->create($switch, 'dogrulama-politika', [$term]),
             'community · oluştur' => fn () => $policies->createCommunity($switch, 'dogrulama-community', ['65000:100']),
 
             /*
@@ -1214,7 +1214,7 @@ class DeviceWriteScenarios
             'politika · varsayılan eylem (then reject)' => fn () => $policies->create(
                 $switch,
                 'dogrulama-varsayilan',
-                [$terim],
+                [$term],
                 ['action' => PolicyAction::Reject],
             ),
 
@@ -1245,25 +1245,25 @@ class DeviceWriteScenarios
             'politika · korunan ham satır' => fn () => $policies->create(
                 $switch,
                 'dogrulama-artik',
-                [$terim],
+                [$term],
                 ['residual_xml' => ['<then><reject/></then>']],
             ),
         ];
 
         if ($statement !== null) {
-            $senaryolar['politika · güncelle'] = fn () => $policies->update($switch, $statement, [$terim]);
-            $senaryolar['politika · sil (referanslıyken)'] = Scenario::expectsRejection(
+            $scenarios['politika · güncelle'] = fn () => $policies->update($switch, $statement, [$term]);
+            $scenarios['politika · sil (referanslıyken)'] = Scenario::expectsRejection(
                 'Politikaya atıf yapan bir yapılandırma var; cihaz silinmesine izin vermemeli.',
                 fn () => $policies->delete($switch, $statement),
             );
         }
 
         if ($community !== null) {
-            $senaryolar['community · güncelle'] = fn () => $policies->updateCommunity($switch, $community, ['65000:200']);
-            $senaryolar['community · sil'] = fn () => $policies->deleteCommunity($switch, $community);
+            $scenarios['community · güncelle'] = fn () => $policies->updateCommunity($switch, $community, ['65000:200']);
+            $scenarios['community · sil'] = fn () => $policies->deleteCommunity($switch, $community);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -1273,11 +1273,11 @@ class DeviceWriteScenarios
      * same as the local AS". Sabit bir numara yazmak, o numaraya sahip bir
      * switchte panelde hata yokken kırmızı satır üretir.
      */
-    private function disKomsuAsn(NetworkSwitch $switch, string $tercih): string
+    private function outerNeighborAsn(NetworkSwitch $switch, string $preference): string
     {
-        return (string) $switch->autonomous_system === $tercih
-            ? (string) ((int) $tercih + 9)
-            : $tercih;
+        return (string) $switch->autonomous_system === $preference
+            ? (string) ((int) $preference + 9)
+            : $preference;
     }
 
     /**
@@ -1296,12 +1296,12 @@ class DeviceWriteScenarios
          * the local AS"). Sabit 65001 yazmak, AS'i 65001 olan bir switchte
          * birden çok senaryoyu kırmızı yakar — panelde hata yokken.
          */
-        $komsuAsn = $this->disKomsuAsn($switch, '65001');
+        $neighborAsn = $this->outerNeighborAsn($switch, '65001');
 
-        $ayarlar = [
+        $groupSettings = [
             'name' => 'dogrulama-grup',
             'type' => BgpGroupType::External,
-            'peer_asn' => $komsuAsn,
+            'peer_asn' => $neighborAsn,
             'local_address' => $switch->uplink_ip ?? '198.18.8.38',
             'local_asn' => null,
             'authentication_key' => 'dogrulama-anahtar',
@@ -1333,32 +1333,32 @@ class DeviceWriteScenarios
             ]],
         ];
 
-        $senaryolar = [
+        $scenarios = [
             'bgp · as numarası' => fn () => $bgp->setAutonomousSystem($switch, (string) ($switch->autonomous_system ?? '65000')),
-            'bgp · grup oluştur (tam)' => fn () => $bgp->createGroup($switch, $ayarlar),
+            'bgp · grup oluştur (tam)' => fn () => $bgp->createGroup($switch, $groupSettings),
             'bgp · grup: dinamik komşu' => fn () => $bgp->createGroup($switch, [
-                ...$ayarlar,
+                ...$groupSettings,
                 'name' => 'dogrulama-dinamik',
                 'authentication_key' => null,
                 'allow_prefixes' => ['192.0.2.0/24'],
             ]),
-            'bgp · grup güncelle' => fn () => $bgp->updateGroup($switch, $group, $ayarlar),
+            'bgp · grup güncelle' => fn () => $bgp->updateGroup($switch, $group, $groupSettings),
             /*
              * Cihazda "deactivate": nesne silinmez, çalışmaz. İşaret
              * özniteliktedir; geri açmak active="active" ile olur.
              */
             'bgp · grubu devre dışı bırak' => fn () => $bgp->updateGroup(
-                $switch, $group, $ayarlar + ['is_inactive' => true],
+                $switch, $group, $groupSettings + ['is_inactive' => true],
             ),
             'bgp · grubu geri aç' => fn () => $bgp->updateGroup(
-                $switch, $group, $ayarlar + ['is_inactive' => false],
+                $switch, $group, $groupSettings + ['is_inactive' => false],
             ),
 
             'bgp · grup sil' => fn () => $bgp->deleteGroup($switch, $group),
             'bgp · komşu ekle' => fn () => $bgp->createNeighbor($switch, $group, [
                 'address' => '192.0.2.9',
                 'description' => 'dogrulama',
-                'peer_asn' => $this->disKomsuAsn($switch, '65002'),
+                'peer_asn' => $this->outerNeighborAsn($switch, '65002'),
                 'local_address' => null,
                 'authentication_key' => 'komsu-anahtar',
                 'hold_time' => 45,
@@ -1371,7 +1371,7 @@ class DeviceWriteScenarios
         ];
 
         if ($neighbor !== null) {
-            $senaryolar['bgp · komşu güncelle'] = fn () => $bgp->updateNeighbor($switch, $neighbor, [
+            $scenarios['bgp · komşu güncelle'] = fn () => $bgp->updateNeighbor($switch, $neighbor, [
                 'description' => 'dogrulama',
                 'peer_asn' => null,
                 'local_address' => null,
@@ -1383,10 +1383,10 @@ class DeviceWriteScenarios
                 'import_policies' => [],
                 'export_policies' => [],
             ]);
-            $senaryolar['bgp · komşu sil'] = fn () => $bgp->deleteNeighbor($switch, $neighbor);
+            $scenarios['bgp · komşu sil'] = fn () => $bgp->deleteNeighbor($switch, $neighbor);
         }
 
-        return $senaryolar;
+        return $scenarios;
     }
 
     /**
@@ -1405,22 +1405,22 @@ class DeviceWriteScenarios
     {
         $lag = app(LinkAggregationConfigurator::class);
 
-        $sayim = [
+        $count = [
             'toplama · ae sayısı' => fn () => $lag->setDeviceCount($switch, (int) ($switch->aggregated_device_count ?: 4)),
         ];
 
         if ($ae === null) {
-            $atla = static function (): never {
+            $skip = static function (): never {
                 throw new ScenarioNotApplicable('Cihazda ae0 tanımlı değil; ae ayarı ölçülemez.');
             };
 
-            return $sayim + [
-                'toplama · ae ayarları' => $atla,
-                'toplama · ae sil' => $atla,
+            return $count + [
+                'toplama · ae ayarları' => $skip,
+                'toplama · ae sil' => $skip,
             ];
         }
 
-        return $sayim + [
+        return $count + [
             'toplama · ae ayarları' => fn () => $lag->apply($switch, $ae, [
                 'lacp_mode' => LacpMode::Active,
                 'lacp_periodic' => LacpPeriodic::Fast,
@@ -1441,18 +1441,18 @@ class DeviceWriteScenarios
         return [
             'snmp · ad yaz' => fn () => app(SnmpIdentityWriter::class)->rename($switch, $switch->hostname),
             'yedek · aç' => function () use ($archival, $switch): void {
-                $kopya = $switch->replicate();
-                $kopya->id = $switch->id;
-                $kopya->archival_enabled = true;
+                $copy = $switch->replicate();
+                $copy->id = $switch->id;
+                $copy->archival_enabled = true;
                 // Gerçek adres depoda durmaz; ortamda verilmişse o, yoksa örnek bir adres.
-                $kopya->archival_site = config('archival.site') ?: 'ftp://yedek:ornek-parola@192.0.2.51/sw1/';
-                $archival->apply($kopya);
+                $copy->archival_site = config('archival.site') ?: 'ftp://yedek:ornek-parola@192.0.2.51/sw1/';
+                $archival->apply($copy);
             },
             'yedek · kapat' => function () use ($archival, $switch): void {
-                $kopya = $switch->replicate();
-                $kopya->id = $switch->id;
-                $kopya->archival_enabled = false;
-                $archival->apply($kopya);
+                $copy = $switch->replicate();
+                $copy->id = $switch->id;
+                $copy->archival_enabled = false;
+                $archival->apply($copy);
             },
         ];
     }

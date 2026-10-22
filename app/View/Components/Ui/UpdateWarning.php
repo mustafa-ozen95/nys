@@ -15,16 +15,16 @@ use Illuminate\View\View;
  */
 class UpdateWarning extends Component
 {
-    public bool $goster;
+    public bool $show;
 
-    public int $geride = 0;
+    public int $behind = 0;
 
-    public function __construct(UpdateCheck $denetim)
+    public function __construct(UpdateCheck $audit)
     {
-        $this->goster = (Auth::user()?->isAdmin() ?? false) && $denetim->yeniVar();
+        $this->show = (Auth::user()?->isAdmin() ?? false) && $audit->hasNew();
 
-        if ($this->goster) {
-            $this->geride = (int) ($denetim->son()['geride'] ?? 0);
+        if ($this->show) {
+            $this->behind = (int) ($audit->last()['geride'] ?? 0);
         }
     }
 

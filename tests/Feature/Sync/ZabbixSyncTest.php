@@ -54,10 +54,10 @@ final class ZabbixSyncTest extends TestCase
      */
     private function fakeZabbix(string $itemFixture = 'item-get-status'): void
     {
-        $bilinenHostlar = ['90501', '90502'];
+        $knownHosts = ['90501', '90502'];
 
         Http::fake([
-            '*/api_jsonrpc.php' => function ($request) use ($itemFixture, $bilinenHostlar) {
+            '*/api_jsonrpc.php' => function ($request) use ($itemFixture, $knownHosts) {
                 $data = $request->data();
 
                 if (($data['method'] ?? '') === 'host.get') {
@@ -67,7 +67,7 @@ final class ZabbixSyncTest extends TestCase
                 // item.get artık hostids'i dizi olarak gönderiyor (toplu okuma).
                 $hostIds = array_values(array_intersect(
                     array_map(strval(...), (array) ($data['params']['hostids'] ?? [])),
-                    $bilinenHostlar,
+                    $knownHosts,
                 ));
 
                 return Http::response($this->zabbixItems($hostIds, $itemFixture));

@@ -15,7 +15,7 @@
 
         @if ($block->accessSwitch)
             @if ($block->coreSwitch)
-                <span class="assignment__ok" aria-hidden="true">→</span>
+                <span class="assignment__arrow" aria-hidden="true">→</span>
             @endif
             <span class="mono assignment__switch">{{ $block->accessSwitch->hostname }}</span>
         @endif
@@ -25,5 +25,5 @@
         @endif
     </span>
 @else
-    <span {{ $attributes->class('assignment assignment--bos') }}>Atanmadı</span>
+    <span {{ $attributes->class('assignment assignment--empty') }}>Atanmadı</span>
 @endif

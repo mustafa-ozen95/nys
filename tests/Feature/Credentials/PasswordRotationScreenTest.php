@@ -50,7 +50,7 @@ final class PasswordRotationScreenTest extends TestCase
         Queue::fake();
 
         $bir = $this->switch();
-        $iki = $this->switch('test2', '198.18.20.196');
+        $two = $this->switch('test2', '198.18.20.196');
 
         // Kimliği olmayan switch kuyruğa alınmaz; parolası değiştirilemez.
         NetworkSwitch::factory()->create(['hostname' => 'kimliksiz']);
@@ -69,7 +69,7 @@ final class PasswordRotationScreenTest extends TestCase
         Queue::assertPushed(
             RotateSwitchPasswordJob::class,
             fn (RotateSwitchPasswordJob $job): bool => $job->switchId === $bir->id
-                && $this->zincirdekiler($job) === [$iki->id],
+                && $this->chained($job) === [$two->id],
         );
     }
 
@@ -78,10 +78,10 @@ final class PasswordRotationScreenTest extends TestCase
      *
      * @return list<int>
      */
-    private function zincirdekiler(RotateSwitchPasswordJob $job): array
+    private function chained(RotateSwitchPasswordJob $job): array
     {
         return array_map(
-            fn (string $seri): int => unserialize($seri)->switchId,
+            fn (string $serial): int => unserialize($serial)->switchId,
             $job->chained,
         );
     }

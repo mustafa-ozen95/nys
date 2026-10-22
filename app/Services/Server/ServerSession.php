@@ -14,14 +14,14 @@ class ServerSession
 {
     /** @param  callable(): void  $kapatici */
     public function __construct(
-        public readonly mixed $tutamac,
-        public readonly string $kullanici,
-        public readonly string $parola,
-        private $kapatici,
+        public readonly mixed $handle,
+        public readonly string $user,
+        public readonly string $password,
+        private $closer,
     ) {}
 
-    public function kapat(): void
+    public function close(): void
     {
-        ($this->kapatici)();
+        ($this->closer)();
     }
 }

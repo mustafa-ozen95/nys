@@ -45,7 +45,7 @@ enum PanelMode: string
      */
     public static function current(): self
     {
-        return auth()->user()?->etkinPanelModu() ?? self::Simple;
+        return auth()->user()?->activePanelMode() ?? self::Simple;
     }
 
     public function badge(): BadgeVariant

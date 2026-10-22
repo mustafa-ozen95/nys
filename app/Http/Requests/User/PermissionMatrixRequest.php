@@ -102,13 +102,13 @@ class PermissionMatrixRequest extends FormRequest
      */
     private function recordsWithState(string $state): array
     {
-        $cozum = $this->kayitAnahtarlari();
+        $resolution = $this->recordKeys();
 
         return collect($this->validated('cells', []))
             ->map(fn (array $cells): array => collect($cells)
                 ->filter(fn (string $value): bool => $value === $state)
                 ->keys()
-                ->map(fn (string $disAnahtar): mixed => $cozum($disAnahtar))
+                ->map(fn (string $outerKey): mixed => $resolution($outerKey))
                 ->filter(fn (mixed $id): bool => $id !== null)
                 ->values()
                 ->all())
@@ -128,23 +128,23 @@ class PermissionMatrixRequest extends FormRequest
      *
      * @return callable(string): mixed
      */
-    private function kayitAnahtarlari(): callable
+    private function recordKeys(): callable
     {
-        $tanim = app(PermissionRegistry::class)->resource($this->resource());
+        $definition = app(PermissionRegistry::class)->resource($this->resource());
 
-        if (isset($tanim['records'])) {
-            return static fn (string $anahtar): string => $anahtar;
+        if (isset($definition['records'])) {
+            return static fn (string $key): string => $key;
         }
 
         /** @var class-string<Model> $model */
-        $model = $tanim['model'];
+        $model = $definition['model'];
 
         if ((new $model)->getRouteKeyName() !== 'uuid') {
-            return static fn (string $anahtar): int => (int) $anahtar;
+            return static fn (string $key): int => (int) $key;
         }
 
-        $eslesme = $model::query()->pluck('id', 'uuid')->all();
+        $match = $model::query()->pluck('id', 'uuid')->all();
 
-        return static fn (string $anahtar): ?int => $eslesme[$anahtar] ?? null;
+        return static fn (string $key): ?int => $match[$key] ?? null;
     }
 }

@@ -1,15 +1,15 @@
 {{-- Oluşturma ve düzenleme aynı alanları kullanır; ikisi de pencerede açılır. --}}
-<x-form.field name="hostname" label="Switch adı" :id="$prefix.'-ad'">
-    <x-form.input name="hostname" :id="$prefix.'-ad'" :value="$switch?->hostname" mono required />
+<x-form.field name="hostname" label="Switch adı" :id="$prefix.'-name'">
+    <x-form.input name="hostname" :id="$prefix.'-name'" :value="$switch?->hostname" mono required />
 </x-form.field>
 
 {{--
     Adresler Adresleme'den seçilir. Elle giriş bilinçli olarak açıktır: yeni
     cihaz envantere alınırken adresi henüz Adresleme'de tanımlı olmayabilir.
 --}}
-<x-form.field name="management_ip" label="Yönetim IP" :id="$prefix.'-yonetim'"
+<x-form.field name="management_ip" label="Yönetim IP" :id="$prefix.'-management'"
               hint="Adresleme’de “Yönetim” amaçlı bloklar listelenir.">
-    <x-form.ip-picker name="management_ip" :id="$prefix.'-yonetim'" :options="$managementOptions"
+    <x-form.ip-picker name="management_ip" :id="$prefix.'-management'" :options="$managementOptions"
                       :value="$switch?->management_ip" manual placeholder="198.18.20.195" />
 </x-form.field>
 
@@ -19,22 +19,22 @@
                       :value="$switch?->uplink_ip" manual placeholder="198.18.8.38" />
 </x-form.field>
 
-<x-form.field name="role" label="Rol" :id="$prefix.'-rol'">
-    <x-form.select name="role" :id="$prefix.'-rol'" :options="$roleOptions" :selected="$switch?->role?->value" />
+<x-form.field name="role" label="Rol" :id="$prefix.'-role'">
+    <x-form.select name="role" :id="$prefix.'-role'" :options="$roleOptions" :selected="$switch?->role?->value" />
 </x-form.field>
 
-<x-form.field name="location" label="Konum" :id="$prefix.'-konum'">
-    <x-form.select name="location" :id="$prefix.'-konum'" :options="$locationOptions"
+<x-form.field name="location" label="Konum" :id="$prefix.'-location'">
+    <x-form.select name="location" :id="$prefix.'-location'" :options="$locationOptions"
                    :selected="$switch?->location?->value" />
 </x-form.field>
 
-<x-form.field name="ssh_username" label="SSH kullanıcı adı" :id="$prefix.'-ssh-kullanici'">
-    <x-form.input name="ssh_username" :id="$prefix.'-ssh-kullanici'" :value="$sshUsername" mono />
+<x-form.field name="ssh_username" label="SSH kullanıcı adı" :id="$prefix.'-ssh-user'">
+    <x-form.input name="ssh_username" :id="$prefix.'-ssh-user'" :value="$sshUsername" mono />
 </x-form.field>
 
-<x-form.field name="ssh_password" label="SSH parolası" :id="$prefix.'-ssh-parola'"
+<x-form.field name="ssh_password" label="SSH parolası" :id="$prefix.'-ssh-password'"
               :hint="$switch ? 'Boş bırakılırsa mevcut parola korunur.' : null">
-    <x-form.input name="ssh_password" :id="$prefix.'-ssh-parola'" type="password" autocomplete="new-password" />
+    <x-form.input name="ssh_password" :id="$prefix.'-ssh-password'" type="password" autocomplete="new-password" />
 </x-form.field>
 
 <x-form.field name="ssh_port" label="SSH portu" :id="$prefix.'-ssh-port'">
@@ -62,15 +62,15 @@
     </label>
 </x-form.field>
 
-<div data-netconf-alan @unless ($netconfEnabled) hidden @endunless>
-    <x-form.field name="netconf_username" label="NETCONF kullanıcı adı" :id="$prefix.'-netconf-kullanici'"
+<div data-netconf-field @unless ($netconfEnabled) hidden @endunless>
+    <x-form.field name="netconf_username" label="NETCONF kullanıcı adı" :id="$prefix.'-netconf-user'"
                   hint="Boş bırakılırsa SSH kullanıcısı kullanılır.">
-        <x-form.input name="netconf_username" :id="$prefix.'-netconf-kullanici'" :value="$netconfUsername" mono />
+        <x-form.input name="netconf_username" :id="$prefix.'-netconf-user'" :value="$netconfUsername" mono />
     </x-form.field>
 
-    <x-form.field name="netconf_password" label="NETCONF parolası" :id="$prefix.'-netconf-parola'"
+    <x-form.field name="netconf_password" label="NETCONF parolası" :id="$prefix.'-netconf-password'"
                   hint="Boş bırakılırsa SSH parolası kullanılır.">
-        <x-form.input name="netconf_password" :id="$prefix.'-netconf-parola'" type="password" autocomplete="new-password" />
+        <x-form.input name="netconf_password" :id="$prefix.'-netconf-password'" type="password" autocomplete="new-password" />
     </x-form.field>
 
     <x-form.field name="netconf_port" label="NETCONF portu" :id="$prefix.'-netconf-port'">

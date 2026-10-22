@@ -149,12 +149,12 @@ class ApiTokenController extends Controller implements HasMiddleware
 
     public function destroy(ApiToken $apiToken): RedirectResponse
     {
-        $ad = $apiToken->name;
+        $name = $apiToken->name;
         $apiToken->delete();
 
-        $this->activity->deleted($apiToken, "API jetonu silindi: {$ad}");
+        $this->activity->deleted($apiToken, "API jetonu silindi: {$name}");
 
-        return redirect()->route('settings.api')->with('status', "{$ad} silindi.");
+        return redirect()->route('settings.api')->with('status', "{$name} silindi.");
     }
 
     /**

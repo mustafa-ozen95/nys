@@ -134,22 +134,22 @@ class RouteReader
      */
     private function instanceOf(SimpleXMLElement $static): ?string
     {
-        $ad = $static->xpath(
+        $name = $static->xpath(
             'ancestor::*[local-name()="instance"]/*[local-name()="name"]'
         ) ?: [];
 
-        $deger = trim((string) ($ad[0] ?? ''));
+        $value = trim((string) ($name[0] ?? ''));
 
-        return $deger === '' ? null : $deger;
+        return $value === '' ? null : $value;
     }
 
     private function ribOf(SimpleXMLElement $static): ?string
     {
         $rib = $static->xpath('parent::*[local-name()="rib"]/*[local-name()="name"]') ?: [];
 
-        $ad = trim((string) ($rib[0] ?? ''));
+        $name = trim((string) ($rib[0] ?? ''));
 
-        return $ad === '' ? null : $ad;
+        return $name === '' ? null : $name;
     }
 
     /**

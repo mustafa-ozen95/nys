@@ -188,7 +188,7 @@ class SwitchPasswordRotator
             $panel,
             $this->userElement($recoveryName, JunosUserClass::SuperUser->value, $recoveryPassword),
             'kurtarma hesabi olusturuldu',
-            geriAlinabilir: false,
+            revertible: false,
         );
 
         $rotation->forceFill(['stage' => PasswordRotationStage::RecoveryCreated])->save();
@@ -291,7 +291,7 @@ class SwitchPasswordRotator
             .'</name></user></login></system></configuration>',
             'kurtarma hesabi silindi',
             fn (NetconfSession $session) => $this->settings->sync($switch, $session),
-            geriAlinabilir: false,
+            revertible: false,
         );
 
         $rotation->clearRecovery();

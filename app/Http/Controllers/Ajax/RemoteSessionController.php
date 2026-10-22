@@ -57,15 +57,15 @@ class RemoteSessionController extends Controller
      */
     public function keepAlive(Request $request): JsonResponse
     {
-        $jeton = $request->string('token')->toString();
-        $ayakta = $this->sahibiMi($request, $jeton) && $this->sessions->touch($jeton);
+        $token = $request->string('token')->toString();
+        $up = $this->isOwner($request, $token) && $this->sessions->touch($token);
 
         /* Denetim izi de ses veriyor; zamanlayıcı bunu "hâlâ açık" sayar. */
-        if ($ayakta) {
-            $this->opener->izeDokun($jeton);
+        if ($up) {
+            $this->opener->touchTrace($token);
         }
 
-        return response()->json(['alive' => $ayakta]);
+        return response()->json(['alive' => $up]);
     }
 
     /**
@@ -77,11 +77,11 @@ class RemoteSessionController extends Controller
      */
     public function disconnect(Request $request): JsonResponse
     {
-        $jeton = $request->string('token')->toString();
+        $token = $request->string('token')->toString();
 
-        abort_unless($this->sahibiMi($request, $jeton), 404);
+        abort_unless($this->isOwner($request, $token), 404);
 
-        $session = $this->opener->close($jeton);
+        $session = $this->opener->close($token);
 
         // Kapatma da kayda geçer: bir oturumun ne zaman bittiği açılışı kadar
         // önemlidir.
@@ -98,10 +98,10 @@ class RemoteSessionController extends Controller
     }
 
     /** Bu jeton isteği yapan kişinin oturumuna mı ait? */
-    private function sahibiMi(Request $request, string $jeton): bool
+    private function isOwner(Request $request, string $token): bool
     {
-        $oturum = $this->sessions->get($jeton);
+        $session = $this->sessions->get($token);
 
-        return $oturum !== null && (int) ($oturum['user_id'] ?? 0) === (int) $request->user()->id;
+        return $session !== null && (int) ($session['user_id'] ?? 0) === (int) $request->user()->id;
     }
 }

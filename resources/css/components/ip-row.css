@@ -3,7 +3,7 @@
     grid-template-columns: 180px minmax(0, 1fr) 120px 90px;
 }
 
-.ip-row__eylem {
+.ip-row__action {
     text-align: right;
 }
 
@@ -15,11 +15,11 @@
     align-items: start;
 }
 
-.commit-row__eylem {
+.commit-row__action {
     text-align: right;
 }
 
-.commit-row__not {
+.commit-row__note {
     overflow-wrap: anywhere;
 }
 
@@ -39,10 +39,10 @@
             'arayuz port';
     }
 
-    .ip-row__adres  { grid-area: adres; }
-    .ip-row__arayuz { grid-area: arayuz; }
+    .ip-row__address  { grid-area: adres; }
+    .ip-row__interface { grid-area: arayuz; }
     .ip-row__port   { grid-area: port; justify-self: end; }
-    .ip-row__eylem  { grid-area: eylem; }
+    .ip-row__action  { grid-area: eylem; }
     .ip-row__head   { display: none; }
 
     .commit-row {
@@ -54,10 +54,10 @@
             'eylem eylem';
     }
 
-    .commit-row__sira  { grid-area: sira; }
-    .commit-row__zaman { grid-area: zaman; justify-self: end; }
-    .commit-row__kim   { grid-area: kim; }
-    .commit-row__not   { grid-area: not; }
-    .commit-row__eylem { grid-area: eylem; text-align: left; }
+    .commit-row__order  { grid-area: sira; }
+    .commit-row__time { grid-area: zaman; justify-self: end; }
+    .commit-row__who   { grid-area: kim; }
+    .commit-row__note   { grid-area: not; }
+    .commit-row__action { grid-area: eylem; text-align: left; }
     .commit-row__head  { display: none; }
 }

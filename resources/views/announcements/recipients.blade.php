@@ -5,7 +5,7 @@
                             subtitle="Talebin kime, hangi dilde gideceği burada belirlenir.">
                 <x-slot:actions>
                     @can('create', App\Models\AnnouncementRecipient::class)
-                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="alici-ekle">
+                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="recipient-add">
                             Alıcı ekle
                         </button>
                     @endcan
@@ -19,14 +19,14 @@
                     <details class="mail-log">
                         <summary class="mail-log__head recipient-row">
                             <x-ui.badge :variant="$recipient->locale->badge()">{{ $recipient->locale->short() }}</x-ui.badge>
-                            <span class="recipient-row__ad">{{ $recipient->label }}</span>
+                            <span class="recipient-row__name">{{ $recipient->label }}</span>
                             <span class="mono text-sm text-muted recipient-row__mail">{{ $recipient->email }}</span>
                             <x-ui.badge :variant="$recipient->is_active ? 'green' : 'gray'">
                                 {{ $recipient->is_active ? 'Aktif' : 'Pasif' }}
                             </x-ui.badge>
                         </summary>
 
-                        <div class="mail-log__govde">
+                        <div class="mail-log__body">
                             <form method="POST" action="{{ route('announcements.recipients.update', $recipient) }}"
                                   data-confirm="{{ $recipient->email }} kaydı güncellenecek."
                                   data-confirm-title="Alıcıyı güncelle"
@@ -51,10 +51,10 @@
                                                        :options="$localeOptions" :selected="$recipient->locale->value" />
                                     </x-form.field>
 
-                                    <x-form.field name="is_active" label="Durum" :id="'durum-'.$recipient->uuid">
+                                    <x-form.field name="is_active" label="Durum" :id="'status-'.$recipient->uuid">
                                         <label class="checkbox">
                                             <input type="hidden" name="is_active" value="0">
-                                            <input type="checkbox" name="is_active" id="durum-{{ $recipient->uuid }}"
+                                            <input type="checkbox" name="is_active" id="status-{{ $recipient->uuid }}"
                                                    value="1" @checked($recipient->is_active)>
                                             <span>Anons listesinde görünsün</span>
                                         </label>
@@ -85,7 +85,7 @@
     </div>
 
     @can('create', App\Models\AnnouncementRecipient::class)
-        <x-ui.modal id="alici-ekle" title="Yeni alıcı">
+        <x-ui.modal id="recipient-add" title="Yeni alıcı">
             <form method="POST" action="{{ route('announcements.recipients.store') }}"
                   data-confirm="Yeni alıcı eklenecek."
                   data-confirm-title="Alıcı ekle">

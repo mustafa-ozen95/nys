@@ -49,19 +49,19 @@ final class DeviceCapabilitiesTest extends TestCase
 
         $device = $this->device(rejects: ['<ethernet-1g/>']);
 
-        $olculen = $this->probe($switch, $device);
+        $measured = $this->probe($switch, $device);
 
         /*
          * Kısıt PIC BAŞINA: her kapsam ayrı ölçülür ve ayrı saklanır. Cihaz
          * genelinde saklansaydı bir PIC'te geçerli olan seçenek öbüründe
          * gizlenirdi.
          */
-        $olculenHizlar = $olculen['port.speeds'];
-        sort($olculenHizlar);
+        $measuredSpeeds = $measured['port.speeds'];
+        sort($measuredSpeeds);
 
         $this->assertSame(
             ['ge-0/0:10', 'ge-0/0:100', 'ge-0/1:10', 'ge-0/1:100'],
-            $olculenHizlar,
+            $measuredSpeeds,
         );
     }
 
@@ -74,10 +74,10 @@ final class DeviceCapabilitiesTest extends TestCase
 
         $device = $this->device(rejects: ['<instance-type>forwarding<']);
 
-        $olculen = $this->probe($switch, $device);
+        $measured = $this->probe($switch, $device);
 
-        $this->assertNotContains('forwarding', $olculen['routing.instance_types']);
-        $this->assertContains('virtual-router', $olculen['routing.instance_types']);
+        $this->assertNotContains('forwarding', $measured['routing.instance_types']);
+        $this->assertContains('virtual-router', $measured['routing.instance_types']);
     }
 
     /**
@@ -91,11 +91,11 @@ final class DeviceCapabilitiesTest extends TestCase
 
         $this->probe($switch, $device);
 
-        $yazilan = implode('', $device->written);
+        $written = implode('', $device->written);
 
-        $this->assertStringContainsString('<open-configuration><private/>', $yazilan);
-        $this->assertStringContainsString('<close-configuration/>', $yazilan);
-        $this->assertStringNotContainsString('<commit-configuration>', $yazilan);
+        $this->assertStringContainsString('<open-configuration><private/>', $written);
+        $this->assertStringContainsString('<close-configuration/>', $written);
+        $this->assertStringNotContainsString('<commit-configuration>', $written);
     }
 
     /**
@@ -129,14 +129,14 @@ final class DeviceCapabilitiesTest extends TestCase
     public function test_olculmemis_cihazda_liste_daralmaz(): void
     {
         $switch = $this->switch();
-        $yetenekler = app(DeviceCapabilities::class);
+        $capabilities = app(DeviceCapabilities::class);
 
-        $this->assertNull($yetenekler->values($switch, 'port.speeds'));
-        $this->assertNull($yetenekler->speedsFor($switch, 'ge-0/0/5'));
+        $this->assertNull($capabilities->values($switch, 'port.speeds'));
+        $this->assertNull($capabilities->speedsFor($switch, 'ge-0/0/5'));
 
         $this->assertSame(
             ['10' => 'a', '1000' => 'b'],
-            $yetenekler->filterSpeeds($switch, 'ge-0/0/5', ['10' => 'a', '1000' => 'b']),
+            $capabilities->filterSpeeds($switch, 'ge-0/0/5', ['10' => 'a', '1000' => 'b']),
         );
     }
 
@@ -147,19 +147,19 @@ final class DeviceCapabilitiesTest extends TestCase
             'device_capabilities' => ['port.speeds' => ['ge-0/0:10', 'ge-0/0:100']],
         ])->save();
 
-        $yetenekler = app(DeviceCapabilities::class);
+        $capabilities = app(DeviceCapabilities::class);
 
-        $this->assertSame(['10', '100'], $yetenekler->speedsFor($switch->fresh(), 'ge-0/0/5'));
+        $this->assertSame(['10', '100'], $capabilities->speedsFor($switch->fresh(), 'ge-0/0/5'));
         $this->assertSame(
             ['10' => 'a'],
-            $yetenekler->filterSpeeds($switch->fresh(), 'ge-0/0/5', ['10' => 'a', '1000' => 'b']),
+            $capabilities->filterSpeeds($switch->fresh(), 'ge-0/0/5', ['10' => 'a', '1000' => 'b']),
         );
 
         /*
          * ÖLÇÜLMEMİŞ bir PIC daraltılmaz: aynı cihazın SFP yuvası bakır
          * portla aynı kısıta tabi değil.
          */
-        $this->assertNull($yetenekler->speedsFor($switch->fresh(), 'ge-0/1/0'));
+        $this->assertNull($capabilities->speedsFor($switch->fresh(), 'ge-0/1/0'));
     }
 
     /**
@@ -196,10 +196,10 @@ final class DeviceCapabilitiesTest extends TestCase
             ->get(route('switches.ports', $switch))
             ->assertOk();
 
-        $secenekler = $response->viewData('ports')->firstWhere('model.name', 'ge-0/0/5')['speed_options'];
+        $options = $response->viewData('ports')->firstWhere('model.name', 'ge-0/0/5')['speed_options'];
 
-        $this->assertArrayNotHasKey('1000', $secenekler);
-        $this->assertArrayHasKey('100', $secenekler);
+        $this->assertArrayNotHasKey('1000', $options);
+        $this->assertArrayHasKey('100', $options);
     }
 
     /**
@@ -301,14 +301,14 @@ final class DeviceCapabilitiesTest extends TestCase
 
         Http::fake(['*' => Http::response(['jsonrpc' => '2.0', 'result' => [], 'id' => 1])]);
 
-        $secenekler = $this->actingAs($this->operator())
+        $options = $this->actingAs($this->operator())
             ->get(route('switches.ports', $switch))
             ->assertOk()
             ->viewData('ports')
             ->firstWhere('model.name', 'ge-0/0/5')['speed_options'];
 
-        $this->assertArrayHasKey('1000', $secenekler);
-        $this->assertStringContainsString('cihazda tanımlı', $secenekler['1000']);
+        $this->assertArrayHasKey('1000', $options);
+        $this->assertStringContainsString('cihazda tanımlı', $options['1000']);
     }
 
     /**
@@ -346,7 +346,7 @@ final class DeviceCapabilitiesTest extends TestCase
      */
     public function test_yetenek_eklemek_tek_satir(): void
     {
-        $sahte = new class implements DeviceCapability
+        $fake = new class implements DeviceCapability
         {
             public function key(): string
             {
@@ -364,13 +364,13 @@ final class DeviceCapabilitiesTest extends TestCase
             }
         };
 
-        app()->instance($sahte::class, $sahte);
-        config(['capabilities.probes' => [$sahte::class]]);
+        app()->instance($fake::class, $fake);
+        config(['capabilities.probes' => [$fake::class]]);
 
         $switch = $this->switch();
-        $olculen = $this->probe($switch, $this->device());
+        $measured = $this->probe($switch, $this->device());
 
-        $this->assertSame(['evet'], $olculen['deneme.degerler']);
+        $this->assertSame(['evet'], $measured['deneme.degerler']);
     }
 
     /**
@@ -389,18 +389,18 @@ final class DeviceCapabilitiesTest extends TestCase
      */
     private function probe(NetworkSwitch $switch, FakeJunosDevice $device): array
     {
-        $olculen = null;
+        $measured = null;
 
         app(NetconfClient::class)->run(
             $switch,
-            function (NetconfSession $session) use ($switch, &$olculen): void {
-                $olculen = app(CapabilityProbe::class)->detect($session, $switch);
+            function (NetconfSession $session) use ($switch, &$measured): void {
+                $measured = app(CapabilityProbe::class)->detect($session, $switch);
             },
         );
 
-        $this->assertIsArray($olculen, 'Sonda cevap vermedi.');
+        $this->assertIsArray($measured, 'Sonda cevap vermedi.');
 
-        return $olculen;
+        return $measured;
     }
 
     private function port(NetworkSwitch $switch, string $name): SwitchPort

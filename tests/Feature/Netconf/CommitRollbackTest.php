@@ -38,13 +38,13 @@ final class CommitRollbackTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('rollbackPreview');
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<load-configuration rollback="1"/>', $yazilan);
-        $this->assertStringContainsString('compare="rollback"', $yazilan);
+        $this->assertStringContainsString('<load-configuration rollback="1"/>', $written);
+        $this->assertStringContainsString('compare="rollback"', $written);
 
         // Önizleme commit ATMAZ: aday yapılandırma oturumla birlikte atılır.
-        $this->assertStringNotContainsString('<commit-configuration>', $yazilan);
+        $this->assertStringNotContainsString('<commit-configuration>', $written);
     }
 
     public function test_geri_alma_guvenli_zincirden_gecer(): void
@@ -58,15 +58,15 @@ final class CommitRollbackTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<load-configuration rollback="1"/>', $yazilan);
+        $this->assertStringContainsString('<load-configuration rollback="1"/>', $written);
 
         // Geri alma da normal yazma yolundan geçer: kilit, geri alınabilir
         // commit, ayrı oturumda onay. Ayrı bir "check" yoktur.
-        $this->assertStringContainsString('<lock-configuration/>', $yazilan);
-        $this->assertStringContainsString('<confirmed/>', $yazilan);
-        $this->assertStringNotContainsString('<check/>', $yazilan);
+        $this->assertStringContainsString('<lock-configuration/>', $written);
+        $this->assertStringContainsString('<confirmed/>', $written);
+        $this->assertStringNotContainsString('<check/>', $written);
     }
 
     /**
@@ -87,10 +87,10 @@ final class CommitRollbackTest extends TestCase
             ->put(route('switches.commits.rollback', [$switch, $commit]))
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<load-configuration rollback="2"/>', $yazilan);
-        $this->assertStringNotContainsString('rollback="7"', $yazilan);
+        $this->assertStringContainsString('<load-configuration rollback="2"/>', $written);
+        $this->assertStringNotContainsString('rollback="7"', $written);
     }
 
     /**
@@ -162,12 +162,12 @@ final class CommitRollbackTest extends TestCase
     public function test_baska_switchin_commiti_uzerinden_islem_yapilamaz(): void
     {
         $switch = $this->switch();
-        $digeri = $this->switch('198.18.20.196');
-        $yabanci = $this->commit($digeri, sequence: 1, minutesAgo: 60);
+        $other = $this->switch('198.18.20.196');
+        $foreign = $this->commit($other, sequence: 1, minutesAgo: 60);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.commits.rollback', [$switch, $yabanci]))
+            ->put(route('switches.commits.rollback', [$switch, $foreign]))
             ->assertNotFound();
 
         $this->assertNull($device->connection);
@@ -198,10 +198,10 @@ final class CommitRollbackTest extends TestCase
 
     private function device(): FakeJunosDevice
     {
-        $satirlar = '';
+        $rows = '';
 
         foreach ([0 => 0, 1 => 60, 2 => 120] as $sequence => $minutesAgo) {
-            $satirlar .= '<commit-history>'
+            $rows .= '<commit-history>'
                 .'<sequence-number>'.$sequence.'</sequence-number>'
                 .'<user>admin</user><client>netconf</client>'
                 .'<date-time junos:seconds="'.$this->timestamps()[$minutesAgo]->getTimestamp().'">x</date-time>'
@@ -211,7 +211,7 @@ final class CommitRollbackTest extends TestCase
         $device = new FakeJunosDevice(
             commitInformation: '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
                 .' xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos">'
-                .'<commit-information>'.$satirlar.'</commit-information>'
+                .'<commit-information>'.$rows.'</commit-information>'
                 ."</rpc-reply>\n]]>]]>",
         );
 

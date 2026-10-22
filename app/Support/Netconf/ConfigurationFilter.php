@@ -27,14 +27,14 @@ final class ConfigurationFilter
      */
     public static function build(?NetworkSwitch $switch, array $roots): string
     {
-        $yok = ($switch?->schema_profile ?? JunosSchemaProfile::PreEls)
+        $none = ($switch?->schema_profile ?? JunosSchemaProfile::PreEls)
             ->dialect()
             ->absentConfigurationRoots();
 
-        $kalan = array_values(array_diff($roots, $yok));
+        $remaining = array_values(array_diff($roots, $none));
 
         return '<configuration>'
-            .implode('', array_map(static fn (string $kok): string => "<{$kok}/>", $kalan))
+            .implode('', array_map(static fn (string $root): string => "<{$root}/>", $remaining))
             .'</configuration>';
     }
 }

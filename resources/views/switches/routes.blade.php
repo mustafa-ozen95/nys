@@ -9,27 +9,27 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchRoutes', $switch)
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="route-ekle">Route ekle</button>
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="route-add">Route ekle</button>
                 @endcan
             </div>
 
             <div class="column__body">
                 <div class="grid-row__head ip-row ip-row__head">
-                    <span class="ip-row__adres">Hedef</span>
-                    <span class="ip-row__arayuz">Sonraki atlama</span>
+                    <span class="ip-row__address">Hedef</span>
+                    <span class="ip-row__interface">Sonraki atlama</span>
                     <span class="ip-row__port">Protokol</span>
-                    <span class="ip-row__eylem"></span>
+                    <span class="ip-row__action"></span>
                 </div>
 
                 @forelse ($routes as $route)
                     <div class="grid-row grid-row--static ip-row">
-                        <span class="mono ip-row__adres">{{ $route->cidr }}</span>
+                        <span class="mono ip-row__address">{{ $route->cidr }}</span>
                         {{--
                             BÜTÜN sonraki atlamalar gösterilir. Yalnızca ilki
                             gösterilirse kullanıcı yedekli çıkışın varlığını
                             hiç bilmez.
                         --}}
-                        <span class="mono text-muted ip-row__arayuz">
+                        <span class="mono text-muted ip-row__interface">
                             {{ count($route->next_hops ?? []) > 1
                                 ? implode(', ', $route->next_hops)
                                 : ($route->next_hop ?: '—') }}
@@ -78,7 +78,7 @@
                             @endif
                         </span>
 
-                        <span class="ip-row__eylem">
+                        <span class="ip-row__action">
                             {{-- Yalnızca statik yollar değiştirilebilir. Öğrenilen
                                  yollarda eylem yok; protokol rozeti zaten
                                  (Doğrudan / Yerel / Diğer) bunu söylüyor. --}}
@@ -99,7 +99,7 @@
     </div>
 
     @can('createSwitchRoutes', $switch)
-        <x-ui.modal id="route-ekle" title="Yeni statik route">
+        <x-ui.modal id="route-add" title="Yeni statik route">
             <form method="POST" action="{{ route('switches.routes.store', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar. Geri alınabilir commit kullanılır."
                   data-confirm-title="Cihaza yaz">
@@ -128,13 +128,13 @@
                                                       :next-hop-options="$nextHopOptions" />
                         </div>
                         <x-ui.modal-actions submit="Cihaza yaz">
-                            <button type="submit" form="route-sil-{{ $route->uuid }}"
+                            <button type="submit" form="route-delete-{{ $route->uuid }}"
                                     class="btn btn--danger btn--sm">Sil</button>
                             <span class="spacer"></span>
                         </x-ui.modal-actions>
                     </form>
 
-                    <form method="POST" id="route-sil-{{ $route->uuid }}" hidden
+                    <form method="POST" id="route-delete-{{ $route->uuid }}" hidden
                           action="{{ route('switches.routes.destroy', [$switch, $route]) }}"
                           data-confirm="{{ $route->cidr }} route’u CİHAZDAN silinecek."
                           data-confirm-title="Route’u cihazdan sil" data-confirm-variant="danger"

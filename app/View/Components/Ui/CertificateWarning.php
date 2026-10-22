@@ -15,14 +15,14 @@ use Illuminate\View\View;
 class CertificateWarning extends Component
 {
     /** @var array<string, mixed>|null */
-    public ?array $durum;
+    public ?array $status;
 
-    public bool $goster;
+    public bool $show;
 
     public function __construct()
     {
-        $this->durum = CertificateStatus::oku();
-        $this->goster = CertificateStatus::uyarilmali() && (auth()->user()?->role?->is_admin);
+        $this->status = CertificateStatus::read();
+        $this->show = CertificateStatus::warn() && (auth()->user()?->role?->is_admin);
     }
 
     public function render(): View

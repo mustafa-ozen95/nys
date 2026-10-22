@@ -29,7 +29,7 @@ final class AnnouncementPermissionTest extends TestCase
     use RefreshDatabase;
 
     /** Fixture'ı olan, AS64496'a ait ve her iki kaynakta onaylı blok. */
-    private const ONAYLI = '192.0.2.0/24';
+    private const APPROVED = '192.0.2.0/24';
 
     /**
      * ROA AS64496 için geçerli ama gerçek IRR nesnesi AS64497'in.
@@ -37,7 +37,7 @@ final class AnnouncementPermissionTest extends TestCase
      * AS64496 bu prefixte yalnızca RPKI türevi sözde-nesnede görünür; kaynak
      * elenmezse IRR kontrolü ROA'nın kopyasına döner.
      */
-    private const RPKI_TUZAGI = '198.51.100.0/24';
+    private const RPKI_TRAP = '198.51.100.0/24';
 
     protected function setUp(): void
     {
@@ -91,11 +91,11 @@ final class AnnouncementPermissionTest extends TestCase
 
     public function test_iki_kaynak_da_onaylarsa_gonderilir(): void
     {
-        $this->ripestat([self::ONAYLI => 'valid']);
-        $this->irrd->fixture(self::ONAYLI);
+        $this->ripestat([self::APPROVED => 'valid']);
+        $this->irrd->fixture(self::APPROVED);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertRedirect(route('announcements.create'))
             ->assertSessionHasNoErrors();
 
@@ -111,11 +111,11 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_yalnizca_roa_onaylarsa_gonderilir(): void
     {
-        $this->ripestat([self::ONAYLI => 'valid']);
-        $this->irrd->without(self::ONAYLI);
+        $this->ripestat([self::APPROVED => 'valid']);
+        $this->irrd->without(self::APPROVED);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertSessionHasNoErrors();
 
         $this->assertSame(1, AnnouncementMail::query()->count());
@@ -127,11 +127,11 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_yalnizca_irr_onaylarsa_gonderilir(): void
     {
-        $this->ripestat([self::ONAYLI => 'unknown']);
-        $this->irrd->fixture(self::ONAYLI);
+        $this->ripestat([self::APPROVED => 'unknown']);
+        $this->irrd->fixture(self::APPROVED);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertSessionHasNoErrors();
 
         $this->assertSame(1, AnnouncementMail::query()->count());
@@ -146,11 +146,11 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_hicbir_kaynak_onaylamazsa_gonderilmez(): void
     {
-        $this->ripestat([self::RPKI_TUZAGI => 'invalid_asn']);
-        $this->irrd->fixture(self::RPKI_TUZAGI);
+        $this->ripestat([self::RPKI_TRAP => 'invalid_asn']);
+        $this->irrd->fixture(self::RPKI_TRAP);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::RPKI_TUZAGI))
+            ->post(route('announcements.send'), $this->payload(self::RPKI_TRAP))
             ->assertSessionHasErrors('prefixes');
 
         $this->assertSame(0, AnnouncementMail::query()->count());
@@ -158,11 +158,11 @@ final class AnnouncementPermissionTest extends TestCase
 
     public function test_hicbir_kayit_yoksa_gonderilmez(): void
     {
-        $this->ripestat([self::ONAYLI => 'unknown']);
-        $this->irrd->without(self::ONAYLI);
+        $this->ripestat([self::APPROVED => 'unknown']);
+        $this->irrd->without(self::APPROVED);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertSessionHasErrors('prefixes');
 
         $this->assertSame(0, AnnouncementMail::query()->count());
@@ -174,10 +174,10 @@ final class AnnouncementPermissionTest extends TestCase
     public function test_bir_kaynak_cevap_vermezse_oteki_yeter(): void
     {
         Http::fake(fn (): mixed => Http::response('', 503));
-        $this->irrd->fixture(self::ONAYLI);
+        $this->irrd->fixture(self::APPROVED);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertSessionHasNoErrors();
 
         $this->assertSame(1, AnnouncementMail::query()->count());
@@ -193,7 +193,7 @@ final class AnnouncementPermissionTest extends TestCase
         $this->irrd->fail();
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertSessionHasErrors('prefixes');
 
         $this->assertSame(0, AnnouncementMail::query()->count());
@@ -205,11 +205,11 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_bir_blok_dusunce_talep_tumden_durur(): void
     {
-        $this->ripestat([self::ONAYLI => 'valid', self::RPKI_TUZAGI => 'invalid_asn']);
-        $this->irrd->fixture(self::ONAYLI)->fixture(self::RPKI_TUZAGI);
+        $this->ripestat([self::APPROVED => 'valid', self::RPKI_TRAP => 'invalid_asn']);
+        $this->irrd->fixture(self::APPROVED)->fixture(self::RPKI_TRAP);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI."\n".self::RPKI_TUZAGI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED."\n".self::RPKI_TRAP))
             ->assertSessionHasErrors('prefixes');
 
         $this->assertSame(0, AnnouncementMail::query()->count());
@@ -225,11 +225,11 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_rpki_turevi_irr_nesnesi_kanit_sayilmaz(): void
     {
-        $this->ripestat([self::RPKI_TUZAGI => 'valid']);
-        $this->irrd->fixture(self::RPKI_TUZAGI);
+        $this->ripestat([self::RPKI_TRAP => 'valid']);
+        $this->irrd->fixture(self::RPKI_TRAP);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.preview'), $this->payload(self::RPKI_TUZAGI))
+            ->post(route('announcements.preview'), $this->payload(self::RPKI_TRAP))
             ->assertOk()
             ->assertSee('IRR route nesnesi başka bir AS numarasına ait (AS64497).')
             // ROA yettiği için gönderilebilir; düğme çizilir.
@@ -243,11 +243,11 @@ final class AnnouncementPermissionTest extends TestCase
     {
         config(['announcements.authorization.policy' => PrefixAuthorizationPolicy::All->value]);
 
-        $this->ripestat([self::ONAYLI => 'valid']);
-        $this->irrd->without(self::ONAYLI);
+        $this->ripestat([self::APPROVED => 'valid']);
+        $this->irrd->without(self::APPROVED);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.send'), $this->payload(self::ONAYLI))
+            ->post(route('announcements.send'), $this->payload(self::APPROVED))
             ->assertSessionHasErrors('prefixes');
 
         $this->assertSame(0, AnnouncementMail::query()->count());
@@ -255,11 +255,11 @@ final class AnnouncementPermissionTest extends TestCase
 
     public function test_onizleme_her_kaynagin_kararini_gosterir(): void
     {
-        $this->ripestat([self::RPKI_TUZAGI => 'valid']);
-        $this->irrd->fixture(self::RPKI_TUZAGI);
+        $this->ripestat([self::RPKI_TRAP => 'valid']);
+        $this->irrd->fixture(self::RPKI_TRAP);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.preview'), $this->payload(self::RPKI_TUZAGI))
+            ->post(route('announcements.preview'), $this->payload(self::RPKI_TRAP))
             ->assertOk()
             ->assertSee('Anons yetkisi')
             ->assertSee('RPKI ROA (RIPE)')
@@ -273,11 +273,11 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_engellenen_talepte_gonder_dugmesi_cizilmez(): void
     {
-        $this->ripestat([self::RPKI_TUZAGI => 'invalid_asn']);
-        $this->irrd->fixture(self::RPKI_TUZAGI);
+        $this->ripestat([self::RPKI_TRAP => 'invalid_asn']);
+        $this->irrd->fixture(self::RPKI_TRAP);
 
         $this->actingAs($this->operator())
-            ->post(route('announcements.preview'), $this->payload(self::RPKI_TUZAGI))
+            ->post(route('announcements.preview'), $this->payload(self::RPKI_TRAP))
             ->assertOk()
             ->assertDontSee('data-confirm-verify="GONDER"', escape: false)
             ->assertSee('gönderim durduruldu');
@@ -290,7 +290,7 @@ final class AnnouncementPermissionTest extends TestCase
     public function test_prefix_ag_adresine_normallestirilir(): void
     {
         $this->ripestat(['192.0.2.0/24' => 'valid']);
-        $this->irrd->fixture(self::ONAYLI);
+        $this->irrd->fixture(self::APPROVED);
 
         $this->actingAs($this->operator())
             ->post(route('announcements.send'), $this->payload('192.0.2.77/24'))
@@ -324,16 +324,16 @@ final class AnnouncementPermissionTest extends TestCase
      */
     public function test_karar_onbellege_alinir(): void
     {
-        $this->ripestat([self::ONAYLI => 'valid']);
-        $this->irrd->fixture(self::ONAYLI);
+        $this->ripestat([self::APPROVED => 'valid']);
+        $this->irrd->fixture(self::APPROVED);
 
         $operator = $this->operator();
-        $payload = $this->payload(self::ONAYLI);
+        $payload = $this->payload(self::APPROVED);
 
         $this->actingAs($operator)->post(route('announcements.preview'), $payload)->assertOk();
         $this->actingAs($operator)->post(route('announcements.preview'), $payload)->assertOk();
 
-        $this->assertSame([self::ONAYLI], $this->irrd->queried);
+        $this->assertSame([self::APPROVED], $this->irrd->queried);
         Http::assertSentCount(1);
     }
 

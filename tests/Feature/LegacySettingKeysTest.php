@@ -33,27 +33,27 @@ class LegacySettingKeysTest extends TestCase
 
     public function test_yazilan_satir_eski_adla_durur_ve_yeni_adla_okunur(): void
     {
-        $depo = app(SettingsRepository::class);
+        $repository = app(SettingsRepository::class);
 
-        $yazilan = ! (bool) config('identity.acik');
-        $depo->save(['identity.acik' => $yazilan]);
+        $written = ! (bool) config('identity.acik');
+        $repository->save(['identity.acik' => $written]);
 
         $this->assertSame(['kimlik.acik'], Setting::query()->pluck('key')->all());
-        $this->assertSame($yazilan, $depo->get('identity.acik'));
-        $this->assertNull($depo->get('kimlik.acik'));
+        $this->assertSame($written, $repository->get('identity.acik'));
+        $this->assertNull($repository->get('kimlik.acik'));
     }
 
     public function test_eski_adli_satir_yeni_config_anahtarina_uygulanir(): void
     {
-        $depo = app(SettingsRepository::class);
-        $yazilan = ! (bool) config('identity.acik');
-        $depo->save(['identity.acik' => $yazilan]);
-        config(['identity.acik' => ! $yazilan]);
+        $repository = app(SettingsRepository::class);
+        $written = ! (bool) config('identity.acik');
+        $repository->save(['identity.acik' => $written]);
+        config(['identity.acik' => ! $written]);
         Cache::forget('settings:values');
 
-        $depo->apply();
+        $repository->apply();
 
-        $this->assertSame($yazilan, config('identity.acik'));
+        $this->assertSame($written, config('identity.acik'));
     }
 
     public function test_onbellekte_kalmis_eski_adli_dizi_de_ceviriden_gecer(): void

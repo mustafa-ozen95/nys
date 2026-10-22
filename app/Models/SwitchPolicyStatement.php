@@ -85,17 +85,17 @@ class SwitchPolicyStatement extends Model
     protected function defaultSummary(): Attribute
     {
         return Attribute::get(function (): string {
-            $kosul = PolicyMatch::summary($this->default_match);
-            $eylem = PolicyThen::summary($this->default_then);
+            $condition = PolicyMatch::summary($this->default_match);
+            $action = PolicyThen::summary($this->default_then);
 
-            if ($kosul === [] && $eylem === []) {
+            if ($condition === [] && $action === []) {
                 return 'Varsayılan davranış tanımlı değil; terimler düşerse politika sessiz kalır.';
             }
 
-            $parcalar = [$kosul === [] ? 'her şey' : implode(', ', $kosul)];
-            $parcalar[] = $eylem === [] ? 'eylem yok' : implode(', ', $eylem);
+            $fragments = [$condition === [] ? 'her şey' : implode(', ', $condition)];
+            $fragments[] = $action === [] ? 'eylem yok' : implode(', ', $action);
 
-            return implode(' · ', $parcalar);
+            return implode(' · ', $fragments);
         });
     }
 

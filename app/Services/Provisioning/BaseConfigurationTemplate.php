@@ -39,7 +39,7 @@ class BaseConfigurationTemplate
      */
     public function build(array $input, DeviceProfile $profile): string
     {
-        $satirlar = [
+        $rows = [
             ...$this->identity($input, $profile),
             ...$this->access($input),
             ...$this->services(),
@@ -47,7 +47,7 @@ class BaseConfigurationTemplate
             ...$this->archival($input),
         ];
 
-        return implode("\n", array_filter($satirlar))."\n";
+        return implode("\n", array_filter($rows))."\n";
     }
 
     /**
@@ -56,12 +56,12 @@ class BaseConfigurationTemplate
      */
     private function identity(array $input, DeviceProfile $profile): array
     {
-        $arayuz = $profile->managementInterface;
-        $adres = $input['management_address'].'/'.$input['management_prefix'];
+        $interface = $profile->managementInterface;
+        $address = $input['management_address'].'/'.$input['management_prefix'];
 
-        $satirlar = [
+        $rows = [
             'set system host-name '.$this->quote((string) $input['hostname']),
-            "set interfaces {$arayuz} unit 0 family inet address {$adres}",
+            "set interfaces {$interface} unit 0 family inet address {$address}",
         ];
 
         if (filled($input['gateway'] ?? null)) {
@@ -70,18 +70,18 @@ class BaseConfigurationTemplate
              * yalnızca açılış sırasında geçerlidir; kalıcı yol routing
              * tablosundadır.
              */
-            $satirlar[] = 'set routing-options static route 0.0.0.0/0 next-hop '.$input['gateway'];
+            $rows[] = 'set routing-options static route 0.0.0.0/0 next-hop '.$input['gateway'];
         }
 
-        foreach ($input['dns'] ?? [] as $sunucu) {
-            $satirlar[] = "set system name-server {$sunucu}";
+        foreach ($input['dns'] ?? [] as $server) {
+            $rows[] = "set system name-server {$server}";
         }
 
-        foreach ($input['ntp'] ?? [] as $sunucu) {
-            $satirlar[] = "set system ntp server {$sunucu}";
+        foreach ($input['ntp'] ?? [] as $server) {
+            $rows[] = "set system ntp server {$server}";
         }
 
-        return $satirlar;
+        return $rows;
     }
 
     /**
@@ -90,22 +90,22 @@ class BaseConfigurationTemplate
      */
     private function access(array $input): array
     {
-        $satirlar = [];
+        $rows = [];
 
         if (filled($input['root_password'] ?? null)) {
-            $satirlar[] = 'set system root-authentication plain-text-password-value '
+            $rows[] = 'set system root-authentication plain-text-password-value '
                 .$this->quote((string) $input['root_password']);
         }
 
         if (filled($input['admin_username'] ?? null) && filled($input['admin_password'] ?? null)) {
-            $kullanici = (string) $input['admin_username'];
+            $user = (string) $input['admin_username'];
 
-            $satirlar[] = "set system login user {$kullanici} class super-user";
-            $satirlar[] = "set system login user {$kullanici} authentication plain-text-password-value "
+            $rows[] = "set system login user {$user} class super-user";
+            $rows[] = "set system login user {$user} authentication plain-text-password-value "
                 .$this->quote((string) $input['admin_password']);
         }
 
-        return $satirlar;
+        return $rows;
     }
 
     /**
@@ -150,15 +150,15 @@ class BaseConfigurationTemplate
      */
     private function archival(array $input): array
     {
-        $adres = (string) ($input['archival_site'] ?? config('archival.site'));
+        $address = (string) ($input['archival_site'] ?? config('archival.site'));
 
-        if (! config('archival.enabled') || blank($adres)) {
+        if (! config('archival.enabled') || blank($address)) {
             return [];
         }
 
         return [
             'set system archival configuration transfer-on-commit',
-            'set system archival configuration archive-sites '.$this->quote($adres),
+            'set system archival configuration archive-sites '.$this->quote($address),
         ];
     }
 

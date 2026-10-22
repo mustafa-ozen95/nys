@@ -40,7 +40,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['interface_specific' => '1'])->assertSessionHasNoErrors();
+        $this->filterAdd(['interface_specific' => '1'])->assertSessionHasNoErrors();
 
         $this->assertStringContainsString(
             '<filter><name>koruma</name><interface-specific/>',
@@ -56,7 +56,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle([
+        $this->filterAdd([
             'family' => 'ethernet-switching',
             'ether_types' => ['arp'],
             'source_mac_addresses' => '00:11:22:33:44:55',
@@ -76,7 +76,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle([
+        $this->filterAdd([
             'protocols' => ['tcp'],
             'tcp_flags' => 'syn',
             'dscps' => ['ef'],
@@ -100,8 +100,8 @@ final class FirewallFullManagementTest extends TestCase
             '<precedence>routine</precedence>',
             '<interface>ge-0/0/5.0</interface>',
             '<icmp-code>3</icmp-code>',
-        ] as $beklenen) {
-            $this->assertStringContainsString($beklenen, $payload);
+        ] as $expected) {
+            $this->assertStringContainsString($expected, $payload);
         }
     }
 
@@ -118,7 +118,7 @@ final class FirewallFullManagementTest extends TestCase
 
         $device = $this->device();
 
-        $this->filtreEkle([
+        $this->filterAdd([
             'action' => '',
             'policer' => 'hizli',
             'forwarding_class' => 'best-effort',
@@ -143,8 +143,8 @@ final class FirewallFullManagementTest extends TestCase
             '<syslog/>',
             '<sample/>',
             '<port-mirror/>',
-        ] as $beklenen) {
-            $this->assertStringContainsString($beklenen, $payload);
+        ] as $expected) {
+            $this->assertStringContainsString($expected, $payload);
         }
     }
 
@@ -155,7 +155,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['action' => '', 'goes_to_next_term' => '1', 'count_name' => 'sayac'])
+        $this->filterAdd(['action' => '', 'goes_to_next_term' => '1', 'count_name' => 'sayac'])
             ->assertSessionHasNoErrors();
 
         $payload = $device->payload();
@@ -171,7 +171,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle([
+        $this->filterAdd([
             'source_prefix_lists' => ['koru'],
             'source_prefix_list_excepts' => ['koru'],
         ])->assertSessionHasNoErrors();
@@ -221,8 +221,8 @@ final class FirewallFullManagementTest extends TestCase
             '<uydurma-terim/>',
             '<flexible-match-mask><name>x</name></flexible-match-mask>',
             '<uydurma-eylem>1</uydurma-eylem>',
-        ] as $korunan) {
-            $this->assertStringContainsString($korunan, $payload, "Korunan satır geri yazılmadı: {$korunan}");
+        ] as $protected) {
+            $this->assertStringContainsString($protected, $payload, "Korunan satır geri yazılmadı: {$protected}");
         }
     }
 
@@ -258,7 +258,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['family' => 'inet', 'next_headers' => ['tcp']])
+        $this->filterAdd(['family' => 'inet', 'next_headers' => ['tcp']])
             ->assertSessionHasErrors('next_headers');
 
         $this->assertNull($device->connection);
@@ -268,7 +268,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['family' => 'inet6', 'is_fragment' => '1'])
+        $this->filterAdd(['family' => 'inet6', 'is_fragment' => '1'])
             ->assertSessionHasErrors('is_fragment');
 
         $this->assertNull($device->connection);
@@ -278,7 +278,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['tcp_flags' => 'syn', 'is_tcp_initial' => '1'])
+        $this->filterAdd(['tcp_flags' => 'syn', 'is_tcp_initial' => '1'])
             ->assertSessionHasErrors('tcp_flags');
 
         $this->assertNull($device->connection);
@@ -288,7 +288,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['action' => 'accept', 'goes_to_next_term' => '1'])
+        $this->filterAdd(['action' => 'accept', 'goes_to_next_term' => '1'])
             ->assertSessionHasErrors('goes_to_next_term');
 
         $this->assertNull($device->connection);
@@ -298,7 +298,7 @@ final class FirewallFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->filtreEkle(['policer' => 'olmayan'])->assertSessionHasErrors('policer');
+        $this->filterAdd(['policer' => 'olmayan'])->assertSessionHasErrors('policer');
 
         $this->assertNull($device->connection);
     }
@@ -398,12 +398,12 @@ final class FirewallFullManagementTest extends TestCase
     public function test_baska_switchin_policeri_kullanilamaz(): void
     {
         $switch = $this->switch();
-        $digeri = $this->switch('198.18.20.196');
-        $yabanci = SwitchFirewallPolicer::factory()->for($digeri, 'switch')->create();
+        $other = $this->switch('198.18.20.196');
+        $foreign = SwitchFirewallPolicer::factory()->for($other, 'switch')->create();
         $device = $this->device();
 
         $this->actingAs($this->admin())
-            ->delete(route('switches.firewall.policers.destroy', [$switch, $yabanci]))
+            ->delete(route('switches.firewall.policers.destroy', [$switch, $foreign]))
             ->assertNotFound();
 
         $this->assertNull($device->connection);
@@ -422,10 +422,10 @@ final class FirewallFullManagementTest extends TestCase
         $switch = $this->switch();
         SwitchFirewallPolicer::factory()->for($switch, 'switch')->create(['name' => 'musteri-10m']);
 
-        foreach (FirewallFamily::cases() as $aile) {
+        foreach (FirewallFamily::cases() as $family) {
             $filter = SwitchFirewallFilter::factory()->for($switch, 'switch')->withPreservedLines()->create([
-                'family' => $aile,
-                'name' => 'koruma-'.str_replace('-', '', $aile->value),
+                'family' => $family,
+                'name' => 'koruma-'.str_replace('-', '', $family->value),
                 'interface_specific' => true,
             ]);
 
@@ -447,7 +447,7 @@ final class FirewallFullManagementTest extends TestCase
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function filtreEkle(array $payload, ?NetworkSwitch $switch = null): TestResponse
+    private function filterAdd(array $payload, ?NetworkSwitch $switch = null): TestResponse
     {
         $switch ??= $this->switch();
 

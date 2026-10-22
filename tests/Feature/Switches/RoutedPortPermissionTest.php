@@ -30,7 +30,7 @@ final class RoutedPortPermissionTest extends TestCase
 
     public function test_port_yetkisi_filtre_baglayamaz(): void
     {
-        [$switch, $port] = $this->kurulum();
+        [$switch, $port] = $this->prepareFixture();
         $device = $this->device();
 
         $this->actingAs($this->portUser())
@@ -45,7 +45,7 @@ final class RoutedPortPermissionTest extends TestCase
 
     public function test_port_yetkisi_ip_adresi_veremez(): void
     {
-        [$switch, $port] = $this->kurulum();
+        [$switch, $port] = $this->prepareFixture();
         $device = $this->device();
 
         $this->actingAs($this->portUser())
@@ -64,7 +64,7 @@ final class RoutedPortPermissionTest extends TestCase
      */
     public function test_degismeyen_adres_ve_filtre_yetki_istemez(): void
     {
-        [$switch, $port] = $this->kurulum();
+        [$switch, $port] = $this->prepareFixture();
         SwitchIpAddress::factory()->for($switch, 'switch')->create([
             'switch_port_id' => $port->id,
             'interface_name' => 'ge-0/0/3.0',
@@ -89,7 +89,7 @@ final class RoutedPortPermissionTest extends TestCase
 
     public function test_firewall_ve_adres_yetkisi_olan_yapabilir(): void
     {
-        [$switch, $port] = $this->kurulum();
+        [$switch, $port] = $this->prepareFixture();
         $this->device();
 
         $user = $this->portUser();
@@ -119,7 +119,7 @@ final class RoutedPortPermissionTest extends TestCase
     /**
      * @return array{0: NetworkSwitch, 1: SwitchPort}
      */
-    private function kurulum(): array
+    private function prepareFixture(): array
     {
         $switch = NetworkSwitch::factory()->create(['management_ip' => '198.18.20.195']);
         $switch->credentials()->create([

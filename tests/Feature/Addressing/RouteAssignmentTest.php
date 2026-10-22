@@ -41,10 +41,10 @@ final class RouteAssignmentTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode('', $device->written);
+        $written = implode('', $device->written);
 
-        $this->assertStringContainsString('<name>10.9.9.0/29</name>', $yazilan);
-        $this->assertStringContainsString('<next-hop>10.0.0.2</next-hop>', $yazilan);
+        $this->assertStringContainsString('<name>10.9.9.0/29</name>', $written);
+        $this->assertStringContainsString('<next-hop>10.0.0.2</next-hop>', $written);
     }
 
     public function test_atama_kaldirilinca_route_cihazdan_silinir(): void
@@ -190,14 +190,14 @@ final class RouteAssignmentTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode('', $device->written);
+        $written = implode('', $device->written);
 
         /*
          * Geçit bloğun İLK KULLANILABİLİR adresidir: 10.9.9.0/29 için
          * 10.9.9.1/29 ve L3 arayüzü vlan.100.
          */
-        $this->assertStringContainsString('10.9.9.1/29', $yazilan);
-        $this->assertStringContainsString('<name>vlan</name>', $yazilan);
+        $this->assertStringContainsString('10.9.9.1/29', $written);
+        $this->assertStringContainsString('<name>vlan</name>', $written);
     }
 
     public function test_port_atamasi_portun_birimine_yazilir(): void
@@ -219,9 +219,9 @@ final class RouteAssignmentTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode('', $device->written);
+        $written = implode('', $device->written);
 
-        $this->assertStringContainsString('10.9.9.1/29', $yazilan);
-        $this->assertStringContainsString('ge-0/0/5', $yazilan);
+        $this->assertStringContainsString('10.9.9.1/29', $written);
+        $this->assertStringContainsString('ge-0/0/5', $written);
     }
 }

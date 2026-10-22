@@ -44,11 +44,11 @@ final class DeviceVerificationReportTest extends TestCase
         $switch = $this->switch();
         $this->port($switch, 'ge-0/0/5');
 
-        $senaryolar = app(DeviceWriteScenarios::class)->all($switch);
+        $scenarios = app(DeviceWriteScenarios::class)->all($switch);
 
         $this->expectException(ScenarioNotApplicable::class);
 
-        $senaryolar['toplama · ae ayarları']();
+        $scenarios['toplama · ae ayarları']();
     }
 
     /**
@@ -107,11 +107,11 @@ final class DeviceVerificationReportTest extends TestCase
     {
         $switch = $this->elsSwitch();
 
-        $senaryolar = app(DeviceWriteScenarios::class)->all($switch);
+        $scenarios = app(DeviceWriteScenarios::class)->all($switch);
 
         $this->expectException(ScenarioNotApplicable::class);
 
-        $senaryolar['snooping · vlan examine-dhcp']();
+        $scenarios['snooping · vlan examine-dhcp']();
     }
 
     /**

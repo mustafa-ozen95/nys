@@ -10,17 +10,17 @@
     grid-template-areas: 'ad adres os erisim durum';
 }
 
-.server-row__ad {
+.server-row__name {
     grid-area: ad;
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-.server-row__adres  { grid-area: adres; }
+.server-row__address  { grid-area: adres; }
 .server-row__os     { grid-area: os; display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
-.server-row__erisim { grid-area: erisim; }
-.server-row__durum  { grid-area: durum; }
+.server-row__access { grid-area: erisim; }
+.server-row__status  { grid-area: durum; }
 
 @media (max-width: 1200px) {
     .server-row {

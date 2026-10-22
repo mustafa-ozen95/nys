@@ -27,14 +27,14 @@ final class ApiDocumentationTest extends TestCase
      */
     public function test_her_ucun_belgesi_var(): void
     {
-        $belgesiz = array_filter(
+        $undocumented = array_filter(
             app(ApiDocumentation::class)->endpoints(),
             fn (array $endpoint): bool => ! $endpoint['documented'],
         );
 
         $this->assertSame(
             [],
-            array_column($belgesiz, 'name'),
+            array_column($undocumented, 'name'),
             'Belgesiz API ucu var; config/api.php içindeki "endpoints" listesine eklenmeli.',
         );
     }

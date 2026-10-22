@@ -33,7 +33,7 @@ class LoginLockTest extends TestCase
         RateLimiter::clear('kisi@ornek.test|127.0.0.1');
     }
 
-    private function kullanici(): User
+    private function user(): User
     {
         return User::factory()->create([
             'email' => 'kisi@ornek.test',
@@ -42,11 +42,11 @@ class LoginLockTest extends TestCase
     }
 
     /** @return TestResponse */
-    private function dene(string $parola)
+    private function try(string $password)
     {
-        return $this->post('/giris', [
+        return $this->post('/login', [
             'email' => 'kisi@ornek.test',
-            'password' => $parola,
+            'password' => $password,
         ]);
     }
 
@@ -55,13 +55,13 @@ class LoginLockTest extends TestCase
     {
         config(['auth.max_attempts' => 0]);
 
-        $this->kullanici();
+        $this->user();
 
         for ($i = 0; $i < 12; $i++) {
-            $this->dene('yanlis')->assertSessionHasErrors('email');
+            $this->try('yanlis')->assertSessionHasErrors('email');
         }
 
-        $this->dene('dogru-parola-1234')->assertRedirect();
+        $this->try('dogru-parola-1234')->assertRedirect();
         $this->assertAuthenticated();
     }
 
@@ -70,14 +70,14 @@ class LoginLockTest extends TestCase
     {
         config(['auth.max_attempts' => 3]);
 
-        $this->kullanici();
+        $this->user();
 
         for ($i = 0; $i < 3; $i++) {
-            $this->dene('yanlis');
+            $this->try('yanlis');
         }
 
         /* Sayaç dolduktan sonra DOĞRU parola bile geçmez. */
-        $this->dene('dogru-parola-1234')->assertInvalid(['email' => 'Çok fazla deneme']);
+        $this->try('dogru-parola-1234')->assertInvalid(['email' => 'Çok fazla deneme']);
 
         $this->assertGuest();
     }

@@ -70,10 +70,10 @@ class AddressBlockService
      */
     public function tree(bool $infrastructure = false, ?User $user = null): array
     {
-        $kalan = self::TREE_LIMIT;
+        $remaining = self::TREE_LIMIT;
 
         return $this->roots($infrastructure, $user)
-            ->map(fn (AddressBlock $block): array => $this->node($block, 0, $kalan, $user))
+            ->map(fn (AddressBlock $block): array => $this->node($block, 0, $remaining, $user))
             ->all();
     }
 
@@ -86,20 +86,20 @@ class AddressBlockService
     /**
      * @return array<string, mixed>
      */
-    private function node(AddressBlock $block, int $derinlik, int &$kalan, ?User $user = null): array
+    private function node(AddressBlock $block, int $depth, int &$remaining, ?User $user = null): array
     {
-        $dugum = [
+        $node = [
             'block' => $block,
-            'derinlik' => $derinlik,
+            'derinlik' => $depth,
             'satirlar' => [],
             'kesildi' => false,
         ];
 
-        if ($derinlik >= self::TREE_DEPTH) {
-            return $dugum;
+        if ($depth >= self::TREE_DEPTH) {
+            return $node;
         }
 
-        $satirlar = $this->layout->network($block, $user);
+        $rows = $this->layout->network($block, $user);
 
         /*
          * AÇILABİLİRLİK ALT AĞIN VARLIĞINDAN gelir, is_subnetted bayrağından
@@ -108,15 +108,15 @@ class AddressBlockService
          * çocukları hiç göstermiyordu. Yaprak blokta tek satır çıkar (kendi
          * boşluğu) ve onu açmanın anlamı yok.
          */
-        $altVar = collect($satirlar)->contains(fn (array $satir): bool => $satir['tur'] === 'alt-ag');
+        $hasSub = collect($rows)->contains(fn (array $row): bool => $row['tur'] === 'alt-ag');
 
-        if (! $altVar) {
-            return $dugum;
+        if (! $hasSub) {
+            return $node;
         }
 
-        foreach ($satirlar as $satir) {
-            if ($kalan-- <= 0) {
-                $dugum['kesildi'] = true;
+        foreach ($rows as $row) {
+            if ($remaining-- <= 0) {
+                $node['kesildi'] = true;
 
                 break;
             }
@@ -126,18 +126,18 @@ class AddressBlockService
              * yoksa düz satır. Karar yine bayrakla değil, gerçekten çocuğu
              * olup olmadığıyla verilir.
              */
-            if ($satir['tur'] === 'alt-ag') {
-                $alt = $this->node($satir['blok'], $derinlik + 1, $kalan, $user);
+            if ($row['tur'] === 'alt-ag') {
+                $alt = $this->node($row['blok'], $depth + 1, $remaining, $user);
 
                 if ($alt['satirlar'] !== []) {
-                    $satir['alt'] = $alt;
+                    $row['alt'] = $alt;
                 }
             }
 
-            $dugum['satirlar'][] = $satir;
+            $node['satirlar'][] = $row;
         }
 
-        return $dugum;
+        return $node;
     }
 
     /**
@@ -168,7 +168,7 @@ class AddressBlockService
      */
     public function roots(bool $infrastructure = false, ?User $user = null): Collection
     {
-        $altyapi = array_map(
+        $infrastructurePurposes = array_map(
             static fn (AddressPurpose $purpose): string => $purpose->value,
             array_filter(AddressPurpose::cases(), static fn (AddressPurpose $purpose): bool => $purpose->isInfrastructure()),
         );
@@ -179,8 +179,8 @@ class AddressBlockService
             ->when($user !== null, fn ($query) => $query->visibleTo($user))
             ->when(
                 $infrastructure,
-                fn ($query) => $query->whereIn('purpose', $altyapi),
-                fn ($query) => $query->whereNotIn('purpose', $altyapi),
+                fn ($query) => $query->whereIn('purpose', $infrastructurePurposes),
+                fn ($query) => $query->whereNotIn('purpose', $infrastructurePurposes),
             )
             ->with(['coreSwitch', 'accessSwitch'])
             ->withCount(['subnets', 'subnets as assigned_subnets_count' => fn ($query) => $query->assigned()])
@@ -281,22 +281,22 @@ class AddressBlockService
          * bir IPv6 /48'in içinde 2^80 adres var ve hiçbir tamsayıya sığmaz.
          * Bir /52, /48'in 1/16'sıdır — oran bit farkından çıkar.
          */
-        $toplamBit = $block->toCidr()->maxPrefixLength() - $block->prefix_length;
+        $totalBit = $block->toCidr()->maxPrefixLength() - $block->prefix_length;
         $pay = 0.0;
 
         foreach ($subnets as $subnet) {
-            $fark = $subnet->prefix_length - $block->prefix_length;
+            $diff = $subnet->prefix_length - $block->prefix_length;
 
             // 2^-fark: alt bloğun üst bloğa oranı.
-            $pay += $fark >= 0 && $fark <= 62 ? 1 / (1 << $fark) : 0.0;
+            $pay += $diff >= 0 && $diff <= 62 ? 1 / (1 << $diff) : 0.0;
         }
 
-        $sayilabilir = $block->toCidr()->usableCount();
+        $countable = $block->toCidr()->usableCount();
 
         return [
-            'total' => $sayilabilir,
-            'allocated' => $sayilabilir === null ? null : (int) round($pay * $sayilabilir),
-            'percent' => $toplamBit > 0 ? (int) round(min($pay, 1) * 100) : 0,
+            'total' => $countable,
+            'allocated' => $countable === null ? null : (int) round($pay * $countable),
+            'percent' => $totalBit > 0 ? (int) round(min($pay, 1) * 100) : 0,
             'subnets' => $subnets->count(),
             'assigned' => $subnets->whereNotNull('connection_type')->count(),
         ];
@@ -325,7 +325,7 @@ class AddressBlockService
     {
         $cidr = $block->toCidr();
 
-        $sayi = $cidr->usableCount();
+        $number = $cidr->usableCount();
 
         /*
          * IPv6'da yayın adresi ve noktalı maske YOKTUR; onları göstermek
@@ -341,9 +341,9 @@ class AddressBlockService
                 'Son adres' => $cidr->lastAddress(),
                 'İlk kullanılabilir' => $cidr->firstUsable(),
                 'Son kullanılabilir' => $cidr->lastUsable(),
-                'Kullanılabilir adres' => $sayi === null
+                'Kullanılabilir adres' => $number === null
                     ? 'sayılamayacak kadar çok'
-                    : number_format($sayi, 0, ',', '.'),
+                    : number_format($number, 0, ',', '.'),
             ];
         }
 
@@ -353,7 +353,7 @@ class AddressBlockService
             'Ağ maskesi' => $cidr->netmask(),
             'İlk kullanılabilir' => $cidr->firstUsable(),
             'Son kullanılabilir' => $cidr->lastUsable(),
-            'Kullanılabilir adres' => number_format((int) $sayi, 0, ',', '.'),
+            'Kullanılabilir adres' => number_format((int) $number, 0, ',', '.'),
         ];
     }
 }

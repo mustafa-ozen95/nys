@@ -10,15 +10,15 @@
     cihazda hiçbir işe yaramayan boş bir arayüz düğümü kalırdı. Kural
     sunucuda da vardır (required_without).
 --}}
-<x-form.field kural="switch_voip.voip:vlan_name" name="vlan_name" label="Ses VLAN’ı" :id="$prefix.'-vlan'"
+<x-form.field rule="switch_voip.voip:vlan_name" name="vlan_name" label="Ses VLAN’ı" :id="$prefix.'-vlan'"
               hint="Telefonun ETİKETLİ olarak kullanacağı VLAN. Portun kendi (etiketsiz) VLAN’ından farklı olmalıdır: bilgisayar etiketsiz, telefon etiketli gider.">
     <x-form.select name="vlan_name" :id="$prefix.'-vlan'" :options="$vlanOptions"
                    :selected="$voipInterface?->vlan_name" />
 </x-form.field>
 
-<x-form.field kural="switch_voip.voip:forwarding_class" name="forwarding_class" label="İletim sınıfı" :id="$prefix.'-sinif'"
+<x-form.field rule="switch_voip.voip:forwarding_class" name="forwarding_class" label="İletim sınıfı" :id="$prefix.'-class'"
               hint="Ses trafiğinin hangi kuyruğa gireceği. Boş bırakılırsa cihaz kendi sınıfını uygular.">
-    <x-form.select name="forwarding_class" :id="$prefix.'-sinif'" :options="$forwardingClasses"
+    <x-form.select name="forwarding_class" :id="$prefix.'-class'" :options="$forwardingClasses"
                    :selected="$voipInterface?->forwarding_class" />
 </x-form.field>
 

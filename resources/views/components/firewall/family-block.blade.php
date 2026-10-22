@@ -10,6 +10,6 @@
 --}}
 @props(['family', 'only'])
 
-<div data-fw-aile="{{ $only }}" @class(['stack', 'is-hidden' => $family->value !== $only])>
+<div data-fw-family="{{ $only }}" @class(['stack', 'is-hidden' => $family->value !== $only])>
     {{ $slot }}
 </div>

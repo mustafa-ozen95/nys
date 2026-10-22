@@ -57,17 +57,17 @@ class DeviceFactsReader
             return null;
         }
 
-        $metin = $this->text(
+        $text = $this->text(
             $reply,
             '//*[local-name()="current-time"]/*[local-name()="date-time"]',
         );
 
-        if ($metin === null) {
+        if ($text === null) {
             return null;
         }
 
         try {
-            return (int) round(CarbonImmutable::parse($metin)->diffInSeconds(CarbonImmutable::now()));
+            return (int) round(CarbonImmutable::parse($text)->diffInSeconds(CarbonImmutable::now()));
         } catch (Throwable) {
             // Cihazın tarih biçimi beklenmedikse sapma bilinmiyor demektir.
             return null;

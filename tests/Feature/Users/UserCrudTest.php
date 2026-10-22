@@ -155,12 +155,12 @@ final class UserCrudTest extends TestCase
             ->post(route('users.store'), $this->payload(['role' => $network->uuid]))
             ->assertRedirect();
 
-        $yeni = User::where('email', 'yeni@example.test')->firstOrFail();
+        $new = User::where('email', 'yeni@example.test')->firstOrFail();
 
-        $this->assertSame($network->id, $yeni->role_id);
-        $this->assertSame(0, $yeni->permissions()->count(), 'Yetki kopyalanmamalı.');
+        $this->assertSame($network->id, $new->role_id);
+        $this->assertSame(0, $new->permissions()->count(), 'Yetki kopyalanmamalı.');
         $this->assertTrue(
-            app(UserPermissionResolver::class)->allows($yeni, 'servers', 'view'),
+            app(UserPermissionResolver::class)->allows($new, 'servers', 'view'),
             'Rolün yetkisi geçerli olmalı.',
         );
     }
@@ -173,53 +173,53 @@ final class UserCrudTest extends TestCase
      */
     public function test_rol_degisince_yeni_rolun_yetkileri_gecerli_olur(): void
     {
-        $teknik = Role::query()->where('slug', 'teknik')->firstOrFail();
+        $technical = Role::query()->where('slug', 'teknik')->firstOrFail();
         $network = Role::query()->where('slug', 'network')->firstOrFail();
 
-        $kullanici = User::factory()->create(['role_id' => $teknik->id]);
-        $onceki = $kullanici->permissions()->count();
+        $user = User::factory()->create(['role_id' => $technical->id]);
+        $previous = $user->permissions()->count();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('users.update', $kullanici), [
-                'name' => $kullanici->name,
-                'email' => $kullanici->email,
+            ->put(route('users.update', $user), [
+                'name' => $user->name,
+                'email' => $user->email,
                 'role' => $network->uuid,
                 'status' => 'active',
                 'reason' => 'ağ ekibine geçti',
             ])
             ->assertRedirect();
 
-        $taze = $kullanici->fresh();
+        $fresh = $user->fresh();
 
-        $cozumleyici = app(UserPermissionResolver::class);
+        $parser = app(UserPermissionResolver::class);
 
-        $this->assertSame($network->id, $taze->role_id);
-        $this->assertSame($onceki, $taze->permissions()->count(), 'İstisnalara dokunulmamalı.');
-        $this->assertTrue($cozumleyici->allows($taze, 'servers', 'view'), 'Yeni rolün yetkisi geçerli olmalı.');
+        $this->assertSame($network->id, $fresh->role_id);
+        $this->assertSame($previous, $fresh->permissions()->count(), 'İstisnalara dokunulmamalı.');
+        $this->assertTrue($parser->allows($fresh, 'servers', 'view'), 'Yeni rolün yetkisi geçerli olmalı.');
     }
 
     /** Rol AYNI kaldığında şablon uygulanmaz: elle verilmiş istisnalar silinmemeli. */
     public function test_rol_ayni_kalinca_yetkilere_dokunulmaz(): void
     {
-        $teknik = Role::query()->where('slug', 'teknik')->firstOrFail();
-        $kullanici = User::factory()->create(['role_id' => $teknik->id]);
+        $technical = Role::query()->where('slug', 'teknik')->firstOrFail();
+        $user = User::factory()->create(['role_id' => $technical->id]);
 
         app(UserPermissionResolver::class)
-            ->syncResource($kullanici, 'servers', ['view', 'create', 'update', 'delete']);
+            ->syncResource($user, 'servers', ['view', 'create', 'update', 'delete']);
 
-        $onceki = $kullanici->permissions()->count();
+        $previous = $user->permissions()->count();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('users.update', $kullanici), [
+            ->put(route('users.update', $user), [
                 'name' => 'Yeni Ad',
-                'email' => $kullanici->email,
-                'role' => $teknik->uuid,
+                'email' => $user->email,
+                'role' => $technical->uuid,
                 'status' => 'active',
                 'reason' => 'ad düzeltmesi',
             ])
             ->assertRedirect();
 
-        $this->assertSame($onceki, $kullanici->fresh()->permissions()->count());
+        $this->assertSame($previous, $user->fresh()->permissions()->count());
     }
 
     /**
@@ -233,12 +233,12 @@ final class UserCrudTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get(route('hesap.profil'))->assertOk();
+        $this->actingAs($user)->get(route('account.profile'))->assertOk();
 
         $user->forceFill(['status' => UserStatus::Inactive])->save();
 
         $this->actingAs($user->fresh())
-            ->get(route('hesap.profil'))
+            ->get(route('account.profile'))
             ->assertRedirect(route('login'));
 
         $this->assertGuest();

@@ -14,21 +14,21 @@ use Illuminate\Console\Command;
  * Zamanlayıcı her sabah çağırır; sonuç Ayarlar → Güncelleme'de ve yeni
  * sürüm varsa yöneticinin uyarı şeridinde görünür. Elle de çalıştırılabilir:
  *
- *     php artisan guncelleme:denetle
+ *     php artisan update:check
  */
 class UpdateCheckCommand extends Command
 {
-    protected $signature = 'guncelleme:denetle';
+    protected $signature = 'update:check';
 
     protected $description = 'Yeni sürüm var mı: GitHub\'daki son başarılı imaj derlemesiyle karşılaştırır (yalnızca bakar)';
 
-    public function handle(UpdateCheck $denetim): int
+    public function handle(UpdateCheck $audit): int
     {
-        $sonuc = $denetim->denetle('günlük tur');
+        $result = $audit->check('günlük tur');
 
-        $ileti = $sonuc['durum'].': '.($sonuc['aciklama'] ?? '');
-        $sonuc['durum'] === 'hata' ? $this->components->error($ileti) : $this->components->info($ileti);
+        $message = $result['durum'].': '.($result['aciklama'] ?? '');
+        $result['durum'] === 'hata' ? $this->components->error($message) : $this->components->info($message);
 
-        return $sonuc['durum'] === 'hata' ? self::FAILURE : self::SUCCESS;
+        return $result['durum'] === 'hata' ? self::FAILURE : self::SUCCESS;
     }
 }

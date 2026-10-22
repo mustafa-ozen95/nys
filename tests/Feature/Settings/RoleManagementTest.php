@@ -106,9 +106,9 @@ final class RoleManagementTest extends TestCase
         $role = Role::query()->firstWhere('slug', 'teknik');
         $role->update(['template' => ['switches' => ['view', 'connect']]]);
 
-        $cozumleyici = app(UserPermissionResolver::class);
+        $parser = app(UserPermissionResolver::class);
 
-        $this->assertTrue($cozumleyici->allows($user->fresh(), 'switches', 'connect'));
+        $this->assertTrue($parser->allows($user->fresh(), 'switches', 'connect'));
 
         $this->actingAs($this->admin())
             ->put(route('settings.roles.update', $role), [
@@ -119,9 +119,9 @@ final class RoleManagementTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $this->assertTrue($cozumleyici->allows($user->fresh(), 'switches', 'view'));
+        $this->assertTrue($parser->allows($user->fresh(), 'switches', 'view'));
         $this->assertFalse(
-            $cozumleyici->allows($user->fresh(), 'switches', 'connect'),
+            $parser->allows($user->fresh(), 'switches', 'connect'),
             'Rolden çıkarılan yetki o roldeki kullanıcıda da kalkmalı.',
         );
     }
@@ -139,7 +139,7 @@ final class RoleManagementTest extends TestCase
                 'badge' => 'gray',
                 'template' => ['switches' => ['view']],
             ])
-            ->assertSessionHas('status', fn (string $mesaj): bool => str_contains($mesaj, '2 kullanıcı'));
+            ->assertSessionHas('status', fn (string $message): bool => str_contains($message, '2 kullanıcı'));
     }
 
     /**
@@ -154,16 +154,16 @@ final class RoleManagementTest extends TestCase
 
         $user = User::factory()->role('teknik')->create();
 
-        $cozumleyici = app(UserPermissionResolver::class);
+        $parser = app(UserPermissionResolver::class);
 
-        $this->assertTrue($cozumleyici->allows($user->fresh(), 'switches', 'view'));
-        $this->assertFalse($cozumleyici->allows($user->fresh(), 'switches', 'connect'));
+        $this->assertTrue($parser->allows($user->fresh(), 'switches', 'view'));
+        $this->assertFalse($parser->allows($user->fresh(), 'switches', 'connect'));
 
         /* Kişisel istisna rolün üstüne biner. */
-        $cozumleyici->syncResource($user, 'switches', ['connect']);
+        $parser->syncResource($user, 'switches', ['connect']);
 
-        $this->assertTrue($cozumleyici->allows($user->fresh(), 'switches', 'connect'));
-        $this->assertTrue($cozumleyici->allows($user->fresh(), 'switches', 'view'), 'Rol yerinde kalmalı.');
+        $this->assertTrue($parser->allows($user->fresh(), 'switches', 'connect'));
+        $this->assertTrue($parser->allows($user->fresh(), 'switches', 'view'), 'Rol yerinde kalmalı.');
     }
 
     /**
@@ -220,10 +220,10 @@ final class RoleManagementTest extends TestCase
 
     public function test_varsayilan_rol_tektir(): void
     {
-        $yeni = Role::factory()->create(['slug' => 'saha', 'label' => 'Saha']);
+        $new = Role::factory()->create(['slug' => 'saha', 'label' => 'Saha']);
 
         $this->actingAs($this->admin())
-            ->put(route('settings.roles.update', $yeni), [
+            ->put(route('settings.roles.update', $new), [
                 'label' => 'Saha',
                 'badge' => 'gray',
                 'is_default' => '1',
@@ -338,14 +338,14 @@ final class RoleManagementTest extends TestCase
         $role = Role::query()->firstWhere('slug', 'teknik');
         $role->update(['template' => ['switches' => ['view', 'connect']]]);
 
-        $govde = $this->actingAs($this->admin())
+        $body = $this->actingAs($this->admin())
             ->get(route('settings.roles.show', $role))
             ->assertOk()
             ->getContent();
 
         $this->assertMatchesRegularExpression(
             '/<input[^>]*name="template\[switches\]\[\]"[^>]*value="connect"[^>]*checked/s',
-            $govde,
+            $body,
         );
     }
 }

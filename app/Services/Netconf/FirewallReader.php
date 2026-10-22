@@ -276,10 +276,10 @@ class FirewallReader
     private function family(SimpleXMLElement $filter): FirewallFamily
     {
         foreach ($filter->xpath('ancestor::*') ?: [] as $ancestor) {
-            $aile = FirewallFamily::tryFrom($ancestor->getName());
+            $family = FirewallFamily::tryFrom($ancestor->getName());
 
-            if ($aile !== null) {
-                return $aile;
+            if ($family !== null) {
+                return $family;
             }
         }
 

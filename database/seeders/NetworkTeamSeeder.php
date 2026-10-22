@@ -24,7 +24,7 @@ class NetworkTeamSeeder extends Seeder
     public static function members(): array
     {
         /** @var array<int, array{name: string, email: string, password: string}> */
-        return LocalInventory::al('ekip');
+        return LocalInventory::take('ekip');
     }
 
     public function run(): void

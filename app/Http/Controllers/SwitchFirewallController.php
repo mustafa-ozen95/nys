@@ -247,12 +247,12 @@ class SwitchFirewallController extends Controller implements HasMiddleware
      */
     public function destroyPolicer(NetworkSwitch $switch, SwitchFirewallPolicer $firewallPolicer): RedirectResponse
     {
-        $bagli = $this->dependencies->forPolicer($firewallPolicer);
+        $bound = $this->dependencies->forPolicer($firewallPolicer);
 
-        if ($bagli !== []) {
+        if ($bound !== []) {
             return $this->backToSwitch(
                 $switch,
-                $this->dependencies->message("Policer {$firewallPolicer->name}", $bagli),
+                $this->dependencies->message("Policer {$firewallPolicer->name}", $bound),
             );
         }
 
@@ -273,17 +273,17 @@ class SwitchFirewallController extends Controller implements HasMiddleware
      */
     private function ordered(SwitchFirewallFilter $filter, array $uuids): array
     {
-        $mevcut = $filter->terms->keyBy('uuid');
+        $current = $filter->terms->keyBy('uuid');
 
         abort_unless(
-            count($uuids) === $mevcut->count() && $mevcut->keys()->diff($uuids)->isEmpty(),
+            count($uuids) === $current->count() && $current->keys()->diff($uuids)->isEmpty(),
             422,
             'Sıralama listesi filtrenin terimleriyle birebir eşleşmeli.',
         );
 
-        $sirali = collect($uuids)->map(fn (string $uuid) => $mevcut[$uuid]);
+        $ordered = collect($uuids)->map(fn (string $uuid) => $current[$uuid]);
 
-        return $sirali
+        return $ordered
             ->map(fn ($term): array => $this->termAttributes($term))
             ->all();
     }

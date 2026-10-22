@@ -102,13 +102,13 @@ class RoleRequest extends FormRequest
                 continue;
             }
 
-            $kabul = array_values(array_filter(
+            $accept = array_values(array_filter(
                 (array) $actions,
                 fn (mixed $action): bool => is_string($action) && $registry->supports($resource, $action),
             ));
 
-            if ($kabul !== []) {
-                $template[$resource] = $kabul;
+            if ($accept !== []) {
+                $template[$resource] = $accept;
             }
         }
 

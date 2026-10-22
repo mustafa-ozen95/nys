@@ -290,11 +290,11 @@ final class AnnouncementTest extends TestCase
     public function test_a_user_without_permission_cannot_reach_or_send(): void
     {
         Queue::fake();
-        $yabanci = User::factory()->create();
+        $foreign = User::factory()->create();
 
-        $this->actingAs($yabanci)->get(route('announcements.create'))->assertForbidden();
-        $this->actingAs($yabanci)->post(route('announcements.preview'), $this->payload())->assertForbidden();
-        $this->actingAs($yabanci)->post(route('announcements.send'), $this->payload())->assertForbidden();
+        $this->actingAs($foreign)->get(route('announcements.create'))->assertForbidden();
+        $this->actingAs($foreign)->post(route('announcements.preview'), $this->payload())->assertForbidden();
+        $this->actingAs($foreign)->post(route('announcements.send'), $this->payload())->assertForbidden();
 
         Queue::assertNothingPushed();
         $this->assertDatabaseCount('announcement_mails', 0);

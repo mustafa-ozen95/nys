@@ -289,7 +289,7 @@
  * Tema düğmesi giriş ekranında SAĞ ÜSTTE durur: panel içindeki yeriyle aynı
  * köşe, böylece giren kişi onu aradığı yerde bulur.
  */
-.gate__tema {
+.gate__theme {
     position: fixed;
     top: var(--space-4);
     right: var(--space-4);
@@ -333,7 +333,7 @@
  * arka planı boyayan bir sözcük kutusu gerekirdi ve tema değiştiğinde o kutu
  * zeminden ayrı düşerdi.
  */
-.gate__ayrac {
+.gate__divider {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
@@ -343,8 +343,8 @@
     color: var(--color-text-muted);
 }
 
-.gate__ayrac::before,
-.gate__ayrac::after {
+.gate__divider::before,
+.gate__divider::after {
     content: '';
     height: 1px;
     background: var(--color-line);
@@ -357,7 +357,7 @@
  * açılır. Ok işaretini kendimiz çiziyoruz — tarayıcının varsayılan üçgeni
  * her platformda farklı boyda ve hizası şeridin geri kalanıyla tutmuyor.
  */
-.gate__katlanir-baslik {
+.gate__collapsible-header {
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -368,11 +368,11 @@
     user-select: none;
 }
 
-.gate__katlanir-baslik::-webkit-details-marker {
+.gate__collapsible-header::-webkit-details-marker {
     display: none;
 }
 
-.gate__katlanir-baslik::before {
+.gate__collapsible-header::before {
     content: '';
     width: 0;
     height: 0;
@@ -382,16 +382,16 @@
     transition: transform var(--transition-fast);
 }
 
-.gate__katlanir[open] > .gate__katlanir-baslik::before {
+.gate__collapsible[open] > .gate__collapsible-header::before {
     transform: rotate(90deg);
 }
 
-.gate__katlanir-baslik:hover {
+.gate__collapsible-header:hover {
     color: var(--color-text);
 }
 
 /* Açıldığında form başlığa yapışmasın. */
-.gate__katlanir[open] > form {
+.gate__collapsible[open] > form {
     margin-top: var(--space-4);
 }
 

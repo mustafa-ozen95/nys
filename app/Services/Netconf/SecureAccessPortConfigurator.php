@@ -64,13 +64,13 @@ class SecureAccessPortConfigurator
             );
         }
 
-        $korunan = ResidualXml::names($settings['residual_xml'] ?? null);
+        $protected = ResidualXml::names($settings['residual_xml'] ?? null);
 
         $body = '<name>'.$this->escape($vlanName).'</name>'
-            .$this->flag('examine-dhcp', (bool) ($settings['examine_dhcp'] ?? false), $korunan)
-            .$this->flag('arp-inspection', (bool) ($settings['arp_inspection'] ?? false), $korunan)
-            .$this->flag('ip-source-guard', (bool) ($settings['ip_source_guard'] ?? false), $korunan)
-            .$this->limit('mac-move-limit', $settings['mac_move_limit'] ?? null, $settings['mac_move_action'] ?? null, $korunan)
+            .$this->flag('examine-dhcp', (bool) ($settings['examine_dhcp'] ?? false), $protected)
+            .$this->flag('arp-inspection', (bool) ($settings['arp_inspection'] ?? false), $protected)
+            .$this->flag('ip-source-guard', (bool) ($settings['ip_source_guard'] ?? false), $protected)
+            .$this->limit('mac-move-limit', $settings['mac_move_limit'] ?? null, $settings['mac_move_action'] ?? null, $protected)
             .ResidualXml::emit($settings['residual_xml'] ?? null);
 
         return $this->send(
@@ -121,12 +121,12 @@ class SecureAccessPortConfigurator
             );
         }
 
-        $korunan = ResidualXml::names($settings['residual_xml'] ?? null);
+        $protected = ResidualXml::names($settings['residual_xml'] ?? null);
 
         $body = '<name>'.$this->escape($interfaceName).'</name>'
-            .$this->trust($settings['dhcp_trusted'] ?? null, $korunan)
-            .$this->limit('mac-limit', $settings['mac_limit'] ?? null, $settings['mac_limit_action'] ?? null, $korunan)
-            .$this->allowedMacs($settings['allowed_macs'] ?? null, $korunan)
+            .$this->trust($settings['dhcp_trusted'] ?? null, $protected)
+            .$this->limit('mac-limit', $settings['mac_limit'] ?? null, $settings['mac_limit_action'] ?? null, $protected)
+            .$this->allowedMacs($settings['allowed_macs'] ?? null, $protected)
             .ResidualXml::emit($settings['residual_xml'] ?? null);
 
         return $this->send(
@@ -163,7 +163,7 @@ class SecureAccessPortConfigurator
      *
      * @param  list<string>  $korunan
      */
-    private function flag(string $element, bool $enabled, array $korunan): string
+    private function flag(string $element, bool $enabled, array $protected): string
     {
         /*
          * Kapalıysa HİÇBİR ŞEY yazılmaz. Düğüm "replace" ile yeniden
@@ -178,7 +178,7 @@ class SecureAccessPortConfigurator
      *
      * @param  list<string>  $korunan
      */
-    private function trust(?bool $trusted, array $korunan): string
+    private function trust(?bool $trusted, array $protected): string
     {
         /*
          * ÜÇ DEĞERLİ ama TEK satır: ya "dhcp-trusted" ya "no-dhcp-trusted"
@@ -201,7 +201,7 @@ class SecureAccessPortConfigurator
      *
      * @param  list<string>  $korunan
      */
-    private function limit(string $element, ?int $limit, ?string $action, array $korunan): string
+    private function limit(string $element, ?int $limit, ?string $action, array $protected): string
     {
         // "replace" yazılmayanı zaten düşürür; silme markörü gereksiz ve
         // bazı ifadelerde cihazca reddediliyor (bkz. sınıf açıklaması).
@@ -225,7 +225,7 @@ class SecureAccessPortConfigurator
      * @param  list<string>|null  $macs
      * @param  list<string>  $korunan
      */
-    private function allowedMacs(?array $macs, array $korunan): string
+    private function allowedMacs(?array $macs, array $protected): string
     {
         if ($macs === null || $macs === []) {
             return '';
@@ -256,16 +256,16 @@ class SecureAccessPortConfigurator
      */
     private function elsVlanDocument(string $vlanName, array $settings): string
     {
-        $guvenlik = ((bool) ($settings['examine_dhcp'] ?? false)) ? '' : '<no-dhcp-snooping/>';
-        $guvenlik .= ((bool) ($settings['arp_inspection'] ?? false)) ? '<arp-inspection/>' : '';
-        $guvenlik .= ((bool) ($settings['ip_source_guard'] ?? false)) ? '<ip-source-guard/>' : '';
+        $security = ((bool) ($settings['examine_dhcp'] ?? false)) ? '' : '<no-dhcp-snooping/>';
+        $security .= ((bool) ($settings['arp_inspection'] ?? false)) ? '<arp-inspection/>' : '';
+        $security .= ((bool) ($settings['ip_source_guard'] ?? false)) ? '<ip-source-guard/>' : '';
 
         $limit = $settings['mac_move_limit'] ?? null;
-        $anahtar = $limit === null ? '' : '<mac-move-limit>'.((int) $limit).'</mac-move-limit>';
+        $key = $limit === null ? '' : '<mac-move-limit>'.((int) $limit).'</mac-move-limit>';
 
         return '<configuration><vlans><vlan><name>'.$this->escape($vlanName).'</name>'
-            .'<forwarding-options><dhcp-security replace="replace">'.$guvenlik.'</dhcp-security></forwarding-options>'
-            .'<switch-options replace="replace">'.$anahtar.'</switch-options>'
+            .'<forwarding-options><dhcp-security replace="replace">'.$security.'</dhcp-security></forwarding-options>'
+            .'<switch-options replace="replace">'.$key.'</switch-options>'
             .'</vlan></vlans></configuration>';
     }
 
@@ -282,18 +282,18 @@ class SecureAccessPortConfigurator
     private function elsInterfaceDocument(string $interfaceName, array $settings): string
     {
         $limit = $settings['mac_limit'] ?? null;
-        $govde = '';
+        $body = '';
 
         if ($limit !== null) {
-            $eylem = $settings['mac_limit_action'] ?? null;
+            $action = $settings['mac_limit_action'] ?? null;
 
-            $govde = '<interface-mac-limit><limit>'.((int) $limit).'</limit>'
-                .($eylem === null ? '' : '<packet-action>'.$this->escape((string) $eylem).'</packet-action>')
+            $body = '<interface-mac-limit><limit>'.((int) $limit).'</limit>'
+                .($action === null ? '' : '<packet-action>'.$this->escape((string) $action).'</packet-action>')
                 .'</interface-mac-limit>';
         }
 
         return '<configuration><switch-options><interface replace="replace">'
-            .'<name>'.$this->escape($interfaceName).'</name>'.$govde
+            .'<name>'.$this->escape($interfaceName).'</name>'.$body
             .'</interface></switch-options>'
             .$this->elsVlanScopedElement($interfaceName, $settings)
             .'</configuration>';
@@ -307,22 +307,22 @@ class SecureAccessPortConfigurator
      */
     private function elsInterfaceDeleteDocument(SwitchSecureInterface $interface): string
     {
-        $arayuz = $this->escape($interface->interface_name);
-        $govde = '<switch-options><interface delete="delete"><name>'.$arayuz.'</name></interface></switch-options>';
+        $escapedInterface = $this->escape($interface->interface_name);
+        $body = '<switch-options><interface delete="delete"><name>'.$escapedInterface.'</name></interface></switch-options>';
 
         if (filled($interface->vlan_name)) {
-            $ad = $this->escape((string) $interface->vlan_name);
-            $grup = $this->escape($this->elsTrustGroup($interface->interface_name));
+            $name = $this->escape((string) $interface->vlan_name);
+            $group = $this->escape($this->elsTrustGroup($interface->interface_name));
 
-            $govde .= "<vlans><vlan><name>{$ad}</name>"
+            $body .= "<vlans><vlan><name>{$name}</name>"
                 .'<forwarding-options><dhcp-security>'
-                ."<group delete=\"delete\"><name>{$grup}</name></group>"
+                ."<group delete=\"delete\"><name>{$group}</name></group>"
                 .'</dhcp-security></forwarding-options>'
-                ."<switch-options><interface delete=\"delete\"><name>{$arayuz}</name></interface></switch-options>"
+                ."<switch-options><interface delete=\"delete\"><name>{$escapedInterface}</name></interface></switch-options>"
                 .'</vlan></vlans>';
         }
 
-        return "<configuration>{$govde}</configuration>";
+        return "<configuration>{$body}</configuration>";
     }
 
     /**
@@ -351,24 +351,24 @@ class SecureAccessPortConfigurator
             return '';
         }
 
-        $ad = $this->escape((string) $vlan);
-        $arayuz = $this->escape($interfaceName);
-        $grup = $this->escape($this->elsTrustGroup($interfaceName));
+        $name = $this->escape((string) $vlan);
+        $interface = $this->escape($interfaceName);
+        $group = $this->escape($this->elsTrustGroup($interfaceName));
 
-        $guven = ($settings['dhcp_trusted'] ?? null) === true
-            ? "<group replace=\"replace\"><name>{$grup}</name><overrides><trusted/></overrides>"
-                ."<interface><name>{$arayuz}</name></interface></group>"
-            : "<group delete=\"delete\"><name>{$grup}</name></group>";
+        $trust = ($settings['dhcp_trusted'] ?? null) === true
+            ? "<group replace=\"replace\"><name>{$group}</name><overrides><trusted/></overrides>"
+                ."<interface><name>{$interface}</name></interface></group>"
+            : "<group delete=\"delete\"><name>{$group}</name></group>";
 
-        $macler = '';
+        $macs = '';
 
         foreach ($settings['allowed_macs'] ?? [] as $mac) {
-            $macler .= '<static-mac><name>'.$this->escape((string) $mac).'</name></static-mac>';
+            $macs .= '<static-mac><name>'.$this->escape((string) $mac).'</name></static-mac>';
         }
 
-        return "<vlans><vlan><name>{$ad}</name>"
-            ."<forwarding-options><dhcp-security>{$guven}</dhcp-security></forwarding-options>"
-            ."<switch-options><interface replace=\"replace\"><name>{$arayuz}</name>{$macler}</interface></switch-options>"
+        return "<vlans><vlan><name>{$name}</name>"
+            ."<forwarding-options><dhcp-security>{$trust}</dhcp-security></forwarding-options>"
+            ."<switch-options><interface replace=\"replace\"><name>{$interface}</name>{$macs}</interface></switch-options>"
             .'</vlan></vlans>';
     }
 

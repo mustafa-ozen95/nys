@@ -17,15 +17,15 @@ use Throwable;
 /**
  * Güncelleme kontrolü: çalışan sürüm ve GitHub'daki son başarılı derleme.
  *
- * Yalnızca BAKAR. Kontrol her sabah kendiliğinden yapılır (guncelleme:denetle);
+ * Yalnızca BAKAR. Kontrol her sabah kendiliğinden yapılır (update:check);
  * düğme aynı kontrolü hemen yapar. Güncellemenin kendisi sunucudan yapılır.
  *
- * Yetkilendirme: HasMiddleware ile `can:manageGuncelleme` (yalnızca yönetici).
+ * Yetkilendirme: HasMiddleware ile `can:manageUpdate` (yalnızca yönetici).
  */
 class UpdateController extends Controller implements HasMiddleware
 {
     /** @var array<string, array{etiket: string, renk: string}> */
-    private const DURUMLAR = [
+    private const STATUSES = [
         'guncel' => ['etiket' => 'güncel', 'renk' => 'green'],
         'yeni' => ['etiket' => 'yeni sürüm var', 'renk' => 'blue'],
         'ileride' => ['etiket' => 'son derlemeden ileride', 'renk' => 'yellow'],
@@ -36,57 +36,57 @@ class UpdateController extends Controller implements HasMiddleware
 
     public function __construct(
         private SettingsCatalog $catalog,
-        private UpdateCheck $denetim,
+        private UpdateCheck $audit,
     ) {}
 
     /** @return array<int, Middleware> */
     public static function middleware(): array
     {
-        return [new Middleware('can:manageGuncelleme')];
+        return [new Middleware('can:manageUpdate')];
     }
 
     public function index(): View
     {
-        $son = $this->denetim->son();
-        $calisan = $this->denetim->surum();
+        $last = $this->audit->last();
+        $running = $this->audit->version();
 
         return view('settings.update', [
-            'sections' => $this->catalog->tabs('guncelleme'),
-            'depo' => $this->denetim->depo(),
-            'calisan' => $calisan,
-            'calisanKisa' => $calisan === null ? 'bilinmiyor' : substr($calisan, 0, 7),
-            'son' => $son === null ? null : [
-                ...$son,
-                'zaman' => self::zaman($son['zaman'] ?? null),
-                'son_kisa' => substr((string) ($son['son'] ?? ''), 0, 7),
-                'son_tarih' => self::zaman($son['son_tarih'] ?? null),
+            'sections' => $this->catalog->tabs('update'),
+            'depo' => $this->audit->repository(),
+            'calisan' => $running,
+            'calisanKisa' => $running === null ? 'bilinmiyor' : substr($running, 0, 7),
+            'son' => $last === null ? null : [
+                ...$last,
+                'zaman' => self::time($last['zaman'] ?? null),
+                'son_kisa' => substr((string) ($last['son'] ?? ''), 0, 7),
+                'son_tarih' => self::time($last['son_tarih'] ?? null),
                 'commitler' => array_map(fn (array $c): array => [
                     ...$c,
                     'kisa' => substr((string) $c['sha'], 0, 7),
-                    'tarih' => self::zaman($c['tarih'] ?? null),
-                ], $son['commitler'] ?? []),
+                    'tarih' => self::time($c['tarih'] ?? null),
+                ], $last['commitler'] ?? []),
                 // Listede gösterilmeyen yeni commit sayısı ("ve N commit daha").
-                'daha' => max(0, (int) ($son['geride'] ?? 0) - count($son['commitler'] ?? [])),
+                'daha' => max(0, (int) ($last['geride'] ?? 0) - count($last['commitler'] ?? [])),
                 // Panel güncellendiyse eski sonuç bu sürümü anlatmıyor.
-                'eski' => ($son['calisan'] ?? null) !== $calisan,
+                'eski' => ($last['calisan'] ?? null) !== $running,
             ],
-            'durum' => $son === null ? null : self::DURUMLAR[$son['durum']],
+            'durum' => $last === null ? null : self::STATUSES[$last['durum']],
         ]);
     }
 
-    public function denetle(Request $istek): RedirectResponse
+    public function check(Request $request): RedirectResponse
     {
-        $sonuc = $this->denetim->denetle((string) $istek->user()->name);
+        $result = $this->audit->check((string) $request->user()->name);
 
-        return back()->with($sonuc['durum'] === 'hata' ? 'error' : 'status', match ($sonuc['durum']) {
+        return back()->with($result['durum'] === 'hata' ? 'error' : 'status', match ($result['durum']) {
             'guncel' => 'Kontrol edildi: panel son sürümde.',
-            'yeni' => 'Kontrol edildi: yeni sürüm var ('.($sonuc['aciklama'] ?? '').')',
-            'hata' => 'Kontrol edilemedi: '.($sonuc['aciklama'] ?? ''),
-            default => 'Kontrol edildi: '.($sonuc['aciklama'] ?? ''),
+            'yeni' => 'Kontrol edildi: yeni sürüm var ('.($result['aciklama'] ?? '').')',
+            'hata' => 'Kontrol edilemedi: '.($result['aciklama'] ?? ''),
+            default => 'Kontrol edildi: '.($result['aciklama'] ?? ''),
         });
     }
 
-    private static function zaman(?string $iso): ?string
+    private static function time(?string $iso): ?string
     {
         try {
             return $iso === null ? null : Carbon::parse($iso)->setTimezone(config('app.timezone'))->format('d.m.Y H:i');

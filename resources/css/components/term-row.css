@@ -29,13 +29,13 @@
 }
 
 /* Sıra numarası ve ad birlikte okunur; sıra trafiği belirler. */
-.term-row__ad {
+.term-row__name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.term-row__ozet {
+.term-row__summary {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -54,8 +54,8 @@
     }
 
     .term-row__grip { display: none; }
-    .term-row__ad { grid-area: ad; }
-    .term-row__ozet { grid-area: ozet; white-space: normal; }
+    .term-row__name { grid-area: ad; }
+    .term-row__summary { grid-area: ozet; white-space: normal; }
     .term-row .row-actions { grid-area: eylem; }
 }
 
@@ -83,12 +83,12 @@
  * TUTAMAĞIDIR ve bu listelerde tutamak yok — ad o dar sütuna sıkışıp
  * yanındaki rozetin altına girerdi.
  */
-.ayar-row {
+.setting-row {
     grid-template-columns: 200px 190px minmax(0, 1fr) auto;
 }
 
 @media (max-width: 720px) {
-    .ayar-row {
+    .setting-row {
         grid-template-columns: minmax(0, 1fr) auto;
     }
 }
@@ -97,13 +97,13 @@
  * Rol şablonu satırı: kaynak adı solda, aksiyon kutuları sağda. Kutu sayısı
  * kaynağa göre değişir; sabit sütun vermek yerine kalan alanı doldururlar.
  */
-.rol-kaynak {
+.role-source {
     grid-template-columns: 200px minmax(0, 1fr);
     align-items: start;
 }
 
 @media (max-width: 720px) {
-    .rol-kaynak {
+    .role-source {
         grid-template-columns: minmax(0, 1fr);
     }
 }
@@ -115,12 +115,12 @@
  * bir hücrede yandaki sütunun üstüne biner ve oradaki düğmeyi tıklanamaz
  * hâle getirir.
  */
-.sir-row {
+.secret-row {
     grid-template-columns: 160px minmax(0, 1fr) auto;
 }
 
 @media (max-width: 720px) {
-    .sir-row {
+    .secret-row {
         grid-template-columns: minmax(0, 1fr) auto;
     }
 }

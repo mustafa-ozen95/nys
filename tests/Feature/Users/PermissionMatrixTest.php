@@ -49,27 +49,27 @@ final class PermissionMatrixTest extends TestCase
      */
     public function test_yetki_yapilandirmasindaki_sutunlar_gercekten_var(): void
     {
-        $kaynaklar = config('permissions.resources');
+        $sources = config('permissions.resources');
 
-        $this->assertNotEmpty($kaynaklar);
+        $this->assertNotEmpty($sources);
 
-        foreach ($kaynaklar as $kaynak => $tanim) {
+        foreach ($sources as $source => $definition) {
             // Kayıtlarını kendi veren kaynakların tablosu yoktur.
-            if (! isset($tanim['model'])) {
+            if (! isset($definition['model'])) {
                 continue;
             }
 
-            $tablo = (new $tanim['model'])->getTable();
+            $table = (new $definition['model'])->getTable();
 
-            $sutunlar = array_merge(
-                isset($tanim['order']) ? [$tanim['order']] : [],
-                $tanim['search'] ?? [],
+            $columns = array_merge(
+                isset($definition['order']) ? [$definition['order']] : [],
+                $definition['search'] ?? [],
             );
 
-            foreach ($sutunlar as $sutun) {
+            foreach ($columns as $column) {
                 $this->assertTrue(
-                    Schema::hasColumn($tablo, $sutun),
-                    "'{$kaynak}' kaynağı '{$sutun}' sütununa bakıyor ama {$tablo} tablosunda böyle bir sütun yok.",
+                    Schema::hasColumn($table, $column),
+                    "'{$source}' kaynağı '{$column}' sütununa bakıyor ama {$table} tablosunda böyle bir sütun yok.",
                 );
             }
         }
@@ -83,18 +83,18 @@ final class PermissionMatrixTest extends TestCase
      */
     public function test_her_kaynagin_kayit_listesi_kurulabilir(): void
     {
-        $matris = app(PermissionMatrixService::class);
-        $hedef = User::factory()->create();
+        $matrix = app(PermissionMatrixService::class);
+        $target = User::factory()->create();
 
-        $kaynaklar = array_keys(config('permissions.resources'));
+        $sources = array_keys(config('permissions.resources'));
 
-        $this->assertNotEmpty($kaynaklar);
+        $this->assertNotEmpty($sources);
 
-        foreach ($kaynaklar as $kaynak) {
+        foreach ($sources as $source) {
             try {
-                $matris->forUser($hedef, $kaynak);
+                $matrix->forUser($target, $source);
             } catch (Throwable $e) {
-                $this->fail("'{$kaynak}' kaynağının kayıt listesi kurulamadı: ".$e->getMessage());
+                $this->fail("'{$source}' kaynağının kayıt listesi kurulamadı: ".$e->getMessage());
             }
 
             $this->addToAssertionCount(1);

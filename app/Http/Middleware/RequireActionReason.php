@@ -70,15 +70,15 @@ class RequireActionReason
         /*
          * Uzak veritabanı bağlantısını SINAR, taşımaz: panelde hiçbir şey
          * değişmez (hedefteki sınama tabloları kaldırılır). Taşımanın kendisi
-         * (settings.veritabani.tasi) gerekçe istemeye devam eder.
+         * (settings.database.migrate) gerekçe istemeye devam eder.
          */
-        'settings.veritabani.sina',
+        'settings.database.test',
 
         /*
          * Güncelleme kontrolü GitHub'a BAKAR, panelde hiçbir şey değiştirmez;
          * sonucu yazar. Her sabah kendiliğinden de yapılıyor.
          */
-        'settings.guncelleme.denetle',
+        'settings.updates.check',
         'announcements.preview',
         'ajax.remote.connect',
         'ajax.remote.keep-alive',
@@ -96,8 +96,8 @@ class RequireActionReason
          *
          * Denetim kaydı yine tutuluyor: kim, ne zaman, nereden.
          */
-        'hesap.profil.kaydet',
-        'hesap.parola',
+        'account.profile.update',
+        'account.password',
     ];
 
     public function handle(Request $request, Closure $next): Response

@@ -10,7 +10,7 @@
 
                 @can('createSwitchMirroring', $switch)
                     <button type="button" class="btn btn--primary btn--sm"
-                            data-modal-open="aynalama-ekle">Aynalama ekle</button>
+                            data-modal-open="mirror-add">Aynalama ekle</button>
                 @endcan
             </div>
 
@@ -42,7 +42,7 @@
                     </div>
                 </x-ui.panel>
 
-                <div class="grid-row__head ayar-row">
+                <div class="grid-row__head setting-row">
                     <span>Ad</span>
                     <span>Hedef</span>
                     <span>Kaynaklar</span>
@@ -50,7 +50,7 @@
                 </div>
 
                 @forelse ($analyzers as $analyzer)
-                    <div class="grid-row grid-row--static ayar-row">
+                    <div class="grid-row grid-row--static setting-row">
                         <span class="mono">{{ $analyzer->name }}</span>
 
                         <span>
@@ -96,7 +96,7 @@
     </div>
 
     @can('createSwitchMirroring', $switch)
-        <x-ui.modal id="aynalama-ekle" title="Aynalama ekle" wide>
+        <x-ui.modal id="mirror-add" title="Aynalama ekle" wide>
             <form method="POST" action="{{ route('switches.mirroring.store', $switch) }}"
                   data-confirm="Aynalama cihaza yazılacak. Seçilen kaynakların bütün trafiği hedefe kopyalanır."
                   data-confirm-title="Cihaza yaz"

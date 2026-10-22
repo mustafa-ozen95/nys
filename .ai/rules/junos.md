@@ -130,10 +130,10 @@ geri açılır. Bu yüzden bir alan ancak BÜTÜN koşulları sağlıyorsa gör�
 
 | Öznitelik | Koşul |
 | --- | --- |
-| `data-atama-alani` | seçili yöntem bu listede mi |
-| `data-atama-hedef` | seçili yöntem tam olarak bu mu |
-| `data-atama-atlama-alani` | seçili sonraki-atlama kaynağı bu mu |
-| `data-atama-adim` | önceki soru cevaplandı mı |
+| `data-assignment-field` | seçili yöntem bu listede mi |
+| `data-assignment-target` | seçili yöntem tam olarak bu mu |
+| `data-assignment-skip-field` | seçili sonraki-atlama kaynağı bu mu |
+| `data-assignment-step` | önceki soru cevaplandı mı |
 
 Gizlenen alanın girdileri devre dışı bırakılır; açık kalan alan sunucuya
 çelişkili değer gönderir.
@@ -530,9 +530,9 @@ silinip bütün terimleriyle yeniden yazılır, tek commit):
 
 | İşlem | Uç |
 | --- | --- |
-| Terimi düzenle (sıra dâhil) | `PUT .../terim/{term}` |
-| Terim ekle (sıra seçilebilir) | `POST .../terim` |
-| Sürükle-bırak sıralama | `PUT .../siralama` |
+| Terimi düzenle (sıra dâhil) | `PUT .../term/{term}` |
+| Terim ekle (sıra seçilebilir) | `POST .../term` |
+| Sürükle-bırak sıralama | `PUT .../order` |
 
 Sıralama ucuna gönderilen liste TAM olmalıdır: eksik bir liste, adı geçmeyen
 terimi sessizce silerdi. Sunucu listeyi mevcut terimlerle birebir karşılaştırır
@@ -654,7 +654,7 @@ Ara katman GLOBAL yığına değil WEB GRUBUNA eklenir: rota parametreleri model
 ancak `SubstituteBindings`'ten sonra dönüşür, global yığında hâlâ ham metindir
 ve kontrol sessizce hiçbir şey yapmazdı.
 
-Hedef kayıt rotanın EN İÇTEKİ modelidir: `switchler/{switch}/firewall/{filter}`
+Hedef kayıt rotanın EN İÇTEKİ modelidir: `switches/{switch}/firewall/{filter}`
 isteğinde konu filtredir, switch değil.
 
 Switch'in KENDİSİNİ düzenleyen formlara (envanter, SNMP adı, AS numarası, ae

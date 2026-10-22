@@ -188,12 +188,12 @@ class SwitchFirewallTerm extends Model
     protected function summary(): Attribute
     {
         return Attribute::get(function (): string {
-            $kosullar = $this->conditionSummary();
+            $conditions = $this->conditionSummary();
 
             // Koşulsuz terim HER ŞEYE uyar; genellikle zinciri kapatan sonuncudur.
-            $parcalar = [$kosullar === [] ? 'her şey' : implode(' · ', $kosullar)];
+            $fragments = [$conditions === [] ? 'her şey' : implode(' · ', $conditions)];
 
-            return implode(' · ', [...$parcalar, ...$this->actionSummary()]);
+            return implode(' · ', [...$fragments, ...$this->actionSummary()]);
         });
     }
 
@@ -202,17 +202,17 @@ class SwitchFirewallTerm extends Model
      */
     private function conditionSummary(): array
     {
-        $kosullar = [];
+        $conditions = [];
 
-        foreach (self::CONDITION_LABELS as $alan => $etiket) {
-            $deger = $this->listed($etiket, $this->{$alan});
+        foreach (self::CONDITION_LABELS as $alan => $tag) {
+            $value = $this->listed($tag, $this->{$alan});
 
-            if ($deger !== null) {
-                $kosullar[] = $deger;
+            if ($value !== null) {
+                $conditions[] = $value;
             }
         }
 
-        return [...$kosullar, ...array_filter([
+        return [...$conditions, ...array_filter([
             $this->tcp_flags !== null ? "tcp bayrağı {$this->tcp_flags}" : null,
             $this->is_tcp_initial ? 'tcp ilk paket' : null,
             $this->is_tcp_established ? 'tcp kurulu' : null,

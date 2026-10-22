@@ -114,13 +114,13 @@ class StormControlConfigurator
      */
     private function perProfileShutdownDocuments(NetworkSwitch $switch, bool $shutdown): array
     {
-        $satir = $shutdown ? '<action-shutdown/>' : '<action-shutdown delete="delete"/>';
+        $row = $shutdown ? '<action-shutdown/>' : '<action-shutdown delete="delete"/>';
 
         return $switch->stormControls()
             ->orderBy('interface_name')
             ->pluck('interface_name')
-            ->map(fn (string $ad): string => '<configuration><forwarding-options><storm-control-profiles>'
-                .'<name>'.$this->escape($this->profileName($ad)).'</name>'.$satir
+            ->map(fn (string $name): string => '<configuration><forwarding-options><storm-control-profiles>'
+                .'<name>'.$this->escape($this->profileName($name)).'</name>'.$row
                 .'</storm-control-profiles></forwarding-options></configuration>')
             ->all();
     }
@@ -183,9 +183,9 @@ class StormControlConfigurator
      */
     private function elsDocument(NetworkSwitch $switch, string $interfaceName, array $settings): string
     {
-        $ad = $this->escape($this->profileName($interfaceName));
+        $name = $this->escape($this->profileName($interfaceName));
 
-        $esik = filled($settings['level'] ?? null)
+        $threshold = filled($settings['level'] ?? null)
             ? '<bandwidth-percentage>'.(int) $settings['level'].'</bandwidth-percentage>'
             : (filled($settings['bandwidth'] ?? null)
                 ? '<bandwidth-level>'.(int) $settings['bandwidth'].'</bandwidth-level>'
@@ -195,13 +195,13 @@ class StormControlConfigurator
          * Profil "replace" ile yazılıyor: kapatma bayrağı burada TEKRAR
          * yazılmazsa her arayüz düzenlemesi onu sessizce silerdi.
          */
-        $kapat = $switch->storm_control_shutdown ? '<action-shutdown/>' : '';
+        $close = $switch->storm_control_shutdown ? '<action-shutdown/>' : '';
 
         return '<configuration>'
-            ."<forwarding-options><storm-control-profiles replace=\"replace\"><name>{$ad}</name>"
-            ."<all>{$esik}</all>{$kapat}</storm-control-profiles></forwarding-options>"
+            ."<forwarding-options><storm-control-profiles replace=\"replace\"><name>{$name}</name>"
+            ."<all>{$threshold}</all>{$close}</storm-control-profiles></forwarding-options>"
             .'<interfaces><interface><name>'.$this->escape($interfaceName).'</name><unit><name>0</name>'
-            ."<family><ethernet-switching><storm-control><profile-name>{$ad}</profile-name></storm-control>"
+            ."<family><ethernet-switching><storm-control><profile-name>{$name}</profile-name></storm-control>"
             .'</ethernet-switching></family></unit></interface></interfaces>'
             .'</configuration>';
     }

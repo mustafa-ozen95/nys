@@ -33,12 +33,12 @@ class ProfileController extends Controller implements HasMiddleware
         return [new Middleware('auth')];
     }
 
-    public function index(#[CurrentUser] $kullanici): View
+    public function index(#[CurrentUser] $user): View
     {
-        return view('account.profile', ['kullanici' => $kullanici]);
+        return view('account.profile', ['kullanici' => $user]);
     }
 
-    public function update(Request $request, ActivityRecorder $recorder, #[CurrentUser] $kullanici): RedirectResponse
+    public function update(Request $request, ActivityRecorder $recorder, #[CurrentUser] $user): RedirectResponse
     {
         /*
          * E-POSTA BURADA DEĞİŞMEZ.
@@ -54,12 +54,12 @@ class ProfileController extends Controller implements HasMiddleware
             'name' => ['required', 'string', 'max:120'],
         ], attributes: ['name' => 'ad']);
 
-        $kullanici->update($veri);
+        $user->update($veri);
 
         return back()->with('status', 'Bilgileriniz kaydedildi.');
     }
 
-    public function parola(Request $request, ActivityRecorder $recorder, #[CurrentUser] $kullanici): RedirectResponse
+    public function password(Request $request, ActivityRecorder $recorder, #[CurrentUser] $user): RedirectResponse
     {
         $veri = $request->validate([
             /* Mevcut parola şart: oturumu ele geçiren biri hesabı devralamasın. */
@@ -67,7 +67,7 @@ class ProfileController extends Controller implements HasMiddleware
             'password' => ['required', 'confirmed', Password::min(10)->letters()->numbers()],
         ], attributes: ['mevcut' => 'mevcut parola', 'password' => 'yeni parola']);
 
-        $kullanici->update(['password' => $veri['password']]);
+        $user->update(['password' => $veri['password']]);
 
         /*
          * Parola değişince DİĞER OTURUMLAR DÜŞER.
@@ -79,7 +79,7 @@ class ProfileController extends Controller implements HasMiddleware
         Auth::logoutOtherDevices($veri['password']);
         $request->session()->regenerate();
 
-        $recorder->record($kullanici, 'updated', 'Kendi parolasını değiştirdi');
+        $recorder->record($user, 'updated', 'Kendi parolasını değiştirdi');
 
         return back()->with('status', 'Parolanız değiştirildi; diğer oturumlarınız kapatıldı.');
     }

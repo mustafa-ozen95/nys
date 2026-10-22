@@ -3,7 +3,7 @@
 ## Rol bir KAYITTIR
 
 `UserRole` enum'u kaldırıldı; roller `roles` tablosundadır ve panelden
-açılır (`/ayarlar/roller`). `users.role_id` yabancı anahtardır, `$user->role`
+açılır (`/settings/roles`). `users.role_id` yabancı anahtardır, `$user->role`
 bir `Role` modelidir.
 
 - `is_admin` bütün yetki kontrollerini geçer. **En az bir yönetici rolü
@@ -67,7 +67,7 @@ Panelin genel kuralı parolayı hiçbir ekranda basmamaktır; burası bilinçli 
 istisnadır ve üç şeyle dengelenir:
 
 - Parola sayfa kaynağında HİÇ bulunmaz; göz simgesine basıldığında ayrı bir
-  istekle gelir (`POST switchler/{switch}/parola`).
+  istekle gelir (`POST switches/{switch}/password`).
 - Her gösterim kayda geçer (kim, ne zaman, hangi switch) ve kayıt silinemez.
 - Yanıt önbelleğe alınmaz; gösterilen değer yarım dakika sonra kendiliğinden
   gizlenir.

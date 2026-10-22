@@ -26,21 +26,21 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_vlan_korumalari_okunur(): void
     {
-        $okunan = $this->read(
+        $read = $this->read(
             '<secure-access-port>'
             .'<vlan><name>all</name><examine-dhcp/></vlan>'
             .'<vlan><name>v30</name><examine-dhcp/><arp-inspection/><ip-source-guard/></vlan>'
             .'</secure-access-port>'
         );
 
-        $this->assertCount(2, $okunan['vlans']);
-        $this->assertSame('all', $okunan['vlans'][0]['vlan_name']);
-        $this->assertTrue($okunan['vlans'][0]['examine_dhcp']);
-        $this->assertFalse($okunan['vlans'][0]['arp_inspection']);
-        $this->assertSame([], $okunan['vlans'][0]['residual_xml'], 'Modellenen alan artığa düşmemeli.');
+        $this->assertCount(2, $read['vlans']);
+        $this->assertSame('all', $read['vlans'][0]['vlan_name']);
+        $this->assertTrue($read['vlans'][0]['examine_dhcp']);
+        $this->assertFalse($read['vlans'][0]['arp_inspection']);
+        $this->assertSame([], $read['vlans'][0]['residual_xml'], 'Modellenen alan artığa düşmemeli.');
 
-        $this->assertTrue($okunan['vlans'][1]['arp_inspection']);
-        $this->assertTrue($okunan['vlans'][1]['ip_source_guard']);
+        $this->assertTrue($read['vlans'][1]['arp_inspection']);
+        $this->assertTrue($read['vlans'][1]['ip_source_guard']);
     }
 
     /**
@@ -51,7 +51,7 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_dhcp_guveni_uc_durumludur(): void
     {
-        $okunan = $this->read(
+        $read = $this->read(
             '<secure-access-port>'
             .'<interface><name>ge-0/0/0.0</name><dhcp-trusted/></interface>'
             .'<interface><name>ge-0/0/1.0</name><no-dhcp-trusted/></interface>'
@@ -59,9 +59,9 @@ final class SecureAccessPortReaderTest extends TestCase
             .'</secure-access-port>'
         );
 
-        $this->assertTrue($okunan['interfaces'][0]['dhcp_trusted']);
-        $this->assertFalse($okunan['interfaces'][1]['dhcp_trusted']);
-        $this->assertNull($okunan['interfaces'][2]['dhcp_trusted']);
+        $this->assertTrue($read['interfaces'][0]['dhcp_trusted']);
+        $this->assertFalse($read['interfaces'][1]['dhcp_trusted']);
+        $this->assertNull($read['interfaces'][2]['dhcp_trusted']);
     }
 
     /**
@@ -70,7 +70,7 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_taninmayan_satir_ham_haliyle_saklanir(): void
     {
-        $okunan = $this->read(
+        $read = $this->read(
             '<secure-access-port><interface><name>ge-0/0/3.0</name><dhcp-trusted/>'
             .'<static-ip><name>198.18.20.20</name><vlan>v30</vlan><mac>00:11:22:33:44:55</mac></static-ip>'
             .'</interface></secure-access-port>'
@@ -78,9 +78,9 @@ final class SecureAccessPortReaderTest extends TestCase
 
         $this->assertSame(
             ['<static-ip><name>198.18.20.20</name><vlan>v30</vlan><mac>00:11:22:33:44:55</mac></static-ip>'],
-            $okunan['interfaces'][0]['residual_xml'],
+            $read['interfaces'][0]['residual_xml'],
         );
-        $this->assertTrue($okunan['interfaces'][0]['dhcp_trusted'], 'Tanınan alan yine okunmalı.');
+        $this->assertTrue($read['interfaces'][0]['dhcp_trusted'], 'Tanınan alan yine okunmalı.');
     }
 
     /**
@@ -89,25 +89,25 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_sinir_iki_bicimde_de_okunur(): void
     {
-        $ic = $this->read(
+        $inner = $this->read(
             '<secure-access-port><interface><name>ge-0/0/4.0</name>'
             .'<mac-limit><limit>4</limit><action>drop</action></mac-limit>'
             .'</interface></secure-access-port>'
         );
 
-        $this->assertSame(4, $ic['interfaces'][0]['mac_limit']);
-        $this->assertSame('drop', $ic['interfaces'][0]['mac_limit_action']);
-        $this->assertSame([], $ic['interfaces'][0]['residual_xml']);
+        $this->assertSame(4, $inner['interfaces'][0]['mac_limit']);
+        $this->assertSame('drop', $inner['interfaces'][0]['mac_limit_action']);
+        $this->assertSame([], $inner['interfaces'][0]['residual_xml']);
 
-        $duz = $this->read(
+        $flat = $this->read(
             '<secure-access-port><vlan><name>v30</name>'
             .'<mac-move-limit>5</mac-move-limit><action>shutdown</action>'
             .'</vlan></secure-access-port>'
         );
 
-        $this->assertSame(5, $duz['vlans'][0]['mac_move_limit']);
-        $this->assertSame('shutdown', $duz['vlans'][0]['mac_move_action']);
-        $this->assertSame([], $duz['vlans'][0]['residual_xml'], 'Kardeş action da tanınmış sayılmalı.');
+        $this->assertSame(5, $flat['vlans'][0]['mac_move_limit']);
+        $this->assertSame('shutdown', $flat['vlans'][0]['mac_move_action']);
+        $this->assertSame([], $flat['vlans'][0]['residual_xml'], 'Kardeş action da tanınmış sayılmalı.');
     }
 
     /**
@@ -120,16 +120,16 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_anlasilmayan_sinir_bicimi_korunur(): void
     {
-        $okunan = $this->read(
+        $read = $this->read(
             '<secure-access-port><interface><name>ge-0/0/5.0</name>'
             .'<mac-limit><uydurma-alan>4</uydurma-alan></mac-limit>'
             .'</interface></secure-access-port>'
         );
 
-        $this->assertNull($okunan['interfaces'][0]['mac_limit']);
+        $this->assertNull($read['interfaces'][0]['mac_limit']);
         $this->assertSame(
             ['<mac-limit><uydurma-alan>4</uydurma-alan></mac-limit>'],
-            $okunan['interfaces'][0]['residual_xml'],
+            $read['interfaces'][0]['residual_xml'],
         );
     }
 
@@ -139,16 +139,16 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_taninmayan_eylem_satiri_korunur(): void
     {
-        $okunan = $this->read(
+        $read = $this->read(
             '<secure-access-port><vlan><name>v40</name>'
             .'<mac-move-limit><limit>3</limit><action>uydurma</action></mac-move-limit>'
             .'</vlan></secure-access-port>'
         );
 
-        $this->assertNull($okunan['vlans'][0]['mac_move_limit']);
+        $this->assertNull($read['vlans'][0]['mac_move_limit']);
         $this->assertSame(
             ['<mac-move-limit><limit>3</limit><action>uydurma</action></mac-move-limit>'],
-            $okunan['vlans'][0]['residual_xml'],
+            $read['vlans'][0]['residual_xml'],
         );
     }
 
@@ -158,7 +158,7 @@ final class SecureAccessPortReaderTest extends TestCase
      */
     public function test_izinli_mac_listesi_okunur(): void
     {
-        $yinelenen = $this->read(
+        $duplicate = $this->read(
             '<secure-access-port><interface><name>ge-0/0/6.0</name>'
             .'<allowed-mac>00:11:22:33:44:55</allowed-mac>'
             .'<allowed-mac>00:11:22:33:44:66</allowed-mac>'
@@ -167,25 +167,25 @@ final class SecureAccessPortReaderTest extends TestCase
 
         $this->assertSame(
             ['00:11:22:33:44:55', '00:11:22:33:44:66'],
-            $yinelenen['interfaces'][0]['allowed_macs'],
+            $duplicate['interfaces'][0]['allowed_macs'],
         );
-        $this->assertSame([], $yinelenen['interfaces'][0]['residual_xml']);
+        $this->assertSame([], $duplicate['interfaces'][0]['residual_xml']);
 
-        $sarmalayici = $this->read(
+        $wrapper = $this->read(
             '<secure-access-port><interface><name>ge-0/0/7.0</name>'
             .'<allowed-mac><mac-list>00:11:22:33:44:77</mac-list></allowed-mac>'
             .'</interface></secure-access-port>'
         );
 
-        $this->assertSame(['00:11:22:33:44:77'], $sarmalayici['interfaces'][0]['allowed_macs']);
+        $this->assertSame(['00:11:22:33:44:77'], $wrapper['interfaces'][0]['allowed_macs']);
     }
 
     public function test_dugum_yoksa_bos_doner(): void
     {
-        $okunan = $this->read('');
+        $read = $this->read('');
 
-        $this->assertSame([], $okunan['vlans']);
-        $this->assertSame([], $okunan['interfaces']);
+        $this->assertSame([], $read['vlans']);
+        $this->assertSame([], $read['interfaces']);
     }
 
     /**

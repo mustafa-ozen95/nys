@@ -10,19 +10,19 @@ import { $$, on } from '../lib/dom.js';
  * Gizlenen alanın girdileri devre dışı bırakılır; aksi hâlde form her iki
  * biçimi de gönderir ve sunucu çelişkili bir istek alır.
  */
-function uygula(form) {
-    const mod = form.querySelector('[data-port-mode]');
+function apply(form) {
+    const mode = form.querySelector('[data-port-mode]');
 
-    if (! mod) {
+    if (! mode) {
         return;
     }
 
-    form.querySelectorAll('[data-port-vlan]').forEach((alan) => {
-        const gorunur = alan.dataset.portVlan === mod.value;
+    form.querySelectorAll('[data-port-vlan]').forEach((field) => {
+        const visible = field.dataset.portVlan === mode.value;
 
-        alan.hidden = ! gorunur;
-        alan.querySelectorAll('select, input').forEach((girdi) => {
-            girdi.disabled = ! gorunur;
+        field.hidden = ! visible;
+        field.querySelectorAll('select, input').forEach((input) => {
+            input.disabled = ! visible;
         });
     });
 }
@@ -35,40 +35,40 @@ function uygula(form) {
  * durur (SwitchPortRequest) — arayüz yalnızca kullanıcıyı boşuna
  * uğraştırmasın diye önceden söyler.
  */
-function duplexKisiti(form) {
+function duplexConstraint(form) {
     const duplex = form?.querySelector('[data-port-duplex]');
-    const hiz = form?.querySelector('[data-port-speed]');
+    const speed = form?.querySelector('[data-port-speed]');
 
-    if (! duplex || ! hiz) {
+    if (! duplex || ! speed) {
         return;
     }
 
-    const izinli = (duplex.dataset.portHalfSpeeds ?? '').split(',').filter(Boolean);
-    const acik = izinli.includes(hiz.value);
+    const permitted = (duplex.dataset.portHalfSpeeds ?? '').split(',').filter(Boolean);
+    const open = permitted.includes(speed.value);
     const half = duplex.querySelector('option[value="half"]');
 
     if (! half) {
         return;
     }
 
-    half.disabled = ! acik;
+    half.disabled = ! open;
 
     // Kapanan seçenek seçiliyse otomatiğe düşülür; gönderilse sunucu reddederdi.
-    if (! acik && duplex.value === 'half') {
+    if (! open && duplex.value === 'half') {
         duplex.value = '';
     }
 }
 
 export function init() {
-    $$('[data-port-mode]').forEach((secici) => uygula(secici.closest('form')));
-    $$('[data-port-duplex]').forEach((secici) => duplexKisiti(secici.closest('form')));
+    $$('[data-port-mode]').forEach((selector) => apply(selector.closest('form')));
+    $$('[data-port-duplex]').forEach((selector) => duplexConstraint(selector.closest('form')));
 
-    on('change', '[data-port-mode]', (event, secici) => {
-        uygula(secici.closest('form'));
+    on('change', '[data-port-mode]', (event, selector) => {
+        apply(selector.closest('form'));
     });
 
-    on('change', '[data-port-speed]', (event, secici) => {
-        duplexKisiti(secici.closest('form'));
+    on('change', '[data-port-speed]', (event, selector) => {
+        duplexConstraint(selector.closest('form'));
     });
 }
 
@@ -76,21 +76,21 @@ export function init() {
  * Switch formunda NETCONF kapalıysa kimlik alanları gizlenir; kapalı bir
  * switch panelden yapılandırılamaz, alanları sormanın anlamı yoktur.
  */
-function netconfAlanlari(form) {
-    const anahtar = form.querySelector('[data-netconf-toggle]');
-    const alan = form.querySelector('[data-netconf-alan]');
+function netconfFields(form) {
+    const key = form.querySelector('[data-netconf-toggle]');
+    const field = form.querySelector('[data-netconf-field]');
 
-    if (! anahtar || ! alan) {
+    if (! key || ! field) {
         return;
     }
 
-    alan.hidden = ! anahtar.checked;
+    field.hidden = ! key.checked;
 }
 
 export function initNetconf() {
-    $$('[data-netconf-toggle]').forEach((anahtar) => netconfAlanlari(anahtar.closest('form')));
+    $$('[data-netconf-toggle]').forEach((key) => netconfFields(key.closest('form')));
 
-    on('change', '[data-netconf-toggle]', (event, anahtar) => {
-        netconfAlanlari(anahtar.closest('form'));
+    on('change', '[data-netconf-toggle]', (event, key) => {
+        netconfFields(key.closest('form'));
     });
 }

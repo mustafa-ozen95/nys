@@ -18,20 +18,20 @@ final class ConfigurationRedactorTest extends TestCase
 {
     public function test_oturum_anahtari_maskelenir(): void
     {
-        $fark = ConfigurationRedactor::apply(
+        $diff = ConfigurationRedactor::apply(
             '[edit protocols bgp group transit]'."\n".'+   authentication-key "$9$gizliDeger"; ## SECRET-DATA'
         );
 
-        $this->assertStringNotContainsString('gizliDeger', $fark);
-        $this->assertStringContainsString('authentication-key', $fark);
-        $this->assertStringContainsString(ConfigurationRedactor::MASK, $fark);
+        $this->assertStringNotContainsString('gizliDeger', $diff);
+        $this->assertStringContainsString('authentication-key', $diff);
+        $this->assertStringContainsString(ConfigurationRedactor::MASK, $diff);
     }
 
     public function test_tirnaksiz_deger_de_maskelenir(): void
     {
-        $fark = ConfigurationRedactor::apply('+   snmp community gizliCommunity;');
+        $diff = ConfigurationRedactor::apply('+   snmp community gizliCommunity;');
 
-        $this->assertStringNotContainsString('gizliCommunity', $fark);
+        $this->assertStringNotContainsString('gizliCommunity', $diff);
     }
 
     /**
@@ -40,9 +40,9 @@ final class ConfigurationRedactorTest extends TestCase
      */
     public function test_junos_sifreli_degeri_her_yerde_maskelenir(): void
     {
-        $fark = ConfigurationRedactor::apply('+   bilinmeyen-alan "$9$baskaBirSir";');
+        $diff = ConfigurationRedactor::apply('+   bilinmeyen-alan "$9$baskaBirSir";');
 
-        $this->assertStringNotContainsString('baskaBirSir', $fark);
+        $this->assertStringNotContainsString('baskaBirSir', $diff);
     }
 
     /**
@@ -52,12 +52,12 @@ final class ConfigurationRedactorTest extends TestCase
      */
     public function test_blok_acan_deger_de_maskelenir(): void
     {
-        $fark = ConfigurationRedactor::apply(
+        $diff = ConfigurationRedactor::apply(
             '[edit snmp] + community "gizlicommunity" { authorization read-only; }'
         );
 
-        $this->assertStringNotContainsString('gizlicommunity', $fark);
-        $this->assertStringContainsString('community', $fark);
+        $this->assertStringNotContainsString('gizlicommunity', $diff);
+        $this->assertStringContainsString('community', $diff);
     }
 
     /**
@@ -66,8 +66,8 @@ final class ConfigurationRedactorTest extends TestCase
      */
     public function test_sir_tasimayan_satirlar_korunur(): void
     {
-        $fark = "[edit protocols bgp group transit]\n+   hold-time 30;\n+   passive;";
+        $diff = "[edit protocols bgp group transit]\n+   hold-time 30;\n+   passive;";
 
-        $this->assertSame($fark, ConfigurationRedactor::apply($fark));
+        $this->assertSame($diff, ConfigurationRedactor::apply($diff));
     }
 }

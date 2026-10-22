@@ -20,23 +20,23 @@ use Tests\TestCase;
 class RelocationSourceTest extends TestCase
 {
     /** @param  array<string, mixed>  $bilgi */
-    private function servis(array $bilgi): RemoteDatabase
+    private function service(array $info): RemoteDatabase
     {
-        return new class(new ConnectionFile(app('encrypter'), sys_get_temp_dir().'/yok-'.bin2hex(random_bytes(4))), $bilgi) extends RemoteDatabase
+        return new class(new ConnectionFile(app('encrypter'), sys_get_temp_dir().'/yok-'.bin2hex(random_bytes(4))), $info) extends RemoteDatabase
         {
             /** @param  array<string, mixed>  $sahteBilgi */
-            public function __construct(ConnectionFile $dosya, private array $sahteBilgi)
+            public function __construct(ConnectionFile $file, private array $fakeInfo)
             {
-                parent::__construct($dosya);
+                parent::__construct($file);
             }
 
-            public function bilgi(): array
+            public function info(): array
             {
                 return [...['kaynak' => 'ortam', 'host' => 'db', 'port' => '3306', 'database' => 'panel', 'username' => 'panel',
-                    'surum' => '11.4.5-MariaDB', 'boyut' => 1, 'tablo' => 10, 'ozel' => 0], ...$this->sahteBilgi];
+                    'surum' => '11.4.5-MariaDB', 'boyut' => 1, 'tablo' => 10, 'ozel' => 0], ...$this->fakeInfo];
             }
 
-            protected function baglan(array $h): PDO
+            protected function connect(array $h): PDO
             {
                 throw new RuntimeException('sınamada hedefe bağlanılmaz: '.$h['host']);
             }
@@ -44,15 +44,15 @@ class RelocationSourceTest extends TestCase
     }
 
     /** @return array<string, array{tamam: bool, ayrinti: string}> */
-    private function maddeler(RemoteDatabase $v, array $hedef): array
+    private function items(RemoteDatabase $v, array $target): array
     {
-        return collect($v->sina([...['host' => 'uzak.ornek.test', 'port' => 3306, 'database' => 'panel', 'username' => 'panel', 'password' => 'x'], ...$hedef]))
+        return collect($v->sina([...['host' => 'uzak.ornek.test', 'port' => 3306, 'database' => 'panel', 'username' => 'panel', 'password' => 'x'], ...$target]))
             ->keyBy('ad')->all();
     }
 
     public function test_kaynak_kurulumun_veritabani_ise_kopya_oradan_alinir(): void
     {
-        $m = $this->maddeler($this->servis([]), []);
+        $m = $this->items($this->service([]), []);
 
         $this->assertTrue($m['Panel kurulumun veritabanında']['tamam']);
         $this->assertStringContainsString('db:3306/panel', $m['Panel kurulumun veritabanında']['ayrinti']);
@@ -62,15 +62,15 @@ class RelocationSourceTest extends TestCase
 
     public function test_panelden_tasinmis_kurulum_ikinci_kez_tasinmaz(): void
     {
-        $m = $this->maddeler($this->servis(['kaynak' => 'panel', 'host' => 'uzak1.ornek.test']), []);
+        $m = $this->items($this->service(['kaynak' => 'panel', 'host' => 'uzak1.ornek.test']), []);
 
         $this->assertFalse($m['Panel kurulumun veritabanında']['tamam']);
-        $this->assertFalse(RemoteDatabase::hepsiTamam(array_values($m)));
+        $this->assertFalse(RemoteDatabase::allDone(array_values($m)));
     }
 
     public function test_hedef_su_anki_veritabani_ise_hedefe_baglanilmaz(): void
     {
-        $m = $this->maddeler($this->servis([]), ['host' => 'DB', 'port' => 3306, 'database' => 'panel']);
+        $m = $this->items($this->service([]), ['host' => 'DB', 'port' => 3306, 'database' => 'panel']);
 
         $this->assertFalse($m['Hedef başka bir veritabanı']['tamam']);
         $this->assertArrayNotHasKey('Bağlantı', $m);

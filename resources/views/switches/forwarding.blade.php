@@ -33,12 +33,12 @@
                         <x-slot:actions>
                             @can('createSwitchForwarding', $switch)
                                 <button type="button" class="btn btn--primary btn--sm"
-                                        data-modal-open="tablo-ekle">Tablo ekle</button>
+                                        data-modal-open="table-add">Tablo ekle</button>
                             @endcan
                         </x-slot:actions>
 
                         @forelse ($instances as $instance)
-                            <div class="grid-row ayar-row">
+                            <div class="grid-row setting-row">
                                 <span class="mono">{{ $instance->name }}</span>
                                 <x-ui.badge :variant="$instance->instance_type?->badge()">
                                     {{ $instance->instance_type?->label() ?? '—' }}
@@ -70,12 +70,12 @@
                         <x-slot:actions>
                             @can('createSwitchForwarding', $switch)
                                 <button type="button" class="btn btn--primary btn--sm"
-                                        data-modal-open="grup-ekle">Grup ekle</button>
+                                        data-modal-open="group-add">Grup ekle</button>
                             @endcan
                         </x-slot:actions>
 
                         @forelse ($groups as $group)
-                            <div class="grid-row ayar-row">
+                            <div class="grid-row setting-row">
                                 <span class="mono">{{ $group->name }}</span>
                                 <span class="mono text-muted">{{ implode(' → ', $group->import_ribs ?? []) }}</span>
                                 <span>
@@ -115,9 +115,9 @@
                                 @method('PUT')
 
                                 <div class="form-grid">
-                                    <x-form.field name="rib_group" label="RIB grubu" id="baglanan-grup"
+                                    <x-form.field name="rib_group" label="RIB grubu" id="connected-group"
                                                   hint="Arayüz yolları (connected) yalnızca inet.0'dadır; seçilen grup onları hedef tabloya kopyalar.">
-                                        <x-form.select name="rib_group" id="baglanan-grup"
+                                        <x-form.select name="rib_group" id="connected-group"
                                                        :options="$groupOptions" :selected="$boundGroup" />
                                     </x-form.field>
                                 </div>
@@ -134,7 +134,7 @@
     </div>
 
     @can('createSwitchForwarding', $switch)
-        <x-ui.modal id="tablo-ekle" title="Yönlendirme tablosu">
+        <x-ui.modal id="table-add" title="Yönlendirme tablosu">
             <form method="POST" action="{{ route('switches.forwarding.instances.store', $switch) }}"
                   data-confirm="Yönlendirme tablosu cihaza yazılacak."
                   data-confirm-title="Cihaza yaz">
@@ -146,7 +146,7 @@
             </form>
         </x-ui.modal>
 
-        <x-ui.modal id="grup-ekle" title="RIB grubu">
+        <x-ui.modal id="group-add" title="RIB grubu">
             <form method="POST" action="{{ route('switches.forwarding.groups.store', $switch) }}"
                   data-confirm="RIB grubu cihaza yazılacak."
                   data-confirm-title="Cihaza yaz">

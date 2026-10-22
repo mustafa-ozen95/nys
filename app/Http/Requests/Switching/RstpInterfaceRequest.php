@@ -35,15 +35,15 @@ class RstpInterfaceRequest extends FormRequest
     public function rules(): array
     {
         $switch = $this->route('switch');
-        $mevcut = $this->route('rstpInterface');
+        $current = $this->route('rstpInterface');
 
         return [
             'interface_name' => array_values(array_filter([
                 'required', 'string', 'max:64',
-                $mevcut instanceof SwitchRstpInterface
-                    ? Rule::in([$mevcut->interface_name])
+                $current instanceof SwitchRstpInterface
+                    ? Rule::in([$current->interface_name])
                     : Rule::in(['all', ...$this->switchedPorts()]),
-                $mevcut instanceof SwitchRstpInterface
+                $current instanceof SwitchRstpInterface
                     ? null
                     : Rule::unique(SwitchRstpInterface::class, 'interface_name')
                         ->where('switch_id', $switch->id),

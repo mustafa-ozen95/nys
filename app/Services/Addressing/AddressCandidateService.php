@@ -102,16 +102,16 @@ class AddressCandidateService
      */
     private function assignableBlocks(array $purposes, ?NetworkSwitch $switch): Collection
     {
-        $bloklar = AddressBlock::query()
+        $blocks = AddressBlock::query()
             ->assignable($switch)
             ->orderBy('range_start')
             ->get();
 
         if ($purposes === []) {
-            return $bloklar;
+            return $blocks;
         }
 
-        return $bloklar
+        return $blocks
             ->filter(fn (AddressBlock $block): bool => in_array($block->purpose, $purposes, true))
             ->values();
     }
@@ -140,13 +140,13 @@ class AddressCandidateService
         while ($address <= $end && count($addresses) < self::BLOCK_LIMIT) {
             $addresses[] = (string) inet_ntop($address);
 
-            $sonraki = Cidr::increment($address);
+            $next = Cidr::increment($address);
 
-            if ($sonraki <= $address) {
+            if ($next <= $address) {
                 break;
             }
 
-            $address = $sonraki;
+            $address = $next;
         }
 
         return $addresses;

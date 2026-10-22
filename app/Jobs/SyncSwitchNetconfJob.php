@@ -60,7 +60,7 @@ class SyncSwitchNetconfJob implements ShouldBeUnique, ShouldQueue
         return (string) $this->switchId;
     }
 
-    public function handle(NetconfClient $client, SwitchSyncPipeline $sira, SwitchWriteLock $lock): void
+    public function handle(NetconfClient $client, SwitchSyncPipeline $order, SwitchWriteLock $lock): void
     {
         $switch = NetworkSwitch::query()->find($this->switchId);
 
@@ -80,9 +80,9 @@ class SyncSwitchNetconfJob implements ShouldBeUnique, ShouldQueue
          * Beklemek yerine atlamak doğrudur: bir sonraki tur zaten gelecek ve
          * yazma yolu commit sonrası kendi geri okumasını yapıyor.
          */
-        $okundu = $lock->attempt($switch, fn (): bool => $this->oku($client, $sira, $switch));
+        $read = $lock->attempt($switch, fn (): bool => $this->read($client, $order, $switch));
 
-        if ($okundu === true) {
+        if ($read === true) {
             // Gözlem: sürüm damgasına dokunmaz (bkz. RecordsObservations).
             $switch->saveObservation(['last_sync_at' => now()]);
         }
@@ -95,12 +95,12 @@ class SyncSwitchNetconfJob implements ShouldBeUnique, ShouldQueue
      * olmaz, yalnızca last_sync_at eskir ve "neden" yazılı olmazdı. Bu
      * yüzden cihaz işlem kaydına da geçer.
      */
-    private function oku(NetconfClient $client, SwitchSyncPipeline $sira, NetworkSwitch $switch): bool
+    private function read(NetconfClient $client, SwitchSyncPipeline $order, NetworkSwitch $switch): bool
     {
         try {
             $client->run(
                 $switch,
-                fn (NetconfSession $session) => $sira->run($switch, $session, $this->force),
+                fn (NetconfSession $session) => $order->run($switch, $session, $this->force),
             );
         } catch (NetconfException $exception) {
             Log::warning("NETCONF okunamadı: {$switch->hostname}", ['hata' => $exception->getMessage()]);

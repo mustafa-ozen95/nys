@@ -47,7 +47,7 @@ class ConfigurationPushController extends Controller
             ->get()
             ->filter(fn (NetworkSwitch $switch): bool => Gate::allows('provision', $switch));
 
-        $disCihaz = Gate::allows('provisionExternalDevice');
+        $outerDevice = Gate::allows('provisionExternalDevice');
 
         /*
          * HİÇBİR HEDEFİ OLMAYAN EKRANI AÇMAZ.
@@ -60,11 +60,11 @@ class ConfigurationPushController extends Controller
          * Yetkiyi listeyi süzerek uygulamak yetmiyor: sayfada süzülmeyen
          * başka veri de var. Hedefi olmayan için bu sayfanın hiçbir işi yok.
          */
-        abort_if($switches->isEmpty() && ! $disCihaz, 403);
+        abort_if($switches->isEmpty() && ! $outerDevice, 403);
 
         return view('provisioning.create', [
             'switches' => $switches->pluck('hostname', 'uuid')->all(),
-            'canUseExternal' => $disCihaz,
+            'canUseExternal' => $outerDevice,
 
             /*
              * Yönetim adresi ve ağ geçidi Adresleme'den seçilir. Elle giriş
@@ -89,7 +89,7 @@ class ConfigurationPushController extends Controller
             $configuration = $this->configurationFor($request, $target);
 
             if (! $request->appliesImmediately()) {
-                $onizleme = $this->pusher->preview($target, $configuration, (string) $request->input('mode'));
+                $preview = $this->pusher->preview($target, $configuration, (string) $request->input('mode'));
 
                 return back()
                     ->withInput()
@@ -101,8 +101,8 @@ class ConfigurationPushController extends Controller
                      * gibi kalır — onu zaten kendisi girdi.
                      */
                     ->with('preview', [
-                        ...$onizleme,
-                        'diff' => ConfigurationRedactor::apply($onizleme['diff']),
+                        ...$preview,
+                        'diff' => ConfigurationRedactor::apply($preview['diff']),
                         'configuration' => $configuration,
                     ]);
             }

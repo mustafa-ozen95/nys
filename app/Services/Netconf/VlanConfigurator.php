@@ -91,10 +91,10 @@ class VlanConfigurator
             $documents[] = $this->l3UnitDocument($vlan->l3_interface);
         }
 
-        $secilen = array_map(fn (SwitchPort $port): int => $port->id, $ports);
+        $selected = array_map(fn (SwitchPort $port): int => $port->id, $ports);
 
-        foreach ($this->affectedPorts($switch, $vlan, $secilen) as $port) {
-            $members = in_array($port->id, $secilen, true)
+        foreach ($this->affectedPorts($switch, $vlan, $selected) as $port) {
+            $members = in_array($port->id, $selected, true)
                 ? $this->membersWith($port, $vlan->name)
                 : $this->membersWithout($port, $vlan->name);
 
@@ -147,12 +147,12 @@ class VlanConfigurator
      */
     private function affectedPorts(NetworkSwitch $switch, Vlan $vlan, array $selected): array
     {
-        $mevcut = $vlan->ports()->pluck('switch_ports.id')->all();
-        $degisen = array_unique(array_merge(array_diff($selected, $mevcut), array_diff($mevcut, $selected)));
+        $current = $vlan->ports()->pluck('switch_ports.id')->all();
+        $changed = array_unique(array_merge(array_diff($selected, $current), array_diff($current, $selected)));
 
-        return $degisen === []
+        return $changed === []
             ? []
-            : $switch->ports()->with('vlans')->whereIn('id', $degisen)->get()->all();
+            : $switch->ports()->with('vlans')->whereIn('id', $changed)->get()->all();
     }
 
     /**
@@ -215,7 +215,7 @@ class VlanConfigurator
          * etiketi temizlediğini sanırken cihazdaki eski etiket kalırdı.
          * Var olan bir VLAN'dan vlan-id silmek test1'de doğrulandı.
          */
-        $etiket = $tag === null
+        $tag = $tag === null
             ? '<vlan-id delete="delete"/>'
             : "<vlan-id>{$tag}</vlan-id>";
 
@@ -224,13 +224,13 @@ class VlanConfigurator
          * silme açıkça istenmezse cihazdaki eski açıklama olduğu yerde kalır
          * ve kullanıcı temizlediğini sanırdı.
          */
-        $aciklama = $description === null
+        $description = $description === null
             ? '<description delete="delete"/>'
             : '<description>'.$this->escape($description).'</description>';
 
         if ($l3Interface === null) {
-            return "<configuration><vlans><vlan><name>{$escaped}</name>{$etiket}"
-                .$aciklama.'<l3-interface delete="delete"/></vlan></vlans></configuration>';
+            return "<configuration><vlans><vlan><name>{$escaped}</name>{$tag}"
+                .$description.'<l3-interface delete="delete"/></vlan></vlans></configuration>';
         }
 
         /*
@@ -246,8 +246,8 @@ class VlanConfigurator
         // gitmezse commit check reddeder.
         return '<configuration>'
             ."<interfaces><interface><name>{$parent}</name><unit><name>{$unit}</name></unit></interface></interfaces>"
-            ."<vlans><vlan><name>{$escaped}</name>{$etiket}"
-            .$aciklama
+            ."<vlans><vlan><name>{$escaped}</name>{$tag}"
+            .$description
             ."<l3-interface>{$reference}</l3-interface></vlan></vlans>"
             .'</configuration>';
     }

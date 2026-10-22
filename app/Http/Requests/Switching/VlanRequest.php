@@ -217,9 +217,9 @@ class VlanRequest extends FormRequest
     {
         $switch = $this->route('switch');
 
-        $lehce = ($switch?->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $dialect = ($switch?->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
 
-        if (! $lehce->requiresVlanIdForL3()) {
+        if (! $dialect->requiresVlanIdForL3()) {
             return;
         }
 

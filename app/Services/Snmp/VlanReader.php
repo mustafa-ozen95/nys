@@ -119,13 +119,13 @@ class VlanReader
         $stack = $this->snmp->walk($switch, $oids['if_stack']);
 
         // ifStack indeksi <ust>.<alt>; üstü 0 olan satırlar taban arayüzdür.
-        $altindaki = [];
+        $below = [];
 
         foreach (array_keys($stack) as $index) {
-            [$ust, $alt] = array_pad(explode('.', $index, 2), 2, null);
+            [$upper, $alt] = array_pad(explode('.', $index, 2), 2, null);
 
-            if ((int) $ust > 0 && (int) $alt > 0) {
-                $altindaki[(int) $ust] = (int) $alt;
+            if ((int) $upper > 0 && (int) $alt > 0) {
+                $below[(int) $upper] = (int) $alt;
             }
         }
 
@@ -134,7 +134,7 @@ class VlanReader
         foreach ($bridge as $bridgePort => $logical) {
             $ifIndex = (int) $logical;
 
-            $ports[(int) $bridgePort] = $altindaki[$ifIndex] ?? $ifIndex;
+            $ports[(int) $bridgePort] = $below[$ifIndex] ?? $ifIndex;
         }
 
         return $ports;

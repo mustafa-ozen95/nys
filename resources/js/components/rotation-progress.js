@@ -1,5 +1,5 @@
 import { $, $$ } from '../lib/dom.js';
-import { tazele } from './navigation.js';
+import { refresh } from './navigation.js';
 
 /**
  * Süren parola turlarının ilerleme çubukları.
@@ -17,36 +17,36 @@ import { tazele } from './navigation.js';
  */
 
 /* Yoklama aralığı (ms). Tur dakikalar sürüyor; daha sık yoklamak boşuna yük. */
-const ARALIK = 2000;
+const INTERVAL = 2000;
 
 /*
  * Yoklama üst sınırı. Kuyruk durmuş ya da iş ölmüşse sayfa sonsuza dek
  * sunucuya soru sormamalı.
  */
-const AZAMI = 300;
+const MAX = 300;
 
-let zamanlayici = null;
+let timer = null;
 
-function durdur() {
-    if (zamanlayici !== null) {
-        clearTimeout(zamanlayici);
-        zamanlayici = null;
+function stop() {
+    if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
     }
 }
 
-function ciz(kok, veri) {
-    const cubuk = kok.querySelector('[data-ilerleme-cubuk]');
-    const metin = kok.querySelector('[data-ilerleme-metin]');
+function draw(root, data) {
+    const bar = root.querySelector('[data-progress-bar]');
+    const text = root.querySelector('[data-progress-text]');
 
-    if (cubuk) {
-        cubuk.style.width = `${veri.yuzde}%`;
-        cubuk.parentElement?.setAttribute('aria-valuenow', String(veri.yuzde));
+    if (bar) {
+        bar.style.width = `${data.yuzde}%`;
+        bar.parentElement?.setAttribute('aria-valuenow', String(data.yuzde));
     }
 
-    if (metin) {
-        metin.textContent = veri.adim > 0
-            ? `${veri.adim}/${veri.toplam} · ${veri.metin}`
-            : veri.metin;
+    if (text) {
+        text.textContent = data.adim > 0
+            ? `${data.adim}/${data.toplam} · ${data.metin}`
+            : data.metin;
     }
 }
 
@@ -57,84 +57,84 @@ function ciz(kok, veri) {
  * yüzdelerin ortalamasından değil: iki cihazdan biri bitmiş diğeri
  * başlamışken "ortalama" ikisinin de yarısında olduğunu söylerdi.
  */
-function ozetiCiz(cihazlar) {
-    const kok = $('[data-ilerleme-ozet]');
+function drawSummary(devices) {
+    const root = $('[data-progress-summary]');
 
-    if (!kok) {
+    if (!root) {
         return;
     }
 
-    const durumlar = Object.values(cihazlar);
+    const statuses = Object.values(devices);
 
-    if (durumlar.length === 0) {
+    if (statuses.length === 0) {
         return;
     }
 
-    const biten = durumlar.reduce((t, d) => t + (d.adim ?? 0), 0);
-    const toplam = Math.max(1, durumlar.reduce((t, d) => t + (d.toplam ?? 0), 0));
-    const yuzde = Math.round((biten / toplam) * 100);
+    const finished = statuses.reduce((t, d) => t + (d.adim ?? 0), 0);
+    const total = Math.max(1, statuses.reduce((t, d) => t + (d.toplam ?? 0), 0));
+    const percent = Math.round((finished / total) * 100);
 
-    const cubuk = kok.querySelector('[data-ilerleme-ozet-cubuk]');
-    const metin = kok.querySelector('[data-ilerleme-ozet-metin]');
-    const adim = kok.querySelector('[data-ilerleme-ozet-adim]');
+    const bar = root.querySelector('[data-progress-summary-bar]');
+    const text = root.querySelector('[data-progress-summary-text]');
+    const step = root.querySelector('[data-progress-summary-step]');
 
-    if (cubuk) {
-        cubuk.style.width = `${yuzde}%`;
-        cubuk.parentElement?.setAttribute('aria-valuenow', String(yuzde));
+    if (bar) {
+        bar.style.width = `${percent}%`;
+        bar.parentElement?.setAttribute('aria-valuenow', String(percent));
     }
 
-    if (metin) {
-        metin.textContent = `${durumlar.length} cihazda parola turu sürüyor`;
+    if (text) {
+        text.textContent = `${statuses.length} cihazda parola turu sürüyor`;
     }
 
-    if (adim) {
-        adim.textContent = `${biten}/${toplam} adım`;
+    if (step) {
+        step.textContent = `${finished}/${total} adım`;
     }
 }
 
-async function yokla(adres, kalan) {
-    if (kalan <= 0) {
-        durdur();
+async function poll(address, remaining) {
+    if (remaining <= 0) {
+        stop();
 
         return;
     }
 
-    let veri;
+    let data;
 
     try {
-        const yanit = await fetch(adres, {
+        const response = await fetch(address, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         });
 
-        if (!yanit.ok) {
-            throw new Error(String(yanit.status));
+        if (!response.ok) {
+            throw new Error(String(response.status));
         }
 
-        veri = await yanit.json();
+        data = await response.json();
     } catch {
         /*
          * Tek bir başarısız yoklama turu bitirmez: ağ kesintisi cihazdaki işi
          * durdurmuyor. Sayaç işliyor, üst sınıra gelince duruyoruz.
          */
-        zamanlayici = setTimeout(() => yokla(adres, kalan - 1), ARALIK);
+        timer = setTimeout(() => poll(address, remaining - 1), INTERVAL);
 
         return;
     }
 
-    const cihazlar = veri.cihazlar ?? {};
+    const devices = data.cihazlar ?? {};
 
-    $$('[data-ilerleme-cihaz]').forEach((kok) => {
-        const durum = cihazlar[kok.dataset.ilerlemeCihaz];
+    $$('[data-progress-device]').forEach((root) => {
+        const status = devices[root.dataset.progressDevice];
 
-        if (durum) {
-            ciz(kok, durum);
+        if (status) {
+            draw(root, status);
         }
     });
 
-    ozetiCiz(cihazlar);
+    drawSummary(devices);
 
-    if (veri.calisiyor === false) {
+    if (data.calisiyor === false) {
         /*
          * Bütün turlar bitti. Sonuç rozetleri, yeni parolalar ve yarıda
          * kalmış tur uyarısı sunucuda çiziliyor; burada taklit edilmez,
@@ -142,13 +142,13 @@ async function yokla(adres, kalan) {
          * yenilemesi ekranı beyaza düşürür ve kullanıcıyı baktığı yerden
          * koparırdı.
          */
-        durdur();
-        tazele();
+        stop();
+        refresh();
 
         return;
     }
 
-    zamanlayici = setTimeout(() => yokla(adres, kalan - 1), ARALIK);
+    timer = setTimeout(() => poll(address, remaining - 1), INTERVAL);
 }
 
 /*
@@ -162,25 +162,25 @@ async function yokla(adres, kalan) {
  * Buradan yazmak CSP'ye takılmaz; CSSOM üzerinden yapılan değişiklik satır
  * içi stil sayılmaz. Değeri yine sunucu söylüyor — çubuk hâlâ karar vermiyor.
  */
-function baslangiclariUygula() {
-    $$('[data-baslangic]').forEach((cubuk) => {
-        const yuzde = Number(cubuk.dataset.baslangic);
+function applyDefaults() {
+    $$('[data-start]').forEach((bar) => {
+        const percent = Number(bar.dataset.start);
 
-        if (Number.isFinite(yuzde)) {
-            cubuk.style.width = `${yuzde}%`;
+        if (Number.isFinite(percent)) {
+            bar.style.width = `${percent}%`;
         }
     });
 }
 
 export function init() {
-    durdur();
-    baslangiclariUygula();
+    stop();
+    applyDefaults();
 
-    const kok = $('[data-ilerleme-adres]');
+    const root = $('[data-progress-address]');
 
-    if (!kok) {
+    if (!root) {
         return;
     }
 
-    zamanlayici = setTimeout(() => yokla(kok.dataset.ilerlemeAdres, AZAMI), ARALIK);
+    timer = setTimeout(() => poll(root.dataset.progressAddress, MAX), INTERVAL);
 }

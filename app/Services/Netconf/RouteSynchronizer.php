@@ -51,21 +51,21 @@ class RouteSynchronizer
          * yapılandırmadaki karşılığı eşleştirilir ki ekran ve düzenleme formu
          * tam veriyi görsün.
          */
-        $bilgi = [];
+        $info = [];
 
         foreach ($configured as $route) {
-            $bilgi[$route['destination'].'/'.$route['prefix_length']] = collect($route)
+            $info[$route['destination'].'/'.$route['prefix_length']] = collect($route)
                 ->only(self::CONFIGURED_FIELDS)
                 ->all();
         }
 
-        DB::transaction(function () use ($switch, $active, $configured, $bilgi): void {
-            $tutulan = [];
+        DB::transaction(function () use ($switch, $active, $configured, $info): void {
+            $kept = [];
 
             foreach ($active as $route) {
-                $anahtar = $route['destination'].'/'.$route['prefix_length'];
+                $key = $route['destination'].'/'.$route['prefix_length'];
 
-                $tutulan[] = $this->store($switch, $route + ['is_active' => true] + ($bilgi[$anahtar] ?? []));
+                $kept[] = $this->store($switch, $route + ['is_active' => true] + ($info[$key] ?? []));
             }
 
             foreach ($configured as $route) {
@@ -73,13 +73,13 @@ class RouteSynchronizer
                     continue;
                 }
 
-                $tutulan[] = $this->store($switch, $route + [
+                $kept[] = $this->store($switch, $route + [
                     'protocol' => RouteProtocol::Static,
                     'is_active' => false,
                 ]);
             }
 
-            $switch->routes()->whereNotIn('id', $tutulan)->delete();
+            $switch->routes()->whereNotIn('id', $kept)->delete();
         });
     }
 
@@ -126,9 +126,9 @@ class RouteSynchronizer
      */
     private function isPresent(array $active, array $route): bool
     {
-        foreach ($active as $mevcut) {
-            if ($mevcut['destination'] === $route['destination']
-                && $mevcut['prefix_length'] === $route['prefix_length']) {
+        foreach ($active as $current) {
+            if ($current['destination'] === $route['destination']
+                && $current['prefix_length'] === $route['prefix_length']) {
                 return true;
             }
         }

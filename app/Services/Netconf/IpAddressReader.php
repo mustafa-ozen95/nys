@@ -131,10 +131,10 @@ class IpAddressReader
             return [$interfaceName, '0'];
         }
 
-        $parcalar = explode('.', $interfaceName);
-        $unit = array_pop($parcalar);
+        $fragments = explode('.', $interfaceName);
+        $unit = array_pop($fragments);
 
-        return [implode('.', $parcalar), $unit];
+        return [implode('.', $fragments), $unit];
     }
 
     /**

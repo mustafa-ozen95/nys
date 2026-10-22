@@ -38,27 +38,27 @@ final class ActionReasonCoverageTest extends TestCase
 
     public function test_her_durum_degistiren_form_ya_gerekce_toplar_ya_muaftir(): void
     {
-        $muaf = RequireActionReason::ignoredRoutes();
-        $eksik = [];
+        $exempt = RequireActionReason::ignoredRoutes();
+        $missing = [];
 
-        foreach ($this->postForms() as [$rota, $dosya, $govde]) {
-            if ($this->collectsReason($govde) || in_array($rota, $muaf, true)) {
+        foreach ($this->postForms() as [$route, $file, $body]) {
+            if ($this->collectsReason($body) || in_array($route, $exempt, true)) {
                 continue;
             }
 
             // Oturum açmadan yapılan uçlardan gerekçe istenmez.
-            if (! $this->requiresAuth($rota)) {
+            if (! $this->requiresAuth($route)) {
                 continue;
             }
 
-            $eksik[] = "{$rota} ({$dosya})";
+            $missing[] = "{$route} ({$file})";
         }
 
         $this->assertSame(
             [],
-            $eksik,
+            $missing,
             "Bu formlar gerekçe toplamıyor ve muafiyet listesinde de yok; düğmeleri sessizce çalışmaz:\n  "
-            .implode("\n  ", $eksik),
+            .implode("\n  ", $missing),
         );
     }
 
@@ -70,27 +70,27 @@ final class ActionReasonCoverageTest extends TestCase
      */
     public function test_javascriptten_yapilan_post_cagrilari_da_kapsanir(): void
     {
-        $muaf = $this->ignoredPaths();
-        $eksik = [];
+        $exempt = $this->ignoredPaths();
+        $missing = [];
 
-        foreach ($this->postFetches() as [$yol, $dosya, $govde]) {
+        foreach ($this->postFetches() as [$path, $file, $body]) {
             // Gövdesinde gerekçe taşıyan çağrı zaten kuralı sağlıyor.
-            if (str_contains($govde, 'reason')) {
+            if (str_contains($body, 'reason')) {
                 continue;
             }
 
-            if (in_array($yol, $muaf, true)) {
+            if (in_array($path, $exempt, true)) {
                 continue;
             }
 
-            $eksik[] = "{$yol} ({$dosya})";
+            $missing[] = "{$path} ({$file})";
         }
 
         $this->assertSame(
             [],
-            $eksik,
+            $missing,
             "Bu fetch çağrıları gerekçe göndermiyor ve uçları muaf değil; sessizce 422 alırlar:\n  "
-            .implode("\n  ", $eksik),
+            .implode("\n  ", $missing),
         );
     }
 
@@ -102,17 +102,17 @@ final class ActionReasonCoverageTest extends TestCase
      */
     private function ignoredPaths(): array
     {
-        $yollar = [];
+        $paths = [];
 
-        foreach (RequireActionReason::ignoredRoutes() as $ad) {
-            $rota = Route::getRoutes()->getByName($ad);
+        foreach (RequireActionReason::ignoredRoutes() as $name) {
+            $route = Route::getRoutes()->getByName($name);
 
-            if ($rota !== null) {
-                $yollar[] = '/'.ltrim($rota->uri(), '/');
+            if ($route !== null) {
+                $paths[] = '/'.ltrim($route->uri(), '/');
             }
         }
 
-        return $yollar;
+        return $paths;
     }
 
     /**
@@ -122,34 +122,34 @@ final class ActionReasonCoverageTest extends TestCase
      */
     private function postFetches(): array
     {
-        $cagrilar = [];
+        $calls = [];
 
-        foreach ($this->sourceFiles(resource_path('js'), '.js') as $dosya) {
-            $icerik = (string) file_get_contents($dosya);
+        foreach ($this->sourceFiles(resource_path('js'), '.js') as $file) {
+            $content = (string) file_get_contents($file);
 
             // fetch('/yol', { ... method: 'POST' ... })
             preg_match_all(
                 "/fetch\(\s*['\"`]([^'\"`]+)['\"`]\s*,\s*(\{.*?\n\s*\})/s",
-                $icerik,
-                $eslesmeler,
+                $content,
+                $matches,
                 PREG_SET_ORDER,
             );
 
-            foreach ($eslesmeler as $eslesme) {
-                if (! str_contains($eslesme[2], "method: 'POST'") && ! str_contains($eslesme[2], 'method: "POST"')) {
+            foreach ($matches as $match) {
+                if (! str_contains($match[2], "method: 'POST'") && ! str_contains($match[2], 'method: "POST"')) {
                     continue;
                 }
 
                 // Değişken taşıyan adresler statik olarak çözülemez.
-                if (str_contains($eslesme[1], '$')) {
+                if (str_contains($match[1], '$')) {
                     continue;
                 }
 
-                $cagrilar[] = [$eslesme[1], basename($dosya), $eslesme[2]];
+                $calls[] = [$match[1], basename($file), $match[2]];
             }
         }
 
-        return $cagrilar;
+        return $calls;
     }
 
     /**
@@ -157,24 +157,24 @@ final class ActionReasonCoverageTest extends TestCase
      */
     private function postForms(): array
     {
-        $formlar = [];
-        $kok = resource_path('views');
+        $forms = [];
+        $root = resource_path('views');
 
-        foreach ($this->bladeFiles($kok) as $dosya) {
-            $icerik = (string) file_get_contents($dosya);
+        foreach ($this->bladeFiles($root) as $file) {
+            $content = (string) file_get_contents($file);
 
-            preg_match_all('/<form[^>]*method="POST"[^>]*>(.*?)<\/form>/s', $icerik, $eslesmeler);
+            preg_match_all('/<form[^>]*method="POST"[^>]*>(.*?)<\/form>/s', $content, $matches);
 
-            foreach ($eslesmeler[0] as $govde) {
-                if (preg_match("/route\('([^']+)'/", $govde, $rota) !== 1) {
+            foreach ($matches[0] as $body) {
+                if (preg_match("/route\('([^']+)'/", $body, $route) !== 1) {
                     continue;
                 }
 
-                $formlar[] = [$rota[1], basename($dosya), $govde];
+                $forms[] = [$route[1], basename($file), $body];
             }
         }
 
-        return $formlar;
+        return $forms;
     }
 
     /**
@@ -190,21 +190,21 @@ final class ActionReasonCoverageTest extends TestCase
      */
     private function sourceFiles(string $path, string $suffix): array
     {
-        $dosyalar = [];
+        $files = [];
 
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path)) as $item) {
             if ($item->isFile() && str_ends_with($item->getFilename(), $suffix)) {
-                $dosyalar[] = $item->getPathname();
+                $files[] = $item->getPathname();
             }
         }
 
-        return $dosyalar;
+        return $files;
     }
 
     private function collectsReason(string $body): bool
     {
-        foreach (self::COLLECTS_REASON as $isaret) {
-            if (str_contains($body, $isaret)) {
+        foreach (self::COLLECTS_REASON as $mark) {
+            if (str_contains($body, $mark)) {
                 return true;
             }
         }
@@ -214,14 +214,14 @@ final class ActionReasonCoverageTest extends TestCase
 
     private function requiresAuth(string $routeName): bool
     {
-        $rota = Route::getRoutes()->getByName($routeName);
+        $route = Route::getRoutes()->getByName($routeName);
 
-        if ($rota === null) {
+        if ($route === null) {
             return false;
         }
 
-        foreach ($rota->gatherMiddleware() as $ara) {
-            if (is_string($ara) && str_starts_with($ara, 'auth')) {
+        foreach ($route->gatherMiddleware() as $between) {
+            if (is_string($between) && str_starts_with($between, 'auth')) {
                 return true;
             }
         }

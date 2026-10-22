@@ -91,9 +91,9 @@ class SnmpCommunityConfigurator
             }
         }
 
-        $nitelik = $replace ? ' replace="replace"' : '';
+        $attribute = $replace ? ' replace="replace"' : '';
 
-        return "<community{$nitelik}>{$body}</community>";
+        return "<community{$attribute}>{$body}</community>";
     }
 
     private function wrap(string $body): string

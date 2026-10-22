@@ -11,45 +11,45 @@ import { $$, on } from '../lib/dom.js';
  * Dış kütüphane kullanılmaz; tarayıcının kendi sürükleme olayları yeterli.
  */
 
-function sirali(liste) {
-    return $$('[data-sira-kimlik]', liste).map((satir) => satir.dataset.siraKimlik);
+function ordered(list) {
+    return $$('[data-order-id]', list).map((row) => row.dataset.orderId);
 }
 
 /**
  * Sürüklenen satırın imlece göre nereye bırakılacağını bulur.
  */
-function hedefSatir(liste, y) {
-    return $$('[data-sira-kimlik]:not(.is-dragging)', liste).reduce(
-        (yakin, satir) => {
-            const kutu = satir.getBoundingClientRect();
-            const fark = y - kutu.top - kutu.height / 2;
+function targetRow(list, y) {
+    return $$('[data-order-id]:not(.is-dragging)', list).reduce(
+        (nearest, row) => {
+            const box = row.getBoundingClientRect();
+            const diff = y - box.top - box.height / 2;
 
-            return fark < 0 && fark > yakin.fark ? { fark, satir } : yakin;
+            return diff < 0 && diff > nearest.fark ? { fark: diff, satir: row } : nearest;
         },
         { fark: Number.NEGATIVE_INFINITY, satir: null },
     ).satir;
 }
 
-async function gonder(liste) {
+async function send(list) {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = liste.dataset.sira;
+    form.action = list.dataset.order;
     form.hidden = true;
 
     // Sunucuya yazma isteği tek yerden geçsin diye normal form gönderimi
     // kullanılır: onay penceresi, hata gösterimi ve yönlendirme aynı kalır.
-    const alanlar = [
+    const fields = [
         ['_token', document.querySelector('meta[name="csrf-token"]')?.content ?? ''],
         ['_method', 'PUT'],
-        ...sirali(liste).map((kimlik) => ['terms[]', kimlik]),
+        ...ordered(list).map((kimlik) => ['terms[]', kimlik]),
     ];
 
-    alanlar.forEach(([ad, deger]) => {
-        const girdi = document.createElement('input');
-        girdi.type = 'hidden';
-        girdi.name = ad;
-        girdi.value = deger;
-        form.appendChild(girdi);
+    fields.forEach(([name, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
     });
 
     document.body.appendChild(form);
@@ -57,43 +57,43 @@ async function gonder(liste) {
 }
 
 export function init() {
-    let suruklenen = null;
+    let dragged = null;
 
-    on('dragstart', '[data-sira-kimlik]', (event, satir) => {
-        suruklenen = satir;
-        satir.classList.add('is-dragging');
+    on('dragstart', '[data-order-id]', (event, row) => {
+        dragged = row;
+        row.classList.add('is-dragging');
         event.dataTransfer.effectAllowed = 'move';
     });
 
-    on('dragend', '[data-sira-kimlik]', (event, satir) => {
-        satir.classList.remove('is-dragging');
+    on('dragend', '[data-order-id]', (event, row) => {
+        row.classList.remove('is-dragging');
     });
 
-    on('dragover', '[data-sira]', (event, liste) => {
-        if (!suruklenen || !liste.contains(suruklenen)) {
+    on('dragover', '[data-order]', (event, list) => {
+        if (!dragged || !list.contains(dragged)) {
             return;
         }
 
         // Varsayılan davranış bırakmayı engeller.
         event.preventDefault();
 
-        const hedef = hedefSatir(liste, event.clientY);
+        const target = targetRow(list, event.clientY);
 
-        if (hedef) {
-            liste.insertBefore(suruklenen, hedef);
+        if (target) {
+            list.insertBefore(dragged, target);
         } else {
-            liste.appendChild(suruklenen);
+            list.appendChild(dragged);
         }
     });
 
-    on('drop', '[data-sira]', (event, liste) => {
-        if (!suruklenen || !liste.contains(suruklenen)) {
+    on('drop', '[data-order]', (event, list) => {
+        if (!dragged || !list.contains(dragged)) {
             return;
         }
 
         event.preventDefault();
-        suruklenen = null;
+        dragged = null;
 
-        gonder(liste).catch(() => {});
+        send(list).catch(() => {});
     });
 }

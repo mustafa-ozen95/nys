@@ -15,20 +15,20 @@ import { $$, on } from '../lib/dom.js';
  * Aynı kısıt sunucuda da vardır (FirewallTermRequest::guardFamily) — alanı
  * gizlemek koruma değildir, istek doğrudan da gelebilir.
  */
-function aileyiUygula(select) {
-    const pencere = select.closest('.modal, form');
+function applyFamily(select) {
+    const window = select.closest('.modal, form');
 
-    if (! pencere) {
+    if (! window) {
         return;
     }
 
-    $$('[data-fw-aile]', pencere).forEach((blok) => {
-        blok.classList.toggle('is-hidden', blok.dataset.fwAile !== select.value);
+    $$('[data-fw-family]', window).forEach((block) => {
+        block.classList.toggle('is-hidden', block.dataset.fwFamily !== select.value);
     });
 }
 
 export function init() {
-    $$('[data-fw-family]').forEach(aileyiUygula);
+    $$('[data-fw-family]').forEach(applyFamily);
 
-    on('change', '[data-fw-family]', (event, select) => aileyiUygula(select));
+    on('change', '[data-fw-family]', (event, select) => applyFamily(select));
 }

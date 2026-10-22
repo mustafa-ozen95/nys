@@ -33,7 +33,7 @@ class ServerAndAddressingApiTest extends TestCase
     private const PLAIN = 'sinama-jetonu-0123456789abcdef';
 
     /** @param array<string, array<int, string>> $abilities */
-    private function jeton(array $abilities, ?User $owner = null): ApiToken
+    private function token(array $abilities, ?User $owner = null): ApiToken
     {
         return ApiToken::factory()->withPlain(self::PLAIN)->create([
             'user_id' => ($owner ?? User::factory()->admin()->create())->id,
@@ -43,7 +43,7 @@ class ServerAndAddressingApiTest extends TestCase
     }
 
     /** @return array<string, string> */
-    private function baslik(): array
+    private function header(): array
     {
         return ['Authorization' => 'Bearer '.self::PLAIN];
     }
@@ -51,46 +51,46 @@ class ServerAndAddressingApiTest extends TestCase
     #[Test]
     public function sunucu_listesi_doner_ve_parola_icermez(): void
     {
-        $this->jeton(['servers' => ['view']]);
+        $this->token(['servers' => ['view']]);
 
-        $sunucu = Server::factory()->create([
+        $server = Server::factory()->create([
             'short_name' => 'WIN-01',
             'ip_address' => '198.18.20.80',
             'connection_username' => 'yonetici',
             'connection_password' => 'gizli-parola',
         ]);
 
-        $yanit = $this->getJson('/api/v1/servers', $this->baslik())
+        $response = $this->getJson('/api/v1/servers', $this->header())
             ->assertOk()
             ->assertJsonPath('data.0.short_name', 'WIN-01')
             ->assertJsonPath('data.0.ip_address', '198.18.20.80')
-            ->assertJsonPath('data.0.id', $sunucu->uuid);
+            ->assertJsonPath('data.0.id', $server->uuid);
 
         /*
          * PAROLA VE KULLANICI ADI HİÇBİR YERDE GEÇMEMELİ. İkisi birlikte
          * sunucuya giriş demek; jeton sızarsa sunucu erişimi de sızardı.
          */
-        $govde = $yanit->getContent();
+        $body = $response->getContent();
 
-        $this->assertStringNotContainsString('gizli-parola', $govde);
-        $this->assertStringNotContainsString('yonetici', $govde);
+        $this->assertStringNotContainsString('gizli-parola', $body);
+        $this->assertStringNotContainsString('yonetici', $body);
     }
 
     #[Test]
     public function sunucu_yetkisi_olmayan_jeton_reddedilir(): void
     {
         /* Sahibi yönetici ama jetonun listesinde sunucu YOK. */
-        $this->jeton(['switches' => ['view']]);
+        $this->token(['switches' => ['view']]);
 
         Server::factory()->create();
 
-        $this->getJson('/api/v1/servers', $this->baslik())->assertForbidden();
+        $this->getJson('/api/v1/servers', $this->header())->assertForbidden();
     }
 
     #[Test]
     public function adresleme_bloklari_atanabilirligi_soyler(): void
     {
-        $this->jeton(['addressing' => ['view']]);
+        $this->token(['addressing' => ['view']]);
 
         AddressBlock::factory()->create([
             'network' => '10.9.0.0',
@@ -98,7 +98,7 @@ class ServerAndAddressingApiTest extends TestCase
             'connection_type' => null,
         ]);
 
-        $this->getJson('/api/v1/addressing/blocks', $this->baslik())
+        $this->getJson('/api/v1/addressing/blocks', $this->header())
             ->assertOk()
             ->assertJsonPath('data.0.cidr', '10.9.0.0/24')
             ->assertJsonPath('data.0.assignable', true);
@@ -114,7 +114,7 @@ class ServerAndAddressingApiTest extends TestCase
     #[Test]
     public function route_edilmis_blok_atanamaz_gorunur(): void
     {
-        $this->jeton(['addressing' => ['view']]);
+        $this->token(['addressing' => ['view']]);
 
         AddressBlock::factory()->create([
             'network' => '10.9.1.0',
@@ -122,7 +122,7 @@ class ServerAndAddressingApiTest extends TestCase
             'connection_type' => 'vlan',
         ]);
 
-        $this->getJson('/api/v1/addressing/blocks', $this->baslik())
+        $this->getJson('/api/v1/addressing/blocks', $this->header())
             ->assertOk()
             ->assertJsonPath('data.0.assignable', false);
     }
@@ -130,20 +130,20 @@ class ServerAndAddressingApiTest extends TestCase
     #[Test]
     public function blok_icindeki_adresler_kullanilan_ve_bosu_ayirir(): void
     {
-        $this->jeton(['addressing' => ['view']]);
+        $this->token(['addressing' => ['view']]);
 
-        $blok = AddressBlock::factory()->create([
+        $block = AddressBlock::factory()->create([
             'network' => '10.9.2.0',
             'prefix_length' => 29,
             'connection_type' => null,
         ]);
 
-        $yanit = $this->getJson("/api/v1/addressing/blocks/{$blok->uuid}/hosts", $this->baslik())
+        $response = $this->getJson("/api/v1/addressing/blocks/{$block->uuid}/hosts", $this->header())
             ->assertOk()
             ->assertJsonPath('data.cidr', '10.9.2.0/29')
             ->assertJsonPath('data.limited', false);
 
-        $veri = $yanit->json('data');
+        $veri = $response->json('data');
 
         $this->assertIsArray($veri['addresses']);
         $this->assertSame($veri['total'] - $veri['used'], $veri['free']);
@@ -152,17 +152,17 @@ class ServerAndAddressingApiTest extends TestCase
     #[Test]
     public function adresleme_yetkisi_olmayan_jeton_reddedilir(): void
     {
-        $this->jeton(['switches' => ['view']]);
+        $this->token(['switches' => ['view']]);
 
         AddressBlock::factory()->create();
 
-        $this->getJson('/api/v1/addressing/blocks', $this->baslik())->assertForbidden();
+        $this->getJson('/api/v1/addressing/blocks', $this->header())->assertForbidden();
     }
 
     #[Test]
     public function switchin_route_tablosu_doner(): void
     {
-        $this->jeton(['switch_routes' => ['view']]);
+        $this->token(['switch_routes' => ['view']]);
 
         $switch = NetworkSwitch::factory()->create();
         SwitchRoute::factory()->create([
@@ -172,7 +172,7 @@ class ServerAndAddressingApiTest extends TestCase
             'next_hop' => '198.18.20.1',
         ]);
 
-        $this->getJson("/api/v1/switches/{$switch->uuid}/routes", $this->baslik())
+        $this->getJson("/api/v1/switches/{$switch->uuid}/routes", $this->header())
             ->assertOk()
             ->assertJsonPath('data.0.destination', '0.0.0.0/0')
             ->assertJsonPath('data.0.next_hop', '198.18.20.1');
@@ -188,10 +188,10 @@ class ServerAndAddressingApiTest extends TestCase
     #[Test]
     public function bgp_komsulari_doner_ve_oturum_anahtari_sizmaz(): void
     {
-        $this->jeton(['switch_bgp' => ['view']]);
+        $this->token(['switch_bgp' => ['view']]);
 
         $switch = NetworkSwitch::factory()->create();
-        $grup = BgpGroup::factory()->create([
+        $group = BgpGroup::factory()->create([
             'switch_id' => $switch->id,
             'name' => 'ust-katman',
             'authentication_key' => 'cok-gizli-md5-anahtari',
@@ -199,19 +199,19 @@ class ServerAndAddressingApiTest extends TestCase
 
         BgpNeighbor::factory()->create([
             'switch_id' => $switch->id,
-            'bgp_group_id' => $grup->id,
+            'bgp_group_id' => $group->id,
             'address' => '10.0.0.1',
             'authentication_key' => 'komsuya-ozel-anahtar',
         ]);
 
-        $yanit = $this->getJson("/api/v1/switches/{$switch->uuid}/bgp-neighbors", $this->baslik())
+        $response = $this->getJson("/api/v1/switches/{$switch->uuid}/bgp-neighbors", $this->header())
             ->assertOk()
             ->assertJsonPath('data.0.address', '10.0.0.1')
             ->assertJsonPath('data.0.group', 'ust-katman');
 
-        $govde = $yanit->getContent();
+        $body = $response->getContent();
 
-        $this->assertStringNotContainsString('cok-gizli-md5-anahtari', $govde);
-        $this->assertStringNotContainsString('komsuya-ozel-anahtar', $govde);
+        $this->assertStringNotContainsString('cok-gizli-md5-anahtari', $body);
+        $this->assertStringNotContainsString('komsuya-ozel-anahtar', $body);
     }
 }

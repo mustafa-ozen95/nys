@@ -57,15 +57,15 @@ class SwitchIpAddressController extends Controller implements HasMiddleware
     {
         return view('switches.ip-addresses', [
             'switch' => $switch,
-            'addresses' => $adresler = $switch->ipAddresses()->with(['port', 'vlan'])->orderBy('interface_name')->get(),
+            'addresses' => $addresses = $switch->ipAddresses()->with(['port', 'vlan'])->orderBy('interface_name')->get(),
             /*
              * Hangi adresin düzenlenebileceği burada belli olur; Blade karar
              * vermez. me0 gibi yönetim arayüzleri panelden değiştirilemez.
              */
-            'editable' => $adresler->mapWithKeys(fn (SwitchIpAddress $address): array => [
+            'editable' => $addresses->mapWithKeys(fn (SwitchIpAddress $address): array => [
                 $address->uuid => $this->manageable->isManageable($address),
             ])->all(),
-            'lockReason' => $adresler->mapWithKeys(fn (SwitchIpAddress $address): array => [
+            'lockReason' => $addresses->mapWithKeys(fn (SwitchIpAddress $address): array => [
                 $address->uuid => $this->manageable->reason($address),
             ])->all(),
             'portOptions' => $switch->ports()
@@ -77,19 +77,19 @@ class SwitchIpAddressController extends Controller implements HasMiddleware
                 ->get()
                 ->mapWithKeys(fn (Vlan $vlan): array => [$vlan->uuid => $vlan->name])
                 ->all(),
-            'addressOptions' => $secenekler = $this->candidates->groupedOptions($switch),
+            'addressOptions' => $options = $this->candidates->groupedOptions($switch),
 
             // Atanmış blok yoksa yeni adres eklenemez; pencere yalnızca
             // ne yapılması gerektiğini söyler, boş bir form sunmaz.
-            'canAdd' => $secenekler !== [],
+            'canAdd' => $options !== [],
 
             /*
              * Düzenleme penceresinin listesi ayrıdır: kaydın kendi adresi de
              * içinde olmalı, yoksa bloğu kalmamış bir adres düzenlenemez.
              * Bloklar bir kez okunur, geri kalanı dizi işlemidir.
              */
-            'editOptions' => $adresler->mapWithKeys(fn (SwitchIpAddress $address): array => [
-                $address->uuid => $this->candidates->withCurrent($secenekler, $address),
+            'editOptions' => $addresses->mapWithKeys(fn (SwitchIpAddress $address): array => [
+                $address->uuid => $this->candidates->withCurrent($options, $address),
             ])->all(),
             'switches' => $this->navigation->switches($request->user()),
             'objects' => $this->navigation->objects($switch, 'ip-addresses'),

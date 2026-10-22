@@ -56,7 +56,7 @@ final class EmailSettingTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
-            ->put(route('settings.update', 'eposta'), $this->payload())
+            ->put(route('settings.update', 'email'), $this->payload())
             ->assertSessionHasNoErrors();
 
         app(SettingsRepository::class)->forget();
@@ -64,10 +64,10 @@ final class EmailSettingTest extends TestCase
 
         foreach (['mail__mailers__smtp__host' => 'toplayici.saldirgan.test',
             'mail__mailers__smtp__port' => '2525',
-            'mail__mailers__smtp__username' => 'baska@ornek.test'] as $alan => $deger) {
+            'mail__mailers__smtp__username' => 'baska@ornek.test'] as $alan => $value) {
             $this->actingAs($admin)
-                ->put(route('settings.update', 'eposta'), $this->payload([
-                    $alan => $deger,
+                ->put(route('settings.update', 'email'), $this->payload([
+                    $alan => $value,
                     'mail__mailers__smtp__password' => '',
                 ]))
                 ->assertSessionHasErrors('mail__mailers__smtp__password');
@@ -75,7 +75,7 @@ final class EmailSettingTest extends TestCase
 
         // Uç değişmiyorsa parola boş bırakılabilir.
         $this->actingAs($admin)
-            ->put(route('settings.update', 'eposta'), $this->payload([
+            ->put(route('settings.update', 'email'), $this->payload([
                 'mail__from__name' => 'Yeni Ad',
                 'mail__mailers__smtp__password' => '',
             ]))
@@ -85,7 +85,7 @@ final class EmailSettingTest extends TestCase
     public function test_bolum_yoneticiye_acilir(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.show', 'eposta'))
+            ->get(route('settings.show', 'email'))
             ->assertOk()
             ->assertSee('SMTP sunucusu')
             ->assertSee('Gönderim biçimi');
@@ -94,7 +94,7 @@ final class EmailSettingTest extends TestCase
     public function test_yonetici_olmayan_kaydedemez(): void
     {
         $this->actingAs(User::factory()->create())
-            ->put(route('settings.update', 'eposta'), $this->payload())
+            ->put(route('settings.update', 'email'), $this->payload())
             ->assertForbidden();
 
         $this->assertDatabaseCount('settings', 0);
@@ -111,7 +111,7 @@ final class EmailSettingTest extends TestCase
         config(['mail.default' => 'log', 'mail.mailers.smtp.host' => '127.0.0.1']);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'eposta'), $this->payload())
+            ->put(route('settings.update', 'email'), $this->payload())
             ->assertRedirect();
 
         app(SettingsRepository::class)->apply();
@@ -133,20 +133,20 @@ final class EmailSettingTest extends TestCase
      */
     public function test_parola_sifreli_saklanir_ve_ekranda_basilmaz(): void
     {
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
-        $this->actingAs($yonetici)
-            ->put(route('settings.update', 'eposta'), $this->payload())
+        $this->actingAs($admin)
+            ->put(route('settings.update', 'email'), $this->payload())
             ->assertRedirect();
 
-        $satir = Setting::query()->where('key', 'mail.mailers.smtp.password')->firstOrFail();
+        $row = Setting::query()->where('key', 'mail.mailers.smtp.password')->firstOrFail();
 
         // Değer önce JSON'lanır, sonra şifrelenir (tip bilgisi korunsun diye).
-        $this->assertNotSame('cok-gizli', $satir->getRawOriginal('value'));
-        $this->assertSame('cok-gizli', json_decode(Crypt::decryptString($satir->getRawOriginal('value')), true));
+        $this->assertNotSame('cok-gizli', $row->getRawOriginal('value'));
+        $this->assertSame('cok-gizli', json_decode(Crypt::decryptString($row->getRawOriginal('value')), true));
 
-        $this->actingAs($yonetici)
-            ->get(route('settings.show', 'eposta'))
+        $this->actingAs($admin)
+            ->get(route('settings.show', 'email'))
             ->assertOk()
             ->assertDontSee('cok-gizli');
     }
@@ -157,11 +157,11 @@ final class EmailSettingTest extends TestCase
      */
     public function test_bos_parola_mevcut_degeri_korur(): void
     {
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
-        $this->actingAs($yonetici)->put(route('settings.update', 'eposta'), $this->payload());
-        $this->actingAs($yonetici)->put(
-            route('settings.update', 'eposta'),
+        $this->actingAs($admin)->put(route('settings.update', 'email'), $this->payload());
+        $this->actingAs($admin)->put(
+            route('settings.update', 'email'),
             $this->payload(['mail__mailers__smtp__password' => '']),
         );
 

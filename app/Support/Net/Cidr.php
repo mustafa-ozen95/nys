@@ -240,10 +240,10 @@ final readonly class Cidr
     public static function increment(string $binary): string
     {
         for ($i = strlen($binary) - 1; $i >= 0; $i--) {
-            $deger = ord($binary[$i]) + 1;
-            $binary[$i] = chr($deger & 0xFF);
+            $value = ord($binary[$i]) + 1;
+            $binary[$i] = chr($value & 0xFF);
 
-            if ($deger <= 0xFF) {
+            if ($value <= 0xFF) {
                 break;
             }
         }
@@ -257,10 +257,10 @@ final readonly class Cidr
     public static function decrement(string $binary): string
     {
         for ($i = strlen($binary) - 1; $i >= 0; $i--) {
-            $deger = ord($binary[$i]) - 1;
-            $binary[$i] = chr($deger & 0xFF);
+            $value = ord($binary[$i]) - 1;
+            $binary[$i] = chr($value & 0xFF);
 
-            if ($deger >= 0) {
+            if ($value >= 0) {
                 break;
             }
         }
@@ -283,12 +283,12 @@ final readonly class Cidr
             return $binary;
         }
 
-        $tasima = 1 << ($exponent % 8);
+        $migration = 1 << ($exponent % 8);
 
-        for ($i = $index; $i >= 0 && $tasima > 0; $i--) {
-            $toplam = ord($binary[$i]) + ($tasima & 0xFF);
-            $binary[$i] = chr($toplam & 0xFF);
-            $tasima = ($tasima >> 8) + ($toplam >> 8);
+        for ($i = $index; $i >= 0 && $migration > 0; $i--) {
+            $total = ord($binary[$i]) + ($migration & 0xFF);
+            $binary[$i] = chr($total & 0xFF);
+            $migration = ($migration >> 8) + ($total >> 8);
         }
 
         return $binary;
@@ -301,12 +301,12 @@ final readonly class Cidr
      */
     public static function add(string $binary, int $steps): string
     {
-        $tasima = $steps;
+        $migration = $steps;
 
-        for ($i = strlen($binary) - 1; $i >= 0 && $tasima > 0; $i--) {
-            $toplam = ord($binary[$i]) + ($tasima & 0xFF);
-            $binary[$i] = chr($toplam & 0xFF);
-            $tasima = ($tasima >> 8) + ($toplam >> 8);
+        for ($i = strlen($binary) - 1; $i >= 0 && $migration > 0; $i--) {
+            $total = ord($binary[$i]) + ($migration & 0xFF);
+            $binary[$i] = chr($total & 0xFF);
+            $migration = ($migration >> 8) + ($total >> 8);
         }
 
         return $binary;
@@ -348,11 +348,11 @@ final readonly class Cidr
          * 2^96 alt ağ demektir ve istenmesi bir hatadır. Sınır cömert ama
          * gerçekçi tutulur.
          */
-        $parcaBiti = $prefixLength - $this->prefixLength;
+        $fragmentBit = $prefixLength - $this->prefixLength;
 
-        if ($parcaBiti > self::MAX_SPLIT_BITS) {
+        if ($fragmentBit > self::MAX_SPLIT_BITS) {
             throw new InvalidArgumentException(
-                "Bu bölme {$parcaBiti} bit, yani 2^{$parcaBiti} alt ağ üretir; en fazla "
+                "Bu bölme {$fragmentBit} bit, yani 2^{$fragmentBit} alt ağ üretir; en fazla "
                 .self::MAX_SPLIT_BITS.' bit bölünebilir.'
             );
         }
@@ -371,14 +371,14 @@ final readonly class Cidr
         while ($address <= $end) {
             $subnets[] = self::make(inet_ntop($address), $prefixLength);
 
-            $sonraki = self::addPowerOfTwo($address, $stepBits);
+            $next = self::addPowerOfTwo($address, $stepBits);
 
             // Taşma: son alt ağa ulaşıldı.
-            if ($sonraki <= $address) {
+            if ($next <= $address) {
                 break;
             }
 
-            $address = $sonraki;
+            $address = $next;
         }
 
         return $subnets;
@@ -407,73 +407,73 @@ final readonly class Cidr
             return [];
         }
 
-        $bitSayisi = $isIpv6 ? 128 : 32;
-        $parcalar = [];
+        $bitCount = $isIpv6 ? 128 : 32;
+        $fragments = [];
 
         /*
          * Üst sınır: bozuk bir girdi sonsuz döngüye dönüşmesin. Bir aralık en
          * fazla 2*bit parçaya bölünür (her iki uçta bit başına bir parça);
          * pay bırakılır.
          */
-        $tur = 0;
+        $round = 0;
 
-        while ($start <= $end && $tur++ < 4 * $bitSayisi) {
-            $uzunluk = $bitSayisi;
+        while ($start <= $end && $round++ < 4 * $bitCount) {
+            $length = $bitCount;
 
             /*
              * Başlangıcın hizası: sondaki sıfır bitleri sayılır. 10.0.0.8 üç
              * sıfır bitiyle biter, yani en fazla /29 başlatabilir.
              */
-            $hiza = self::trailingZeroBits($start, $bitSayisi);
+            $align = self::trailingZeroBits($start, $bitCount);
 
-            while ($uzunluk > $bitSayisi - $hiza) {
-                $aday = self::make((string) inet_ntop($start), $uzunluk - 1);
+            while ($length > $bitCount - $align) {
+                $candidate = self::make((string) inet_ntop($start), $length - 1);
 
-                if (inet_pton($aday->lastAddress()) > $end) {
+                if (inet_pton($candidate->lastAddress()) > $end) {
                     break;
                 }
 
-                $uzunluk--;
+                $length--;
             }
 
-            $parca = self::make((string) inet_ntop($start), $uzunluk);
-            $parcalar[] = $parca;
+            $fragment = self::make((string) inet_ntop($start), $length);
+            $fragments[] = $fragment;
 
-            $sonraki = self::increment(inet_pton($parca->lastAddress()));
+            $next = self::increment(inet_pton($fragment->lastAddress()));
 
             /* Adres uzayının sonuna gelindi: taşma olur, döngü biter. */
-            if ($sonraki <= $start) {
+            if ($next <= $start) {
                 break;
             }
 
-            $start = $sonraki;
+            $start = $next;
         }
 
-        return $parcalar;
+        return $fragments;
     }
 
     /** Paketlenmiş adresin sonundaki sıfır bit sayısı (hizası). */
-    private static function trailingZeroBits(string $binary, int $bitSayisi): int
+    private static function trailingZeroBits(string $binary, int $bitCount): int
     {
-        $sayi = 0;
+        $number = 0;
 
         for ($i = strlen($binary) - 1; $i >= 0; $i--) {
-            $bayt = ord($binary[$i]);
+            $byte = ord($binary[$i]);
 
-            if ($bayt === 0) {
-                $sayi += 8;
+            if ($byte === 0) {
+                $number += 8;
 
                 continue;
             }
 
             for ($bit = 0; $bit < 8; $bit++) {
-                if (($bayt >> $bit) & 1) {
-                    return min($sayi + $bit, $bitSayisi);
+                if (($byte >> $bit) & 1) {
+                    return min($number + $bit, $bitCount);
                 }
             }
         }
 
-        return $bitSayisi;
+        return $bitCount;
     }
 
     private static function maskBinary(string $binary, int $prefixLength): string

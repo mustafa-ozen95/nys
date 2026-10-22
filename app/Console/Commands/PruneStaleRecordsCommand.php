@@ -32,14 +32,14 @@ class PruneStaleRecordsCommand extends Command
 
     public function handle(ActivityChain $chain): int
     {
-        $denetim = $this->pruneChain($chain, ActivityChain::AUDIT, 'maintenance.activity_retention_days');
-        $erisim = $this->pruneChain($chain, ActivityChain::ACCESS, 'maintenance.access_retention_days');
+        $audit = $this->pruneChain($chain, ActivityChain::AUDIT, 'maintenance.activity_retention_days');
+        $access = $this->pruneChain($chain, ActivityChain::ACCESS, 'maintenance.access_retention_days');
         $samples = $this->pruneSamples();
-        $islemler = $this->pruneDeviceOperations();
+        $operations = $this->pruneDeviceOperations();
 
         $this->info(
-            "Denetim kaydı: {$denetim} satır, erişim kaydı: {$erisim} satır, "
-            ."trafik örneği: {$samples} satır, cihaz işlemi: {$islemler} satır silindi."
+            "Denetim kaydı: {$audit} satır, erişim kaydı: {$access} satır, "
+            ."trafik örneği: {$samples} satır, cihaz işlemi: {$operations} satır silindi."
         );
 
         return self::SUCCESS;
@@ -62,28 +62,28 @@ class PruneStaleRecordsCommand extends Command
             return 0;
         }
 
-        $sinir = now()->subDays($days);
+        $limit = now()->subDays($days);
 
-        $sonSilinecek = ActivityLog::query()
+        $lastToDelete = ActivityLog::query()
             ->where('chain', $name)
-            ->where('created_at', '<', $sinir)
+            ->where('created_at', '<', $limit)
             ->latest('id')
             ->value('hash');
 
-        $silinen = $this->deleteInChunks(
+        $deleted = $this->deleteInChunks(
             fn (): int => ActivityLog::query()
                 ->where('chain', $name)
-                ->where('created_at', '<', $sinir)
+                ->where('created_at', '<', $limit)
                 ->limit(self::CHUNK)
                 ->delete(),
         );
 
-        if ($silinen > 0) {
-            $chain->anchorTo($sonSilinecek, $name);
+        if ($deleted > 0) {
+            $chain->anchorTo($lastToDelete, $name);
             $chain->forgetTailIfChainEmpty($name);
         }
 
-        return $silinen;
+        return $deleted;
     }
 
     /**
@@ -99,11 +99,11 @@ class PruneStaleRecordsCommand extends Command
             return 0;
         }
 
-        $sinir = now()->subDays($days);
+        $limit = now()->subDays($days);
 
         return $this->deleteInChunks(
             fn (): int => DeviceOperation::query()
-                ->where('created_at', '<', $sinir)
+                ->where('created_at', '<', $limit)
                 ->limit(self::CHUNK)
                 ->delete(),
         );

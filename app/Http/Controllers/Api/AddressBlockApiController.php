@@ -37,14 +37,14 @@ class AddressBlockApiController extends Controller
     {
         $this->authorize('viewAny', AddressBlock::class);
 
-        $bloklar = $this->resolver
+        $blocks = $this->resolver
             ->scope(AddressBlock::query(), $request->user(), 'addressing')
             ->with(['accessSwitch', 'coreSwitch', 'vlan'])
             ->withCount('subnets')
             ->orderBy('range_start')
             ->paginate((int) $request->integer('per_page', 50));
 
-        return AddressBlockResource::collection($bloklar);
+        return AddressBlockResource::collection($blocks);
     }
 
     public function show(AddressBlock $addressBlock): AddressBlockResource
@@ -70,22 +70,22 @@ class AddressBlockApiController extends Controller
     {
         $this->authorize('view', $addressBlock);
 
-        $sonuc = $this->layout->hosts($addressBlock);
+        $result = $this->layout->hosts($addressBlock);
 
         return response()->json([
             'data' => [
                 'cidr' => $addressBlock->network.'/'.$addressBlock->prefix_length,
-                'limited' => $sonuc['sinirli'],
-                'total' => $sonuc['toplam'],
-                'used' => $sonuc['dolu'],
-                'free' => $sonuc['sinirli'] || $sonuc['toplam'] === null
+                'limited' => $result['sinirli'],
+                'total' => $result['toplam'],
+                'used' => $result['dolu'],
+                'free' => $result['sinirli'] || $result['toplam'] === null
                     ? null
-                    : $sonuc['toplam'] - $sonuc['dolu'],
+                    : $result['toplam'] - $result['dolu'],
                 'addresses' => array_map(static fn (array $a): array => [
                     'address' => $a['adres'],
                     'owner' => $a['sahip'],
                     'owner_type' => $a['tur'],
-                ], $sonuc['adresler']),
+                ], $result['adresler']),
             ],
         ]);
     }

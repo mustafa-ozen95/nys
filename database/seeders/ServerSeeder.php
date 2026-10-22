@@ -51,10 +51,10 @@ class ServerSeeder extends Seeder
     private function servers(): array
     {
         return array_map(
-            fn (array $satir): array => $satir['tur'] === 'linux'
-                ? $this->linux($satir['kisa'], $satir['uzun'], $satir['adres'], $satir['port'], $satir['kullanici'])
-                : $this->windows($satir['kisa'], $satir['uzun'], $satir['adres'], $satir['port'], $satir['kullanici'], $satir['surum']),
-            LocalInventory::al('sunucular'),
+            fn (array $row): array => $row['tur'] === 'linux'
+                ? $this->linux($row['kisa'], $row['uzun'], $row['adres'], $row['port'], $row['kullanici'])
+                : $this->windows($row['kisa'], $row['uzun'], $row['adres'], $row['port'], $row['kullanici'], $row['surum']),
+            LocalInventory::take('sunucular'),
         );
     }
 
@@ -115,6 +115,6 @@ class ServerSeeder extends Seeder
     private function credentials(): array
     {
         /** @var array<string, string> */
-        return LocalInventory::al('sunucu_parolalari');
+        return LocalInventory::take('sunucu_parolalari');
     }
 }

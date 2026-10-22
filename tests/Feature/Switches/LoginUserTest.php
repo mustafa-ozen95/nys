@@ -47,15 +47,15 @@ final class LoginUserTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<login><user><name>saha</name>', $yazilan);
-        $this->assertStringContainsString('<class>read-only</class>', $yazilan);
-        $this->assertStringContainsString('<full-name>Saha Ekibi</full-name>', $yazilan);
-        $this->assertStringContainsString('<uid>2500</uid>', $yazilan);
+        $this->assertStringContainsString('<login><user><name>saha</name>', $written);
+        $this->assertStringContainsString('<class>read-only</class>', $written);
+        $this->assertStringContainsString('<full-name>Saha Ekibi</full-name>', $written);
+        $this->assertStringContainsString('<uid>2500</uid>', $written);
         $this->assertStringContainsString(
             '<plain-text-password-value>Denemeler123!</plain-text-password-value>',
-            $yazilan,
+            $written,
         );
     }
 
@@ -86,11 +86,11 @@ final class LoginUserTest extends TestCase
     public function test_parola_bos_birakilinca_cihazdaki_korunur(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::Operator->value,
             ])
@@ -107,11 +107,11 @@ final class LoginUserTest extends TestCase
     public function test_bos_tam_ad_cihazdan_silinir(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::ReadOnly->value,
             ])
@@ -123,11 +123,11 @@ final class LoginUserTest extends TestCase
     public function test_hesap_silinir(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->delete(route('switches.login-users.destroy', [$switch, $hesap]))
+            ->delete(route('switches.login-users.destroy', [$switch, $account]))
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
@@ -144,26 +144,26 @@ final class LoginUserTest extends TestCase
     public function test_panel_hesabi_silinemez(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->delete(route('switches.login-users.destroy', [$switch, $hesap]))
+            ->delete(route('switches.login-users.destroy', [$switch, $account]))
             ->assertRedirect()
             ->assertSessionHas('error');
 
         $this->assertNull($device->connection);
-        $this->assertDatabaseHas('switch_login_users', ['id' => $hesap->id]);
+        $this->assertDatabaseHas('switch_login_users', ['id' => $account->id]);
     }
 
     public function test_panel_hesabinin_yetkisi_dusurulemez(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::ReadOnly->value,
             ])
@@ -184,11 +184,11 @@ final class LoginUserTest extends TestCase
     public function test_panel_hesabinin_parolasi_bu_ekrandan_degistirilemez(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::SuperUser->value,
                 'password' => 'YeniParola1',
@@ -206,11 +206,11 @@ final class LoginUserTest extends TestCase
     public function test_diger_hesabin_parolasi_degistirilebilir(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'teknisyen']);
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'teknisyen']);
         $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::ReadOnly->value,
                 'password' => 'YeniParola1',
@@ -231,11 +231,11 @@ final class LoginUserTest extends TestCase
     public function test_tek_sinifli_parola_panelde_durdurulur(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'teknisyen']);
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'teknisyen']);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::ReadOnly->value,
                 'password' => '12345678',
@@ -249,11 +249,11 @@ final class LoginUserTest extends TestCase
     public function test_panel_hesabi_super_kullanici_kalabilir(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->panel()->create();
         $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'class' => JunosUserClass::SuperUser->value,
                 'full_name' => 'Panel Hesabi',
@@ -356,10 +356,10 @@ final class LoginUserTest extends TestCase
     public function test_ad_duzenlemede_degistirilemez(): void
     {
         $switch = $this->switch();
-        $hesap = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
+        $account = SwitchLoginUser::factory()->for($switch, 'switch')->create(['name' => 'saha']);
 
         $this->actingAs($this->operator())
-            ->put(route('switches.login-users.update', [$switch, $hesap]), [
+            ->put(route('switches.login-users.update', [$switch, $account]), [
                 '_duzenleme' => '1',
                 'name' => 'baska',
                 'class' => JunosUserClass::ReadOnly->value,
@@ -370,11 +370,11 @@ final class LoginUserTest extends TestCase
     public function test_baska_switchin_hesabi_eslesmez(): void
     {
         $switch = $this->switch();
-        $baska = NetworkSwitch::factory()->create();
-        $hesap = SwitchLoginUser::factory()->for($baska, 'switch')->create();
+        $other = NetworkSwitch::factory()->create();
+        $account = SwitchLoginUser::factory()->for($other, 'switch')->create();
 
         $this->actingAs($this->operator())
-            ->delete(route('switches.login-users.destroy', [$switch, $hesap]))
+            ->delete(route('switches.login-users.destroy', [$switch, $account]))
             ->assertNotFound();
     }
 

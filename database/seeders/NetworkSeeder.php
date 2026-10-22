@@ -32,15 +32,15 @@ class NetworkSeeder extends Seeder
      *
      * @return list<array{hostname: string, management_ip: string, uplink_ip: string, role: SwitchRole, location: SwitchLocation, username: string, password: string, community: string}>
      */
-    private function switchler(): array
+    private function switches(): array
     {
         /** @var list<array{hostname: string, management_ip: string, uplink_ip: string, role: SwitchRole, location: SwitchLocation, username: string, password: string, community: string}> */
-        return LocalInventory::al('switchler');
+        return LocalInventory::take('switchler');
     }
 
     public function run(): void
     {
-        foreach ($this->switchler() as $entry) {
+        foreach ($this->switches() as $entry) {
             $switch = NetworkSwitch::updateOrCreate(
                 ['management_ip' => $entry['management_ip']],
                 [

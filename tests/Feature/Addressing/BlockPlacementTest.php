@@ -28,34 +28,34 @@ final class BlockPlacementTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function blok(string $ag, int $maske, array $ustune = []): AddressBlock
+    private function block(string $network, int $mask, array $onto = []): AddressBlock
     {
-        $cidr = Cidr::make($ag, $maske);
+        $cidr = Cidr::make($network, $mask);
 
         return AddressBlock::factory()->create([
             'network' => $cidr->network,
-            'prefix_length' => $maske,
+            'prefix_length' => $mask,
             'range_start' => $cidr->addressStart(),
             'range_end' => $cidr->addressEnd(),
             'family' => IpFamily::Inet,
-            ...$ustune,
+            ...$onto,
         ]);
     }
 
     public function test_alt_aglar_ve_aralarindaki_bosluklar_sirayla_listelenir(): void
     {
-        $ust = $this->blok('10.0.0.0', 24, ['is_subnetted' => true]);
+        $upper = $this->block('10.0.0.0', 24, ['is_subnetted' => true]);
 
         /* Ortadan bir /29 verilmiş; öncesi ve sonrası boş. */
-        $this->blok('10.0.0.8', 29, ['parent_id' => $ust->id]);
+        $this->block('10.0.0.8', 29, ['parent_id' => $upper->id]);
 
-        $satirlar = app(AddressLayoutService::class)->network($ust->fresh());
+        $rows = app(AddressLayoutService::class)->network($upper->fresh());
 
-        $this->assertSame(['bosluk', 'alt-ag', 'bosluk'], array_column($satirlar, 'tur'));
+        $this->assertSame(['bosluk', 'alt-ag', 'bosluk'], array_column($rows, 'tur'));
 
         /* Baştaki boşluk: 10.0.0.0 – 10.0.0.7 */
-        $this->assertSame(['10.0.0.0/29'], $satirlar[0]['parcalar']);
-        $this->assertSame('10.0.0.8/29', $satirlar[1]['cidr']);
+        $this->assertSame(['10.0.0.0/29'], $rows[0]['parcalar']);
+        $this->assertSame('10.0.0.8/29', $rows[1]['cidr']);
 
         /*
          * Sondaki boşluk düzgün bir CIDR DEĞİL: 10.0.0.16'dan 255'e kadar.
@@ -63,38 +63,38 @@ final class BlockPlacementTest extends TestCase
          */
         $this->assertSame(
             ['10.0.0.16/28', '10.0.0.32/27', '10.0.0.64/26', '10.0.0.128/25'],
-            $satirlar[2]['parcalar'],
+            $rows[2]['parcalar'],
         );
     }
 
     public function test_bolunmemis_blokta_adresi_kimin_tuttugu_yazar(): void
     {
-        $blok = $this->blok('10.0.0.8', 29);
+        $block = $this->block('10.0.0.8', 29);
 
         Server::factory()->create(['short_name' => 'WEB-01', 'ip_address' => '10.0.0.10']);
 
-        $sonuc = app(AddressLayoutService::class)->hosts($blok);
+        $result = app(AddressLayoutService::class)->hosts($block);
 
-        $this->assertFalse($sonuc['sinirli']);
-        $this->assertSame(6, $sonuc['toplam']);
-        $this->assertSame(1, $sonuc['dolu']);
+        $this->assertFalse($result['sinirli']);
+        $this->assertSame(6, $result['toplam']);
+        $this->assertSame(1, $result['dolu']);
 
-        $tutulan = collect($sonuc['adresler'])->firstWhere('adres', '10.0.0.10');
+        $kept = collect($result['adresler'])->firstWhere('adres', '10.0.0.10');
 
-        $this->assertSame('WEB-01', $tutulan['sahip']);
-        $this->assertSame('sunucu', $tutulan['tur']);
+        $this->assertSame('WEB-01', $kept['sahip']);
+        $this->assertSame('sunucu', $kept['tur']);
 
         /* Ötekiler boşta: "sahip" yok. */
-        $this->assertNull(collect($sonuc['adresler'])->firstWhere('adres', '10.0.0.11')['sahip']);
+        $this->assertNull(collect($result['adresler'])->firstWhere('adres', '10.0.0.11')['sahip']);
     }
 
     /** Geniş blokta adresler tek tek basılmaz; ekran da tarayıcı da kilitlenirdi. */
     public function test_genis_blokta_host_listesi_kisitlanir(): void
     {
-        $sonuc = app(AddressLayoutService::class)->hosts($this->blok('10.1.0.0', 16));
+        $result = app(AddressLayoutService::class)->hosts($this->block('10.1.0.0', 16));
 
-        $this->assertTrue($sonuc['sinirli']);
-        $this->assertSame([], $sonuc['adresler']);
+        $this->assertTrue($result['sinirli']);
+        $this->assertSame([], $result['adresler']);
     }
 
     /**
@@ -106,40 +106,40 @@ final class BlockPlacementTest extends TestCase
      */
     public function test_atanmis_blok_baska_switchin_listesinde_gorunmez(): void
     {
-        $erisim = NetworkSwitch::factory()->create(['hostname' => 'ERISIM-1', 'role' => SwitchRole::Access]);
-        $omurga = NetworkSwitch::factory()->create(['hostname' => 'OMURGA-1', 'role' => SwitchRole::Core]);
-        $vlan = Vlan::factory()->create(['switch_id' => $erisim->id]);
+        $access = NetworkSwitch::factory()->create(['hostname' => 'ERISIM-1', 'role' => SwitchRole::Access]);
+        $backbone = NetworkSwitch::factory()->create(['hostname' => 'OMURGA-1', 'role' => SwitchRole::Core]);
+        $vlan = Vlan::factory()->create(['switch_id' => $access->id]);
 
-        $atanmis = $this->blok('10.0.0.8', 29, [
+        $assigned = $this->block('10.0.0.8', 29, [
             'connection_type' => AddressConnectionType::Vlan,
-            'access_switch_id' => $erisim->id,
+            'access_switch_id' => $access->id,
             'vlan_id' => $vlan->id,
         ]);
 
-        $bos = $this->blok('10.0.1.0', 29);
+        $empty = $this->block('10.0.1.0', 29);
 
-        $secenekler = app(AddressCandidateService::class);
+        $options = app(AddressCandidateService::class);
 
         /* Başka bir omurgada: yalnızca boş blok. */
-        $this->assertSame(['10.0.1.0/29'], array_keys($secenekler->blockOptions(switch: $omurga)));
+        $this->assertSame(['10.0.1.0/29'], array_keys($options->blockOptions(switch: $backbone)));
 
         /* Sahibinin kendi ekranında ikisi de: orada düzenlenebilmeli. */
         $this->assertEqualsCanonicalizing(
             ['10.0.0.8/29', '10.0.1.0/29'],
-            array_keys($secenekler->blockOptions(switch: $erisim)),
+            array_keys($options->blockOptions(switch: $access)),
         );
 
         /* Switch verilmeden sorulursa atanmış olan yine listede yok. */
-        $this->assertSame(['10.0.1.0/29'], array_keys($secenekler->blockOptions()));
+        $this->assertSame(['10.0.1.0/29'], array_keys($options->blockOptions()));
 
-        $this->assertNotNull($atanmis->connection_type);
-        $this->assertNull($bos->connection_type);
+        $this->assertNotNull($assigned->connection_type);
+        $this->assertNull($empty->connection_type);
     }
 
     /** Bölünmüş blok bir havuzdur: adres taşımaz, atanacak olan alt ağlarıdır. */
     public function test_bolunmus_blok_atanabilir_listede_yoktur(): void
     {
-        $this->blok('10.0.0.0', 24, ['is_subnetted' => true]);
+        $this->block('10.0.0.0', 24, ['is_subnetted' => true]);
 
         $this->assertSame([], array_keys(app(AddressCandidateService::class)->blockOptions()));
     }

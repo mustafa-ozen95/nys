@@ -34,7 +34,7 @@ use App\Services\ActivityRecorder;
 class IdentitySyncer
 {
     public function __construct(
-        private CenterClient $merkez,
+        private CenterClient $center,
         private ActivityRecorder $activity,
     ) {}
 
@@ -43,22 +43,22 @@ class IdentitySyncer
      *
      * @return array{sorulan: int, kapatilan: int, acilan: int, rol_degisen: int}
      */
-    public function esitle(): array
+    public function sync(): array
     {
-        $baglar = UserIdentity::with('user.role')
-            ->where('provider', AccountMatcher::SAGLAYICI)
+        $binds = UserIdentity::with('user.role')
+            ->where('provider', AccountMatcher::PROVIDER)
             ->get()
             ->filter(fn (UserIdentity $bag): bool => $bag->user !== null);
 
-        $sayac = ['sorulan' => $baglar->count(), 'kapatilan' => 0, 'acilan' => 0, 'rol_degisen' => 0];
+        $counter = ['sorulan' => $binds->count(), 'kapatilan' => 0, 'acilan' => 0, 'rol_degisen' => 0];
 
-        if ($baglar->isEmpty()) {
-            return $sayac;
+        if ($binds->isEmpty()) {
+            return $counter;
         }
 
-        $durumlar = $this->merkez->kimlikDurumlari($baglar->pluck('subject')->all());
+        $statuses = $this->center->identityStatuses($binds->pluck('subject')->all());
 
-        foreach ($baglar as $bag) {
+        foreach ($binds as $bag) {
             /*
              * YANIT GELMEYEN KİMLİĞE DOKUNULMAZ.
              *
@@ -66,18 +66,18 @@ class IdentitySyncer
              * demektir; "bilmiyorum"u "yok" saymak, merkezdeki bir aksaklıkta
              * bütün kadroyu panelden atmak olurdu.
              */
-            if (! isset($durumlar[$bag->subject])) {
+            if (! isset($statuses[$bag->subject])) {
                 continue;
             }
 
-            $sonuc = $this->uygula($bag->user, (array) $durumlar[$bag->subject]);
+            $result = $this->apply($bag->user, (array) $statuses[$bag->subject]);
 
-            $sayac['kapatilan'] += (int) $sonuc['kapatildi'];
-            $sayac['acilan'] += (int) $sonuc['acildi'];
-            $sayac['rol_degisen'] += (int) $sonuc['rol_degisti'];
+            $counter['kapatilan'] += (int) $result['kapatildi'];
+            $counter['acilan'] += (int) $result['acildi'];
+            $counter['rol_degisen'] += (int) $result['rol_degisti'];
         }
 
-        return $sayac;
+        return $counter;
     }
 
     /**
@@ -93,34 +93,34 @@ class IdentitySyncer
      * değişiklik bir sonraki eşitlemede geri alınır; tek doğruluk kaynağı
      * merkezdir ve ekran bunu yazar.
      *
-     * @param  array{durum?: string, girebilir?: bool, rol?: ?string}  $durum
+     * @param  array{status?: string, can_enter?: bool, role?: ?string, last_logout?: ?int}  $durum
      * @return array{kapatildi: bool, acildi: bool, rol_degisti: bool}
      */
-    public function uygula(User $kullanici, array $durum): array
+    public function apply(User $user, array $status): array
     {
-        $girebilir = (bool) ($durum['girebilir'] ?? false);
+        $canEnter = (bool) ($status['can_enter'] ?? false);
 
-        $kapatildi = false;
-        $acildi = false;
+        $closed = false;
+        $opened = false;
 
-        if (! $girebilir && $kullanici->isActive()) {
-            $kapatildi = $this->kapat($kullanici, (string) ($durum['durum'] ?? 'bilinmiyor'));
-        } elseif ($girebilir && ! $kullanici->isActive()) {
-            $acildi = $this->ac($kullanici);
+        if (! $canEnter && $user->isActive()) {
+            $closed = $this->close($user, (string) ($status['status'] ?? 'bilinmiyor'));
+        } elseif ($canEnter && ! $user->isActive()) {
+            $opened = $this->open($user);
         }
 
         /*
          * ROL HER DURUMDA eşitlenir. Kapalı hesabın rolünü atlamak, hesap
          * merkezden geri açıldığında eski rolle açılmasına yol açardı.
          */
-        $rolDegisti = $this->roluGuncelle($kullanici, $durum['rol'] ?? null);
+        $roleChanged = $this->roleUpdate($user, $status['role'] ?? null);
 
         /* Ortak çıkış: bildirim kaybolduysa an buradan gelir (bkz. SharedLogout). */
-        if (is_int($durum['son_cikis'] ?? null) && ($bag = SharedLogout::bag($kullanici)) !== null) {
-            SharedLogout::isle($bag, $durum['son_cikis']);
+        if (is_int($status['last_logout'] ?? null) && ($bag = SharedLogout::bag($user)) !== null) {
+            SharedLogout::isle($bag, $status['last_logout']);
         }
 
-        return ['kapatildi' => $kapatildi, 'acildi' => $acildi, 'rol_degisti' => $rolDegisti];
+        return ['kapatildi' => $closed, 'acildi' => $opened, 'rol_degisti' => $roleChanged];
     }
 
     /**
@@ -130,13 +130,13 @@ class IdentitySyncer
      * ezemez (bkz. uygula). Yerel bir acil kapatma isteniyorsa merkezden
      * yapılmalı — orası her yere işler.
      */
-    private function ac(User $kullanici): bool
+    private function open(User $user): bool
     {
-        $kullanici->forceFill(['status' => UserStatus::Active])->save();
+        $user->forceFill(['status' => UserStatus::Active])->save();
 
         $this->activity->recordAs(
-            $kullanici->id, null, request()->ip(), $kullanici, 'kimlik_erisimi_geldi',
-            "Merkezde erişimi geri geldi, hesap açıldı: {$kullanici->email}",
+            $user->id, null, request()->ip(), $user, 'kimlik_erisimi_geldi',
+            "Merkezde erişimi geri geldi, hesap açıldı: {$user->email}",
             ActivityChannel::Auth,
         );
 
@@ -149,13 +149,13 @@ class IdentitySyncer
      * Oturumu açıksa da kapanır: EnsureUserIsActive her istekte durumu
      * sorar ve etkin olmayan hesabı dışarı atar.
      */
-    private function kapat(User $kullanici, string $merkezDurumu): bool
+    private function close(User $user, string $centerStatus): bool
     {
-        $kullanici->forceFill(['status' => UserStatus::Inactive])->save();
+        $user->forceFill(['status' => UserStatus::Inactive])->save();
 
         $this->activity->recordAs(
-            $kullanici->id, null, request()->ip(), $kullanici, 'kimlik_erisimi_kalkti',
-            "Merkezde erişimi kalktı, hesap kapatıldı: {$kullanici->email} (merkezdeki durum: {$merkezDurumu})",
+            $user->id, null, request()->ip(), $user, 'kimlik_erisimi_kalkti',
+            "Merkezde erişimi kalktı, hesap kapatıldı: {$user->email} (merkezdeki durum: {$centerStatus})",
             ActivityChannel::Auth,
         );
 
@@ -173,21 +173,21 @@ class IdentitySyncer
      * şablonda geçen kaynaklarda yeniden yazılmasıdır. Bilinçli: istisna
      * eski rolün üstüne verilmişti ve rol değişince onunla gitmesi doğru.
      */
-    private function roluGuncelle(User $kullanici, ?string $slug): bool
+    private function roleUpdate(User $user, ?string $slug): bool
     {
-        $yeni = $this->rol($slug);
+        $new = $this->role($slug);
 
-        if ($yeni === null || $kullanici->role_id === $yeni->id) {
+        if ($new === null || $user->role_id === $new->id) {
             return false;
         }
 
-        $eski = $kullanici->role?->label ?? 'rolsüz';
+        $old = $user->role?->label ?? 'rolsüz';
 
-        $kullanici->forceFill(['role_id' => $yeni->id])->save();
+        $user->forceFill(['role_id' => $new->id])->save();
 
         $this->activity->recordAs(
-            $kullanici->id, null, request()->ip(), $kullanici, 'kimlik_rolu_degisti',
-            "Merkezde rolü değişti: {$kullanici->email} · {$eski} → {$yeni->label}"
+            $user->id, null, request()->ip(), $user, 'kimlik_rolu_degisti',
+            "Merkezde rolü değişti: {$user->email} · {$old} → {$new->label}"
                 .' · yeni rolün yetkileri geçerli',
             ActivityChannel::Auth,
         );
@@ -202,18 +202,18 @@ class IdentitySyncer
      * çevirmek, kimsenin istemediği bir anda birinin yetkisini daraltmak ya da
      * genişletmek olurdu. Yöneticilik yalnızca açıkça devrediliyorsa geçer.
      */
-    private function rol(?string $slug): ?Role
+    private function role(?string $slug): ?Role
     {
         if (blank($slug)) {
             return null;
         }
 
-        $rol = Role::query()->where('slug', $slug)->first();
+        $role = Role::query()->where('slug', $slug)->first();
 
-        if ($rol === null || ($rol->is_admin && ! config('identity.yonetici_devri'))) {
+        if ($role === null || ($role->is_admin && ! config('identity.yonetici_devri'))) {
             return null;
         }
 
-        return $rol;
+        return $role;
     }
 }

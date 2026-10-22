@@ -4,13 +4,13 @@
     Eşik ya YÜZDE ya KBPS'dir; ikisi birlikte gönderilemez ve kural sunucuda
     da vardır. Yüzde arayüz hızına oranlıdır, kbps mutlaktır.
 --}}
-<x-form.field kural="switch_secure_access.firtina:level" name="level" label="Eşik (yüzde)" :id="$prefix.'-yuzde'"
+<x-form.field rule="switch_secure_access.firtina:level" name="level" label="Eşik (yüzde)" :id="$prefix.'-percent'"
               hint="Arayüz hızının yüzde kaçı. Yaygın başlangıç: %80.">
-    <x-form.input type="number" name="level" :id="$prefix.'-yuzde'" :value="$control?->level"
+    <x-form.input type="number" name="level" :id="$prefix.'-percent'" :value="$control?->level"
                   min="1" max="100" />
 </x-form.field>
 
-<x-form.field kural="switch_secure_access.firtina:bandwidth" name="bandwidth" label="Eşik (kbps)" :id="$prefix.'-kbps'"
+<x-form.field rule="switch_secure_access.firtina:bandwidth" name="bandwidth" label="Eşik (kbps)" :id="$prefix.'-kbps'"
               hint="Yüzde yerine mutlak sınır. İkisinden yalnızca biri doldurulur.">
     <x-form.input type="number" name="bandwidth" :id="$prefix.'-kbps'" :value="$control?->bandwidth" min="1" />
 </x-form.field>
@@ -19,7 +19,7 @@
     Denetim DIŞINDA bırakılan trafik türleri. Örneğin çoklu gönderim ağır
     kullanılan bir ağda "no-multicast" seçilir; yayın yine sınırlanır.
 --}}
-<x-form.field kural="switch_secure_access.firtina:exemptions" name="exemptions" label="Denetim dışında bırak" :id="$prefix.'-muaf'"
+<x-form.field rule="switch_secure_access.firtina:exemptions" name="exemptions" label="Denetim dışında bırak" :id="$prefix.'-exempt'"
               hint="Seçilen tür eşikten muaf tutulur; diğerleri sınırlanmaya devam eder.">
     <div class="choices">
         @foreach ([

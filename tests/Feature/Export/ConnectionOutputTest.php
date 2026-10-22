@@ -36,18 +36,18 @@ final class ConnectionOutputTest extends TestCase
      */
     protected bool $requiresActionReason = true;
 
-    private function kullanici(array $sunucu = [], array $switch = []): User
+    private function user(array $server = [], array $switch = []): User
     {
         $user = User::factory()->create();
-        $cozucu = app(UserPermissionResolver::class);
+        $resolver = app(UserPermissionResolver::class);
 
-        $cozucu->syncResource($user, 'servers', $sunucu);
-        $cozucu->syncResource($user, 'switches', $switch);
+        $resolver->syncResource($user, 'servers', $server);
+        $resolver->syncResource($user, 'switches', $switch);
 
         return $user->fresh();
     }
 
-    private function sunucu(array $ustune = []): Server
+    private function server(array $onto = []): Server
     {
         return Server::factory()->create([
             'short_name' => 'LNX-09',
@@ -56,22 +56,22 @@ final class ConnectionOutputTest extends TestCase
             'connection_port' => 22,
             'connection_username' => 'root',
             'connection_password' => 'SUNUCU-PAROLASI',
-            ...$ustune,
+            ...$onto,
         ]);
     }
 
     /** Dosyanın içindeki sayfayı düz XML'e çevirir. */
-    private function sayfa(string $icerik): string
+    private function page(string $content): string
     {
-        $yol = tempnam(sys_get_temp_dir(), 'test-xlsx-');
-        file_put_contents($yol, $icerik);
+        $path = tempnam(sys_get_temp_dir(), 'test-xlsx-');
+        file_put_contents($path, $content);
 
         $zip = new ZipArchive;
-        $this->assertTrue($zip->open($yol) === true, 'Üretilen dosya bir zip değil.');
+        $this->assertTrue($zip->open($path) === true, 'Üretilen dosya bir zip değil.');
 
         $xml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
         $zip->close();
-        unlink($yol);
+        unlink($path);
 
         return $xml;
     }
@@ -79,8 +79,8 @@ final class ConnectionOutputTest extends TestCase
     public function test_cikti_yetkisi_olmayan_indiremez(): void
     {
         /* Görme ve bağlanma yetkisi var ama 'export' yok. */
-        $user = $this->kullanici(['view', 'connect']);
-        $this->sunucu();
+        $user = $this->user(['view', 'connect']);
+        $this->server();
 
         $this->actingAs($user)
             ->post(route('export.connections'), [
@@ -92,8 +92,8 @@ final class ConnectionOutputTest extends TestCase
 
     public function test_gerekcesiz_cikti_alinamaz(): void
     {
-        $user = $this->kullanici(['view', 'export']);
-        $this->sunucu();
+        $user = $this->user(['view', 'export']);
+        $this->server();
 
         $this->actingAs($user)
             ->post(route('export.connections'), ['kapsam' => 'sunucular'])
@@ -102,59 +102,59 @@ final class ConnectionOutputTest extends TestCase
 
     public function test_cikti_baglanti_bilgilerini_tasir(): void
     {
-        $user = $this->kullanici(['view', 'export']);
-        $this->sunucu();
+        $user = $this->user(['view', 'export']);
+        $this->server();
 
-        $yanit = $this->actingAs($user)->post(route('export.connections'), [
+        $response = $this->actingAs($user)->post(route('export.connections'), [
             'kapsam' => 'sunucular',
             'reason' => 'yil sonu denetimi',
         ]);
 
-        $yanit->assertOk();
-        $yanit->assertHeader(
+        $response->assertOk();
+        $response->assertHeader(
             'Content-Type',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         );
-        $this->assertStringContainsString('.xlsx', (string) $yanit->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('.xlsx', (string) $response->headers->get('Content-Disposition'));
 
         /* Açık parola listesi hiçbir yerde önbelleğe düşmemeli. */
-        $this->assertStringContainsString('no-store', (string) $yanit->headers->get('Cache-Control'));
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
 
-        $sayfa = $this->sayfa((string) $yanit->getContent());
+        $page = $this->page((string) $response->getContent());
 
         /*
          * ÇIKTININ İŞE YARAMASI: dosyayı eline alan biri aynı bağlantıyı
          * kurabilmeli. Eksik bir sütun, çıktının işe yaramaması demek.
          */
-        foreach (['LNX-09', '198.18.20.9', 'SSH', '22', 'root', 'SUNUCU-PAROLASI'] as $beklenen) {
-            $this->assertStringContainsString($beklenen, $sayfa, "Çıktıda '{$beklenen}' yok.");
+        foreach (['LNX-09', '198.18.20.9', 'SSH', '22', 'root', 'SUNUCU-PAROLASI'] as $expected) {
+            $this->assertStringContainsString($expected, $page, "Çıktıda '{$expected}' yok.");
         }
     }
 
     public function test_goremedigi_sunucu_dosyaya_girmez(): void
     {
-        $gorunur = $this->sunucu(['short_name' => 'GORUNUR', 'connection_password' => 'GORUNUR-PAROLA']);
-        $this->sunucu(['short_name' => 'GIZLI', 'ip_address' => '198.18.20.10', 'connection_password' => 'GIZLI-PAROLA']);
+        $visible = $this->server(['short_name' => 'GORUNUR', 'connection_password' => 'GORUNUR-PAROLA']);
+        $this->server(['short_name' => 'GIZLI', 'ip_address' => '198.18.20.10', 'connection_password' => 'GIZLI-PAROLA']);
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource(
-            $user, 'servers', [], ['view' => [$gorunur->id], 'export' => [$gorunur->id]],
+            $user, 'servers', [], ['view' => [$visible->id], 'export' => [$visible->id]],
         );
 
-        $yanit = $this->actingAs($user->fresh())->post(route('export.connections'), [
+        $response = $this->actingAs($user->fresh())->post(route('export.connections'), [
             'kapsam' => 'sunucular',
             'reason' => 'denetim',
         ]);
 
-        $sayfa = $this->sayfa((string) $yanit->getContent());
+        $page = $this->page((string) $response->getContent());
 
-        $this->assertStringContainsString('GORUNUR-PAROLA', $sayfa);
-        $this->assertStringNotContainsString('GIZLI-PAROLA', $sayfa);
+        $this->assertStringContainsString('GORUNUR-PAROLA', $page);
+        $this->assertStringNotContainsString('GIZLI-PAROLA', $page);
     }
 
     public function test_switchin_her_kimligi_ayri_satir(): void
     {
-        $user = $this->kullanici([], ['view', 'export']);
+        $user = $this->user([], ['view', 'export']);
 
         $switch = NetworkSwitch::factory()->create([
             'hostname' => 'SW-01',
@@ -178,59 +178,59 @@ final class ConnectionOutputTest extends TestCase
             'port' => 161,
         ]);
 
-        $yanit = $this->actingAs($user)->post(route('export.connections'), [
+        $response = $this->actingAs($user)->post(route('export.connections'), [
             'kapsam' => 'switchler',
             'reason' => 'denetim',
         ]);
 
-        $sayfa = $this->sayfa((string) $yanit->getContent());
+        $page = $this->page((string) $response->getContent());
 
         /*
          * İKİSİ DE YAZILIR: her kimlik ayrı bir bağlantı yoludur ve birini
          * seçip ötekini atmak, çıktıyı eline alanın kurabileceği bağlantıyı
          * eksiltmek olurdu.
          */
-        $this->assertStringContainsString('NETCONF-PAROLA', $sayfa);
-        $this->assertStringContainsString('SNMP-TOPLULUGU', $sayfa);
-        $this->assertStringContainsString('830', $sayfa);
+        $this->assertStringContainsString('NETCONF-PAROLA', $page);
+        $this->assertStringContainsString('SNMP-TOPLULUGU', $page);
+        $this->assertStringContainsString('830', $page);
     }
 
     public function test_her_kayit_icin_denetim_satiri_yazilir(): void
     {
-        $user = $this->kullanici(['view', 'export']);
-        $this->sunucu(['short_name' => 'BIR']);
-        $this->sunucu(['short_name' => 'IKI', 'ip_address' => '198.18.20.11']);
+        $user = $this->user(['view', 'export']);
+        $this->server(['short_name' => 'BIR']);
+        $this->server(['short_name' => 'IKI', 'ip_address' => '198.18.20.11']);
 
         $this->actingAs($user)->post(route('export.connections'), [
             'kapsam' => 'sunucular',
             'reason' => 'yil sonu denetimi',
         ])->assertOk();
 
-        $satirlar = ActivityLog::query()->where('action', 'exported')->get();
+        $rows = ActivityLog::query()->where('action', 'exported')->get();
 
         /*
          * Özet tek satır DEĞİL: denetimin sorduğu soru "hangi parola dışarı
          * çıktı" ve özet satır onu cevaplamaz.
          */
-        $this->assertCount(2, $satirlar);
-        $this->assertSame('yil sonu denetimi', $satirlar->first()->reason);
+        $this->assertCount(2, $rows);
+        $this->assertSame('yil sonu denetimi', $rows->first()->reason);
     }
 
     public function test_parolasiz_kayitlar_sebebiyle_sayilir(): void
     {
-        $user = $this->kullanici(['view', 'export']);
-        $this->sunucu(['short_name' => 'DOLU']);
-        $this->sunucu(['short_name' => 'BOS', 'ip_address' => '198.18.20.12', 'connection_password' => null]);
+        $user = $this->user(['view', 'export']);
+        $this->server(['short_name' => 'DOLU']);
+        $this->server(['short_name' => 'BOS', 'ip_address' => '198.18.20.12', 'connection_password' => null]);
 
-        $yanit = $this->actingAs($user)->post(route('export.connections'), [
+        $response = $this->actingAs($user)->post(route('export.connections'), [
             'kapsam' => 'sunucular',
             'reason' => 'denetim',
         ]);
 
-        $yanit->assertOk();
+        $response->assertOk();
         $this->assertStringContainsString(
             '1 kaydın parolası yok',
-            (string) $yanit->headers->get('X-Nys-Ozet'),
+            (string) $response->headers->get('X-Nys-Ozet'),
         );
     }
 }

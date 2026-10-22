@@ -37,14 +37,14 @@ class SessionLockTest extends TestCase
     #[Test]
     public function kullanici_menusunde_merkez_baglantisi(): void
     {
-        $kullanici = User::factory()->admin()->create();
+        $user = User::factory()->admin()->create();
 
-        config(['identity.acik' => true, 'identity.adres' => 'https://merkez.ornek.test', 'identity.ad' => 'Kimlik Yönetim Merkezi']);
-        $this->actingAs($kullanici)->get(route('overview'))
-            ->assertSee('href="https://merkez.ornek.test" class="kullanici-menu__oge" target="_blank" rel="noopener">Hızlı Erişim</a>', false);
+        config(['identity.acik' => true, 'identity.url' => 'https://merkez.ornek.test', 'identity.name' => 'Kimlik Yönetim Merkezi']);
+        $this->actingAs($user)->get(route('overview'))
+            ->assertSee('href="https://merkez.ornek.test" class="user-menu__item" target="_blank" rel="noopener">Hızlı Erişim</a>', false);
 
         config(['identity.acik' => false]);
-        $this->actingAs($kullanici)->get(route('overview'))->assertDontSee('merkez.ornek.test', false);
+        $this->actingAs($user)->get(route('overview'))->assertDontSee('merkez.ornek.test', false);
     }
 
     #[Test]

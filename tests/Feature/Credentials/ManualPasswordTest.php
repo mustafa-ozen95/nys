@@ -151,11 +151,11 @@ final class ManualPasswordTest extends TestCase
 
         $switch = $this->switch();
 
-        foreach (['kisa1', 'yalnizkucukharf'] as $zayif) {
+        foreach (['kisa1', 'yalnizkucukharf'] as $weak) {
             $this->actingAs($this->operator($switch))
                 ->put(route('settings.passwords.manual', $switch), [
-                    'password' => $zayif,
-                    'password_confirmation' => $zayif,
+                    'password' => $weak,
+                    'password_confirmation' => $weak,
                 ])
                 ->assertSessionHasErrors('password');
         }

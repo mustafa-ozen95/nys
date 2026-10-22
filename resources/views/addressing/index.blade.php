@@ -33,13 +33,13 @@
                 <span class="spacer"></span>
 
                 @can('create', App\Models\AddressBlock::class)
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="blok-ekle">
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="block-add">
                         Yeni blok
                     </button>
                 @endcan
             </div>
 
-            <div class="column__body agac">
+            <div class="column__body tree">
                 @forelse ($tree as $dugum)
                     <x-dynamic-component component="net.block-node" :dugum="$dugum" :selected="$selected" />
                 @empty
@@ -112,9 +112,9 @@
                                 {{ $hosts['dolu'] }} / {{ $hosts['toplam'] }} kullanımda
                             </p>
 
-                            <ul class="adres-listesi">
+                            <ul class="address-list">
                                 @foreach ($hosts['adresler'] as $adres)
-                                    <li @class(['adres-listesi__satir', 'adres-listesi__satir--dolu' => $adres['sahip'] !== null])>
+                                    <li @class(['address-list__row', 'address-list__row--full' => $adres['sahip'] !== null])>
                                         <span class="mono">{{ $adres['adres'] }}</span>
 
                                         @if ($adres['sahip'] !== null)
@@ -141,13 +141,13 @@
 
                 <div class="detail__foot">
                     @can('update', $selected)
-                        <button type="button" class="btn btn--sm" data-modal-open="atama-duzenle">
+                        <button type="button" class="btn btn--sm" data-modal-open="assignment-edit">
                             Atamayı düzenle
                         </button>
                     @endcan
 
                     @can('create', App\Models\AddressBlock::class)
-                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="alt-ag-ekle">
+                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="alt-network-add">
                             Alt ağ ekle
                         </button>
                     @endcan
@@ -165,8 +165,8 @@
     </div>
 
     @can('create', App\Models\AddressBlock::class)
-        <x-ui.modal id="blok-ekle" title="Yeni adres bloğu" wide>
-            <form method="POST" action="{{ route('addressing.store') }}" data-atama-formu
+        <x-ui.modal id="block-add" title="Yeni adres bloğu" wide>
+            <form method="POST" action="{{ route('addressing.store') }}" data-assignment-form
                   data-confirm="Yeni blok eklenecek."
                   data-confirm-title="Blok ekle">
                 @csrf
@@ -205,37 +205,37 @@
 
     @if ($selected)
         @can('create', App\Models\AddressBlock::class)
-            <x-ui.modal id="alt-ag-ekle" :title="$selected->cidr.' içinde alt ağ'" wide>
-                <form method="POST" action="{{ route('addressing.subnets.store', $selected) }}" data-atama-formu
+            <x-ui.modal id="alt-network-add" :title="$selected->cidr.' içinde alt ağ'" wide>
+                <form method="POST" action="{{ route('addressing.subnets.store', $selected) }}" data-assignment-form
                       data-confirm="Alt blok eklenecek."
                       data-confirm-title="Alt blok ekle">
                     @csrf
 
                     <div class="modal__body form-grid">
-                        <x-form.field name="prefix_length" label="Maske" :id="'alt-ag-maske'">
-                            <x-form.select name="prefix_length" :id="'alt-ag-maske'" :options="$subnetMaskOptions"
-                                           data-yuva-maske
-                                           data-yuva-ucu="{{ route('ajax.addressing.slots', $selected) }}" />
+                        <x-form.field name="prefix_length" label="Maske" :id="'alt-network-mask'">
+                            <x-form.select name="prefix_length" :id="'alt-network-mask'" :options="$subnetMaskOptions"
+                                           data-slot-mask
+                                           data-slot-end="{{ route('ajax.addressing.slots', $selected) }}" />
                         </x-form.field>
 
-                        <x-form.field name="network" label="Boş yuva" :id="'alt-ag-yuva'"
+                        <x-form.field name="network" label="Boş yuva" :id="'alt-network-slot'"
                                       hint="Yalnızca boştaki yuvalar listelenir.">
-                            <select class="select input--mono" name="network" id="alt-ag-yuva" data-yuva-secim required>
+                            <select class="select input--mono" name="network" id="alt-network-slot" data-slot-selection required>
                                 <option value="">Önce maske seçin</option>
                             </select>
                         </x-form.field>
 
-                        <x-form.field name="description" label="Başlık" :id="'alt-ag-baslik'"
+                        <x-form.field name="description" label="Başlık" :id="'alt-network-header'"
                                       hint="Listede görünen kısa ad.">
-                            <x-form.input name="description" id="alt-ag-baslik" />
+                            <x-form.input name="description" id="alt-network-header" />
                         </x-form.field>
 
                         <x-addressing.assignment-fields :core-switch-options="$coreSwitchOptions"
                                                     :access-switch-options="$accessSwitchOptions" :type-options="$typeOptions"
                                                         :prefix-list-options="$prefixListOptions" :uplink-options="$uplinkOptions" prefix="alt-ag" />
 
-                        <x-form.field name="notes" label="Açıklama" :id="'alt-ag-not'" class="field--wide">
-                            <x-form.textarea name="notes" id="alt-ag-not" />
+                        <x-form.field name="notes" label="Açıklama" :id="'alt-network-note'" class="field--wide">
+                            <x-form.textarea name="notes" id="alt-network-note" />
                         </x-form.field>
                     </div>
 
@@ -245,9 +245,9 @@
         @endcan
 
         @can('update', $selected)
-            <x-ui.modal id="atama-duzenle" :title="$selected->cidr.' ataması'" wide>
+            <x-ui.modal id="assignment-edit" :title="$selected->cidr.' ataması'" wide>
                 <form method="POST" action="{{ route('addressing.update', $selected) }}"
-                      data-atama-formu data-atama-blok="{{ $selected->cidr }}"
+                      data-assignment-form data-assignment-block="{{ $selected->cidr }}"
                       data-confirm="{{ $selected->cidr }} bloğunun ataması değişecek."
                       data-confirm-title="Atamayı düzenle"
                       data-confirm-verify="{{ $selected->cidr }}">
@@ -256,22 +256,22 @@
                     <x-form.version :record="$selected" />
 
                     <div class="modal__body">
-                        <x-form.field name="purpose" label="Bu blok ne için?" :id="'atama-amac'">
-                            <x-form.select name="purpose" id="atama-amac" :options="$purposeOptions"
+                        <x-form.field name="purpose" label="Bu blok ne için?" :id="'assignment-purpose'">
+                            <x-form.select name="purpose" id="assignment-purpose" :options="$purposeOptions"
                                            :selected="$selected->purpose->value" />
                         </x-form.field>
 
-                        <x-form.field name="description" label="Başlık" :id="'atama-baslik'"
+                        <x-form.field name="description" label="Başlık" :id="'assignment-header'"
                                       hint="Listede görünen kısa ad.">
-                            <x-form.input name="description" id="atama-baslik" :value="$selected->description" />
+                            <x-form.input name="description" id="assignment-header" :value="$selected->description" />
                         </x-form.field>
 
                         <x-addressing.assignment-fields :core-switch-options="$coreSwitchOptions"
                                                     :access-switch-options="$accessSwitchOptions" :type-options="$typeOptions"
                                                         :prefix-list-options="$prefixListOptions" :uplink-options="$uplinkOptions" :block="$selected" prefix="atama" />
 
-                        <x-form.field name="notes" label="Açıklama" :id="'atama-not'" class="field--wide">
-                            <x-form.textarea name="notes" id="atama-not" :value="$selected->notes" />
+                        <x-form.field name="notes" label="Açıklama" :id="'assignment-note'" class="field--wide">
+                            <x-form.textarea name="notes" id="assignment-note" :value="$selected->notes" />
                         </x-form.field>
                     </div>
 

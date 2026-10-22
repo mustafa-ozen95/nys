@@ -9,7 +9,7 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchPrefixLists', $switch)
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="liste-ekle">Liste ekle</button>
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="list-add">Liste ekle</button>
                 @endcan
             </div>
 
@@ -122,7 +122,7 @@
     </div>
 
     @can('createSwitchPrefixLists', $switch)
-        <x-ui.modal id="liste-ekle" title="Yeni prefix liste">
+        <x-ui.modal id="list-add" title="Yeni prefix liste">
             <form method="POST" action="{{ route('switches.prefix-lists.store', $switch) }}"
                   data-confirm="Yeni prefix listesi cihaza yazılacak."
                   data-confirm-title="Cihaza yaz">
@@ -149,7 +149,7 @@
                             (sağlayıcının özet prefixi, komşunun bloğu). IPv6 de
                             yazılabilir; cihaz kabul ediyor.
                         --}}
-                        <x-form.field kural="switch_prefix_lists.prefix-liste:cidr" name="cidr" label="Ağ" :id="'pa-'.$list->uuid"
+                        <x-form.field rule="switch_prefix_lists.prefix-liste:cidr" name="cidr" label="Ağ" :id="'pa-'.$list->uuid"
                                       hint="Adresleme’de tanımlı bloklar listelenir. Elle IPv4 ve IPv6 yazılabilir: 192.0.2.0/24, 2001:db8::/32.">
                             <x-form.ip-picker name="cidr" :id="'pa-'.$list->uuid"
                                               :options="$networkOptions" manual
@@ -183,7 +183,7 @@
                             prefixlerle birlikte çalışır, onların yerini almaz.
                         </x-ui.alert>
 
-                        <x-form.field kural="switch_prefix_lists.prefix-liste:apply_paths" name="apply_paths" label="apply-path ifadeleri"
+                        <x-form.field rule="switch_prefix_lists.prefix-liste:apply_paths" name="apply_paths" label="apply-path ifadeleri"
                                       :id="'ap-'.$list->uuid.'-0'"
                                       hint="Örnek: system radius-server <*> — joker <*> ile bir hiyerarşinin tüm adresleri alınır. Hepsini boşaltırsanız liste yalnızca statik prefixlerden oluşur.">
                             <div class="stack stack--tight" data-repeat="apply_paths">

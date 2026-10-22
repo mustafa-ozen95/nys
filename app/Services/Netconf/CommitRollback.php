@@ -68,13 +68,13 @@ class CommitRollback
             return ['diff' => '', 'committed' => false, 'warnings' => []];
         }
 
-        $sonuc = $this->writer->applyRollback(
+        $result = $this->writer->applyRollback(
             $switch,
             fn (NetconfSession $session): int => $this->indexIn($session, $commit),
             sprintf('Geri alindi: commit %s', $commit->committed_at?->format('Y-m-d H:i:s') ?? $index),
         );
 
-        if ($sonuc['committed']) {
+        if ($result['committed']) {
             /*
              * Geri alma her şeyi etkiler; envanterin tamamı yeniden okunur.
              * Yazma yolunun kendi geri okuması yalnızca dokunduğu nesneyi
@@ -83,7 +83,7 @@ class CommitRollback
             SyncSwitchNetconfJob::dispatch($switch->id);
         }
 
-        return $sonuc;
+        return $result;
     }
 
     /**
@@ -116,9 +116,9 @@ class CommitRollback
             throw new NetconfException('Commit kaydında zaman bilgisi yok; geri alma yapılamaz.');
         }
 
-        foreach ($this->history->commits($session) as $satir) {
-            if ($satir['committed_at']?->format('Y-m-d H:i:s') === $target) {
-                return $satir['sequence_number'];
+        foreach ($this->history->commits($session) as $row) {
+            if ($row['committed_at']?->format('Y-m-d H:i:s') === $target) {
+                return $row['sequence_number'];
             }
         }
 

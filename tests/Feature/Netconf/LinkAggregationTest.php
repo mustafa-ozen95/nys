@@ -112,11 +112,11 @@ final class LinkAggregationTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<unit delete="delete"><name>0</name></unit>', $yazilan);
+        $this->assertStringContainsString('<unit delete="delete"><name>0</name></unit>', $written);
         // Junos eleman adı "802.3ad" değil "ieee-802.3ad".
-        $this->assertStringContainsString('<ieee-802.3ad><bundle>ae0</bundle></ieee-802.3ad>', $yazilan);
+        $this->assertStringContainsString('<ieee-802.3ad><bundle>ae0</bundle></ieee-802.3ad>', $written);
     }
 
     public function test_lacp_ve_toplama_ayarlari_yazilir(): void
@@ -138,13 +138,13 @@ final class LinkAggregationTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
         // Ayarlar önce silinir: merge kaldırılan bir ayarı yerinde bırakırdı.
-        $this->assertStringContainsString('<aggregated-ether-options delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<lacp><active/><periodic>fast</periodic></lacp>', $yazilan);
-        $this->assertStringContainsString('<minimum-links>1</minimum-links>', $yazilan);
-        $this->assertStringContainsString('<link-speed>1g</link-speed>', $yazilan);
+        $this->assertStringContainsString('<aggregated-ether-options delete="delete"/>', $written);
+        $this->assertStringContainsString('<lacp><active/><periodic>fast</periodic></lacp>', $written);
+        $this->assertStringContainsString('<minimum-links>1</minimum-links>', $written);
+        $this->assertStringContainsString('<link-speed>1g</link-speed>', $written);
     }
 
     /**
@@ -193,7 +193,7 @@ final class LinkAggregationTest extends TestCase
         $ae = $this->aggregate($switch, 'ae0');
         $device = $this->device();
 
-        $uyeler = collect(range(0, 8))
+        $members = collect(range(0, 8))
             ->map(fn (int $i): string => SwitchPort::factory()->for($switch, 'switch')
                 ->create(['name' => "ge-0/0/{$i}"])->uuid)
             ->all();
@@ -201,7 +201,7 @@ final class LinkAggregationTest extends TestCase
         $this->actingAs($this->operator())
             ->put(route('switches.aggregation.update', [$switch, $ae]), [
                 'port_mode' => 'trunk',
-                'members' => $uyeler,
+                'members' => $members,
             ])
             ->assertSessionHasErrors('members');
 
@@ -262,10 +262,10 @@ final class LinkAggregationTest extends TestCase
             ->delete(route('switches.aggregation.destroy', [$switch, $ae]))
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<ieee-802.3ad delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<interface delete="delete"><name>ae0</name></interface>', $yazilan);
+        $this->assertStringContainsString('<ieee-802.3ad delete="delete"/>', $written);
+        $this->assertStringContainsString('<interface delete="delete"><name>ae0</name></interface>', $written);
     }
 
     /**
@@ -288,12 +288,12 @@ final class LinkAggregationTest extends TestCase
     public function test_baska_switchin_ae_si_kullanilamaz(): void
     {
         $switch = $this->switch();
-        $digeri = $this->switch('198.18.20.196');
-        $yabanci = $this->aggregate($digeri, 'ae0');
+        $other = $this->switch('198.18.20.196');
+        $foreign = $this->aggregate($other, 'ae0');
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.aggregation.update', [$switch, $yabanci]), ['port_mode' => 'trunk'])
+            ->put(route('switches.aggregation.update', [$switch, $foreign]), ['port_mode' => 'trunk'])
             ->assertNotFound();
 
         $this->assertNull($device->connection);
@@ -318,11 +318,11 @@ final class LinkAggregationTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<members>V20</members>', $yazilan);
+        $this->assertStringContainsString('<members>V20</members>', $written);
         // Trunk'ta etiketsiz VLAN arayüz seviyesinde işaretlenir.
-        $this->assertStringContainsString('<native-vlan-id>20</native-vlan-id>', $yazilan);
+        $this->assertStringContainsString('<native-vlan-id>20</native-vlan-id>', $written);
     }
 
     /**

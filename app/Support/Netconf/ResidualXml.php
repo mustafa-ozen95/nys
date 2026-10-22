@@ -83,8 +83,8 @@ final class ResidualXml
         $names = [];
 
         foreach ($residual as $xml) {
-            if (preg_match('/^<\s*([A-Za-z0-9_.:-]+)/', $xml, $eslesme) === 1) {
-                $names[] = $eslesme[1];
+            if (preg_match('/^<\s*([A-Za-z0-9_.:-]+)/', $xml, $match) === 1) {
+                $names[] = $match[1];
             }
         }
 

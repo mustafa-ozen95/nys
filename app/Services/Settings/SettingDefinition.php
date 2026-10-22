@@ -27,7 +27,7 @@ readonly class SettingDefinition
         public ?string $unit,
         public ?string $enum,
         /** @var array<string,string>|null Enum yerine doğrudan verilen liste. */
-        public ?array $secenekler,
+        public ?array $options,
         public bool $mono,
         public array $rules,
         /** @var list<string> Bu sırrın kimlik doğruladığı uç ayarlar (bkz. SettingsRequest). */
@@ -46,7 +46,7 @@ readonly class SettingDefinition
             type: (string) ($definition['type'] ?? 'string'),
             unit: $definition['unit'] ?? null,
             enum: $definition['enum'] ?? null,
-            secenekler: $definition['options'] ?? null,
+            options: $definition['options'] ?? null,
             mono: (bool) ($definition['mono'] ?? false),
             rules: $definition['rules'] ?? [],
             binds: $definition['binds'] ?? [],
@@ -76,8 +76,8 @@ readonly class SettingDefinition
     {
         // Enum yerine düz liste verilebilir: saat dilimi gibi yüzlerce
         // seçeneği olan alanlar için enum yazmak anlamsız olurdu.
-        if ($this->secenekler !== null) {
-            return $this->secenekler;
+        if ($this->options !== null) {
+            return $this->options;
         }
 
         if ($this->enum === null) {
@@ -120,7 +120,7 @@ readonly class SettingDefinition
             default => ['nullable', 'string'],
         };
 
-        if ($this->type === 'select' && ($this->enum !== null || $this->secenekler !== null)) {
+        if ($this->type === 'select' && ($this->enum !== null || $this->options !== null)) {
             $rules[] = 'in:'.implode(',', array_keys($this->options()));
         }
 

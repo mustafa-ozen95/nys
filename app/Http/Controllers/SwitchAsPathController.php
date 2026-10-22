@@ -76,11 +76,11 @@ class SwitchAsPathController extends Controller implements HasMiddleware
 
     public function destroy(NetworkSwitch $switch, SwitchAsPath $asPath): RedirectResponse
     {
-        $bagli = $this->dependencies->forAsPath($asPath);
+        $bound = $this->dependencies->forAsPath($asPath);
 
         // Bir terim buna atıfta bulunuyorsa cihaz commit'i reddeder.
-        if ($bagli !== []) {
-            return back()->with('error', $this->dependencies->message("As-path {$asPath->name}", $bagli));
+        if ($bound !== []) {
+            return back()->with('error', $this->dependencies->message("As-path {$asPath->name}", $bound));
         }
 
         $name = $asPath->name;

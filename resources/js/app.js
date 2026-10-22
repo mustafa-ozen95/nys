@@ -3,22 +3,22 @@ import Chart from 'chart.js/auto';
 import * as addressAssignment from './components/address-assignment.js';
 import * as aggregationForm from './components/aggregation-form.js';
 import * as bgpForm from './components/bgp-form.js';
-import * as bildirim from './components/notification.js';
+import * as notification from './components/notification.js';
 import * as bgpReceived from './components/bgp-received.js';
 import * as chart from './components/chart.js';
 import * as columns from './components/columns.js';
 import * as confirmDialog from './components/confirm.js';
 import * as copy from './components/copy.js';
-import * as dondurmeIlerleme from './components/rotation-progress.js';
+import * as freezeProgress from './components/rotation-progress.js';
 import * as dialog from './components/dialog.js';
 import * as firewallForm from './components/firewall-form.js';
 import * as ipAddressForm from './components/ip-address-form.js';
-import * as secim from './components/selection.js';
+import * as selection from './components/selection.js';
 import * as keyboard from './components/keyboard.js';
-import * as kullaniciMenu from './components/user-menu.js';
+import * as userMenu from './components/user-menu.js';
 import * as meter from './components/meter.js';
 import * as navigation from './components/navigation.js';
-import * as oturumKilidi from './components/session-lock.js';
+import * as sessionLock from './components/session-lock.js';
 import * as portForm from './components/port-form.js';
 import * as provisioningForm from './components/provisioning-form.js';
 import * as remoteSession from './components/remote-session.js';
@@ -50,16 +50,16 @@ window.Chart = Chart;
 
 theme.init();
 
-function herCizimde() {
+function onEveryDraw() {
     dialog.init();
     addressAssignment.init();
     aggregationForm.init();
     bgpForm.init();
     bgpReceived.init();
-    bildirim.init();
+    notification.init();
     confirmDialog.init();
     copy.init();
-    dondurmeIlerleme.init();
+    freezeProgress.init();
     firewallForm.init();
     chart.init();
     columns.init();
@@ -69,9 +69,9 @@ function herCizimde() {
     selectAll.init();
     slotPicker.init();
     ipAddressForm.init();
-    secim.init();
+    selection.init();
     keyboard.init();
-    kullaniciMenu.init();
+    userMenu.init();
     meter.init();
     portForm.init();
     portForm.initNetconf();
@@ -82,10 +82,10 @@ function herCizimde() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    herCizimde();
+    onEveryDraw();
     navigation.init();
     /* Ekran kilidi: hareketsiz sekme oturumu kapatır (bkz. session-lock.js). Bir kez. */
-    oturumKilidi.init();
+    sessionLock.init();
 });
 
-document.addEventListener(navigation.OLAY, herCizimde);
+document.addEventListener(navigation.EVENT, onEveryDraw);

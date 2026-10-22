@@ -24,14 +24,14 @@ final class SimpleModeSectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function kullanici(PanelMode $mod, bool $gelismisYetkisi = false): User
+    private function user(PanelMode $mode, bool $advancedPermission = false): User
     {
-        $user = User::factory()->create(['panel_mode' => $mod]);
+        $user = User::factory()->create(['panel_mode' => $mode]);
         $r = app(UserPermissionResolver::class);
         $r->syncResource($user, 'switches', ['view']);
         $r->syncResource($user, 'switch_vlans', ['view', 'create', 'update', 'delete']);
 
-        if ($gelismisYetkisi) {
+        if ($advancedPermission) {
             $r->syncResource($user, 'gorunum_modu', ['view']);
         }
 
@@ -40,7 +40,7 @@ final class SimpleModeSectionTest extends TestCase
 
     public function test_varsayilanda_simple_mode_hicbir_seyi_daraltmaz(): void
     {
-        $user = $this->kullanici(PanelMode::Simple);
+        $user = $this->user(PanelMode::Simple);
         $r = app(UserPermissionResolver::class);
 
         $this->assertTrue($r->allowsAny($user, 'switch_vlans', 'view'));
@@ -50,7 +50,7 @@ final class SimpleModeSectionTest extends TestCase
     public function test_kapali_bolum_gorulmez_ve_yonetilmez(): void
     {
         config(['simple_mode.bolumler.switch_vlans.goruntule' => false]);
-        $user = $this->kullanici(PanelMode::Simple);
+        $user = $this->user(PanelMode::Simple);
         $r = app(UserPermissionResolver::class);
         $switch = NetworkSwitch::factory()->create();
 
@@ -66,12 +66,12 @@ final class SimpleModeSectionTest extends TestCase
     public function test_yalnizca_yonet_kapaliysa_gorulur_ama_degistirilemez(): void
     {
         config(['simple_mode.bolumler.switch_vlans.yonet' => false]);
-        $user = $this->kullanici(PanelMode::Simple);
+        $user = $this->user(PanelMode::Simple);
         $r = app(UserPermissionResolver::class);
 
         $this->assertTrue($r->allowsAny($user, 'switch_vlans', 'view'));
-        foreach (['create', 'update', 'delete'] as $eylem) {
-            $this->assertFalse($r->allowsAny($user, 'switch_vlans', $eylem), $eylem);
+        foreach (['create', 'update', 'delete'] as $action) {
+            $this->assertFalse($r->allowsAny($user, 'switch_vlans', $action), $action);
         }
     }
 
@@ -80,11 +80,11 @@ final class SimpleModeSectionTest extends TestCase
         config(['simple_mode.bolumler.switch_vlans.goruntule' => false]);
         $r = app(UserPermissionResolver::class);
 
-        $this->assertTrue($r->allowsAny($this->kullanici(PanelMode::Advanced, gelismisYetkisi: true), 'switch_vlans', 'update'));
+        $this->assertTrue($r->allowsAny($this->user(PanelMode::Advanced, advancedPermission: true), 'switch_vlans', 'update'));
         $this->assertTrue($r->allowsAny(User::factory()->admin()->create(['panel_mode' => PanelMode::Simple]), 'switch_vlans', 'view'));
 
         /* Kaydı "gelişmiş" ama yetkisi yok: basit sayılır ve kısıt uygulanır. */
-        $this->assertFalse($r->allowsAny($this->kullanici(PanelMode::Advanced), 'switch_vlans', 'view'));
+        $this->assertFalse($r->allowsAny($this->user(PanelMode::Advanced), 'switch_vlans', 'view'));
     }
 
     public function test_kisit_rol_yetkisini_genisletmez(): void
@@ -97,7 +97,7 @@ final class SimpleModeSectionTest extends TestCase
     public function test_ayarlar_ekraninda_simple_mode_bolumu_var(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.show', 'basit-mod'))
+            ->get(route('settings.show', 'simple-mode'))
             ->assertOk()
             ->assertSee('VLAN’lar')
             ->assertSee('name="simple_mode__bolumler__switch_vlans__goruntule"', false)
@@ -114,24 +114,24 @@ final class SimpleModeSectionTest extends TestCase
 
     public function test_rol_duzenleme_ekrani_gelismis_mod_satirini_cizer(): void
     {
-        $rol = Role::query()->create(['slug' => 'deneme', 'label' => 'Deneme', 'is_admin' => false, 'template' => ['gorunum_modu' => ['view']]]);
+        $role = Role::query()->create(['slug' => 'deneme', 'label' => 'Deneme', 'is_admin' => false, 'template' => ['gorunum_modu' => ['view']]]);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.roles.show', $rol))
+            ->get(route('settings.roles.show', $role))
             ->assertOk()
             ->assertSee('Gelişmiş mod');
     }
 
     public function test_goc_network_rolune_gelismis_mod_verir(): void
     {
-        $rol = Role::query()->where('slug', 'network')->first()
+        $role = Role::query()->where('slug', 'network')->first()
             ?? Role::query()->create(['slug' => 'network', 'label' => 'Network', 'is_admin' => false, 'template' => ['switches' => ['view']]]);
-        $rol->forceFill(['template' => ['switches' => ['view']]])->save();
+        $role->forceFill(['template' => ['switches' => ['view']]])->save();
 
         (require database_path('migrations/2026_10_02_120000_network_gelismis_moda_gecebilir.php'))->up();
 
-        $sablon = json_decode((string) DB::table('roles')->where('id', $rol->id)->value('template'), true);
-        $this->assertSame(['view'], $sablon['gorunum_modu'] ?? null);
-        $this->assertSame(['view'], $sablon['switches'] ?? null, 'Var olan yetkilere dokunulmaz.');
+        $template = json_decode((string) DB::table('roles')->where('id', $role->id)->value('template'), true);
+        $this->assertSame(['view'], $template['gorunum_modu'] ?? null);
+        $this->assertSame(['view'], $template['switches'] ?? null, 'Var olan yetkilere dokunulmaz.');
     }
 }

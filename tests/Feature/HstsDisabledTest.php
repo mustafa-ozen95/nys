@@ -21,10 +21,10 @@ class HstsDisabledTest extends TestCase
 {
     public function test_hsts_sifir_gonderilir(): void
     {
-        $yanit = $this->get(route('login'));
+        $response = $this->get(route('login'));
 
-        $yanit->assertOk();
-        $yanit->assertHeader('Strict-Transport-Security', 'max-age=0');
+        $response->assertOk();
+        $response->assertHeader('Strict-Transport-Security', 'max-age=0');
     }
 
     /** Ayar dosyasında da bir yıllık bir değer kalmamalı. */

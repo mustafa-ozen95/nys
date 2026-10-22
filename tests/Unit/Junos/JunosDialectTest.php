@@ -35,25 +35,25 @@ final class JunosDialectTest extends TestCase
      */
     public function test_sekil_sorulari_lehceden_gelir(): void
     {
-        $onceki = JunosSchemaProfile::PreEls;
+        $previous = JunosSchemaProfile::PreEls;
         $els = JunosSchemaProfile::Els;
 
-        $this->assertSame('port-mode', $onceki->switchingModeElement());
+        $this->assertSame('port-mode', $previous->switchingModeElement());
         $this->assertSame('interface-mode', $els->switchingModeElement());
 
-        $this->assertSame('vlan', $onceki->l3InterfaceName());
+        $this->assertSame('vlan', $previous->l3InterfaceName());
         $this->assertSame('irb', $els->l3InterfaceName());
 
-        $this->assertSame('ethernet-switching-options', $onceki->analyzerRootElement());
+        $this->assertSame('ethernet-switching-options', $previous->analyzerRootElement());
         $this->assertSame('forwarding-options', $els->analyzerRootElement());
 
-        $this->assertFalse($onceki->usesPlainSpeed());
+        $this->assertFalse($previous->usesPlainSpeed());
         $this->assertTrue($els->usesPlainSpeed());
 
-        $this->assertTrue($onceki->usesSecureAccessPort());
+        $this->assertTrue($previous->usesSecureAccessPort());
         $this->assertFalse($els->usesSecureAccessPort());
 
-        $this->assertTrue($onceki->dialect()->supportsAllKeyword());
+        $this->assertTrue($previous->dialect()->supportsAllKeyword());
         $this->assertFalse($els->dialect()->supportsAllKeyword());
     }
 
@@ -63,7 +63,7 @@ final class JunosDialectTest extends TestCase
      */
     public function test_varsayilanlar_els_oncesidir(): void
     {
-        $lehce = new class extends JunosDialect
+        $dialect = new class extends JunosDialect
         {
             public function key(): string
             {
@@ -71,12 +71,12 @@ final class JunosDialectTest extends TestCase
             }
         };
 
-        $this->assertSame('port-mode', $lehce->switchingModeElement());
-        $this->assertSame('vlan', $lehce->l3InterfaceName());
-        $this->assertFalse($lehce->usesPlainSpeed());
-        $this->assertTrue($lehce->usesSecureAccessPort());
-        $this->assertTrue($lehce->supportsAllKeyword());
-        $this->assertSame([], $lehce->vlanScopedSecureAccessFields());
+        $this->assertSame('port-mode', $dialect->switchingModeElement());
+        $this->assertSame('vlan', $dialect->l3InterfaceName());
+        $this->assertFalse($dialect->usesPlainSpeed());
+        $this->assertTrue($dialect->usesSecureAccessPort());
+        $this->assertTrue($dialect->supportsAllKeyword());
+        $this->assertSame([], $dialect->vlanScopedSecureAccessFields());
     }
 
     public function test_model_adindan_aile_tahmin_edilir(): void

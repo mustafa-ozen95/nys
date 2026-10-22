@@ -6,7 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Routing\Route as Rota;
+use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -35,8 +35,8 @@ class UnauthorizedAccessTest extends TestCase
      *
      * @var array<string, string> rota adı => neden serbest
      */
-    private const SERBEST = [
-        'hesap.profil' => 'Kendi hesabı: herkes kendi adını ve e-postasını görür.',
+    private const FREE = [
+        'account.profile' => 'Kendi hesabı: herkes kendi adını ve e-postasını görür.',
         'overview' => 'Karşılama ekranı.',
         'login' => 'Giriş ekranı.',
         'merkez.giris' => 'Kimlik sağlayıcıya yönlendirme.',
@@ -49,9 +49,9 @@ class UnauthorizedAccessTest extends TestCase
     {
         /* Fabrikanın varsayılanı zaten yerleşik "yetkisiz" rolü: yönetici
            değil, hiçbir yetki satırı yok (bkz. UserFactory). */
-        $kullanici = User::factory()->create();
+        $user = User::factory()->create();
 
-        $rotalar = $this->denenecekRotalar();
+        $routes = $this->toTryRoutes();
 
         /*
          * SINAMANIN KENDİSİ SINANIR.
@@ -62,64 +62,64 @@ class UnauthorizedAccessTest extends TestCase
          */
         $this->assertGreaterThanOrEqual(
             10,
-            count($rotalar),
+            count($routes),
             'Denenecek uç kalmadı: süzgeçler fazla geniş, sınama boşa dönüyor.',
         );
 
-        $acilanlar = [];
+        $opened = [];
 
-        foreach ($rotalar as $rota) {
-            $yanit = $this->actingAs($kullanici)->get($rota->uri() === '/' ? '/' : '/'.ltrim($rota->uri(), '/'));
+        foreach ($routes as $route) {
+            $response = $this->actingAs($user)->get($route->uri() === '/' ? '/' : '/'.ltrim($route->uri(), '/'));
 
-            if ($yanit->getStatusCode() === 200) {
-                $acilanlar[] = sprintf(
+            if ($response->getStatusCode() === 200) {
+                $opened[] = sprintf(
                     '%s (%s)',
-                    $rota->uri(),
-                    $rota->getName() ?? $rota->getActionName(),
+                    $route->uri(),
+                    $route->getName() ?? $route->getActionName(),
                 );
             }
         }
 
         $this->assertSame(
             [],
-            $acilanlar,
-            "İzni olmayan kullanıcı şu uçları açabildi:\n  ".implode("\n  ", $acilanlar)
+            $opened,
+            "İzni olmayan kullanıcı şu uçları açabildi:\n  ".implode("\n  ", $opened)
                 ."\nYa yetki kontrolü eksik ya da uç bilerek serbest — ikincisiyse SERBEST listesine gerekçesiyle ekleyin.",
         );
     }
 
     /**
-     * @return array<int, Rota>
+     * @return array<int, RoutingRoute>
      */
-    private function denenecekRotalar(): array
+    private function toTryRoutes(): array
     {
-        $secilen = [];
+        $selected = [];
 
-        foreach (Route::getRoutes()->getRoutes() as $rota) {
-            if (! in_array('GET', $rota->methods(), true)) {
+        foreach (Route::getRoutes()->getRoutes() as $route) {
+            if (! in_array('GET', $route->methods(), true)) {
                 continue;
             }
 
             /* Parametreli uçlar ayrı ele alınır: uydurulmuş bir kimlik 404
                döndürür ve o 404, yetki kontrolünün varlığını KANITLAMAZ. */
-            if ($rota->parameterNames() !== []) {
+            if ($route->parameterNames() !== []) {
                 continue;
             }
 
-            $ara = array_map(fn ($m) => is_string($m) ? $m : '', $rota->gatherMiddleware());
+            $between = array_map(fn ($m) => is_string($m) ? $m : '', $route->gatherMiddleware());
 
             /* Oturum istemeyen uçlar GuestAccessTest'in işi. */
-            if (! in_array('auth', $ara, true)) {
+            if (! in_array('auth', $between, true)) {
                 continue;
             }
 
-            if (array_key_exists((string) $rota->getName(), self::SERBEST)) {
+            if (array_key_exists((string) $route->getName(), self::FREE)) {
                 continue;
             }
 
-            $secilen[] = $rota;
+            $selected[] = $route;
         }
 
-        return $secilen;
+        return $selected;
     }
 }

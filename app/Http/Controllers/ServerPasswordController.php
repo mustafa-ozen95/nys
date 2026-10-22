@@ -36,13 +36,13 @@ class ServerPasswordController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('can:rotate,server', only: ['dondur']),
-            new Middleware('can:viewAny,'.Server::class, only: ['toplu', 'durum']),
+            new Middleware('can:rotate,server', only: ['rotate']),
+            new Middleware('can:viewAny,'.Server::class, only: ['bulk', 'status']),
         ];
     }
 
     /** Tek sunucu. */
-    public function dondur(Request $request, Server $server): RedirectResponse
+    public function rotate(Request $request, Server $server): RedirectResponse
     {
         $engel = app(DriverSelector::class)->engel($server);
 
@@ -50,7 +50,7 @@ class ServerPasswordController extends Controller implements HasMiddleware
             return back()->with('error', "{$server->short_name}: {$engel}");
         }
 
-        ServerPasswordRotateJob::kuyrukla(
+        ServerPasswordRotateJob::enqueue(
             (int) $server->id,
             (int) $request->user()->id,
             (string) $request->input('reason'),
@@ -66,55 +66,55 @@ class ServerPasswordController extends Controller implements HasMiddleware
      * dokunmanın kestirme yolu olmamalı. Atlananlar sessiz geçmez; kaç
      * tanesinin neden atlandığı ekrana döner.
      */
-    public function toplu(Request $request): RedirectResponse
+    public function bulk(Request $request): RedirectResponse
     {
         $veri = $request->validate([
             'sunucular' => ['required', 'array', 'min:1'],
             'sunucular.*' => ['string'],
         ]);
 
-        $secilen = Server::query()
+        $selected = Server::query()
             ->visibleTo($request->user())
             ->whereIn('uuid', $veri['sunucular'])
             ->get();
 
-        $secici = app(DriverSelector::class);
+        $selector = app(DriverSelector::class);
 
-        $yetkisiz = 0;
-        $engelli = 0;
-        $kuyruk = [];
+        $unauthorized = 0;
+        $blocked = 0;
+        $queue = [];
 
-        foreach ($secilen as $sunucu) {
-            if ($request->user()->cannot('rotate', $sunucu)) {
-                $yetkisiz++;
-
-                continue;
-            }
-
-            if ($secici->engel($sunucu) !== null) {
-                $engelli++;
+        foreach ($selected as $server) {
+            if ($request->user()->cannot('rotate', $server)) {
+                $unauthorized++;
 
                 continue;
             }
 
-            $kuyruk[] = (int) $sunucu->id;
+            if ($selector->engel($server) !== null) {
+                $blocked++;
+
+                continue;
+            }
+
+            $queue[] = (int) $server->id;
         }
 
-        if ($kuyruk === []) {
-            return back()->with('error', 'Hiçbir sunucunun parolası güncellenemedi: '.$this->atlananlar($yetkisiz, $engelli).'.');
+        if ($queue === []) {
+            return back()->with('error', 'Hiçbir sunucunun parolası güncellenemedi: '.$this->skipped($unauthorized, $blocked).'.');
         }
 
-        ServerPasswordRotateJob::sirayaAl(
-            $kuyruk,
+        ServerPasswordRotateJob::enqueueChain(
+            $queue,
             (int) $request->user()->id,
             (string) $request->input('reason'),
         );
 
-        $ek = $this->atlananlar($yetkisiz, $engelli);
+        $extra = $this->skipped($unauthorized, $blocked);
 
         return back()->with(
             'status',
-            count($kuyruk).' sunucu sıraya alındı'.($ek === '' ? '.' : "; {$ek}."),
+            count($queue).' sunucu sıraya alındı'.($extra === '' ? '.' : "; {$extra}."),
         );
     }
 
@@ -125,9 +125,9 @@ class ServerPasswordController extends Controller implements HasMiddleware
      * (resources/js/components/rotation-progress.js). Hesap RoundStatuses'nde,
      * yani liste sayfasının ilk çizimiyle aynı yerde.
      */
-    public function durum(Request $request, RoundStatuses $durumlar): JsonResponse
+    public function status(Request $request, RoundStatuses $statuses): JsonResponse
     {
-        $suren = $durumlar->icin(
+        $lasting = $statuses->for(
             Server::query()
                 ->visibleTo($request->user())
                 ->with('latestPasswordRotation')
@@ -135,8 +135,8 @@ class ServerPasswordController extends Controller implements HasMiddleware
         );
 
         return response()->json([
-            'calisiyor' => $suren !== [],
-            'cihazlar' => $suren,
+            'calisiyor' => $lasting !== [],
+            'cihazlar' => $lasting,
         ]);
     }
 
@@ -146,33 +146,33 @@ class ServerPasswordController extends Controller implements HasMiddleware
      * Kuyruğa ATILMAZ, hemen çalışır: onarım tek bir makineye birkaç kimlik
      * denemekten ibaret ve kullanıcı sonucu görmek için düğmeye basıyor.
      */
-    public function onar(Request $request, ServerPasswordRotation $rotation, ServerPasswordRotator $dondurucu): RedirectResponse
+    public function repair(Request $request, ServerPasswordRotation $rotation, ServerPasswordRotator $rotator): RedirectResponse
     {
-        $sunucu = $rotation->server;
+        $server = $rotation->server;
 
-        abort_if($sunucu === null, 404);
-        abort_if($request->user()->cannot('rotate', $sunucu), 403);
+        abort_if($server === null, 404);
+        abort_if($request->user()->cannot('rotate', $server), 403);
 
-        $sonuc = $dondurucu->onar($rotation, $request->user());
+        $result = $rotator->repair($rotation, $request->user());
 
         return back()->with(
-            $sonuc->recovery_active ? 'error' : 'status',
-            "{$sunucu->short_name}: ".($sonuc->error ?? 'kurtarma hesabı temizlendi.'),
+            $result->recovery_active ? 'error' : 'status',
+            "{$server->short_name}: ".($result->error ?? 'kurtarma hesabı temizlendi.'),
         );
     }
 
-    private function atlananlar(int $yetkisiz, int $engelli): string
+    private function skipped(int $unauthorized, int $blocked): string
     {
-        $parcalar = [];
+        $fragments = [];
 
-        if ($engelli > 0) {
-            $parcalar[] = $engelli.' sunucuda eksik bilgi var (adres, kullanıcı ya da parola)';
+        if ($blocked > 0) {
+            $fragments[] = $blocked.' sunucuda eksik bilgi var (adres, kullanıcı ya da parola)';
         }
 
-        if ($yetkisiz > 0) {
-            $parcalar[] = $yetkisiz.' sunucuda parola yetkiniz yok';
+        if ($unauthorized > 0) {
+            $fragments[] = $unauthorized.' sunucuda parola yetkiniz yok';
         }
 
-        return implode(', ', $parcalar);
+        return implode(', ', $fragments);
     }
 }

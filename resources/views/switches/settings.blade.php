@@ -52,14 +52,14 @@
                         <x-form.version :record="$switch" />
 
                         <div class="form-grid">
-                            <x-form.field name="hostname" label="Cihaz adı" id="cihaz-adi"
+                            <x-form.field name="hostname" label="Cihaz adı" id="device-name"
                                           hint="Junos “system host-name”. Harf, rakam, nokta, tire ve alt çizgi.">
-                                <x-form.input name="hostname" id="cihaz-adi" :value="$switch->hostname" mono required />
+                                <x-form.input name="hostname" id="device-name" :value="$switch->hostname" mono required />
                             </x-form.field>
 
-                            <x-form.field name="time_zone" label="Saat dilimi" id="saat-dilimi"
+                            <x-form.field name="time_zone" label="Saat dilimi" id="time-zone"
                                           hint="Örnek: Europe/Istanbul. Boş bırakılırsa cihazdan silinir.">
-                                <x-form.input name="time_zone" id="saat-dilimi" :value="$switch->time_zone"
+                                <x-form.input name="time_zone" id="time-zone" :value="$switch->time_zone"
                                               mono placeholder="Europe/Istanbul" />
                             </x-form.field>
 
@@ -108,7 +108,7 @@
                                     <label class="checkbox">
                                         <input type="hidden" name="{{ $anahtar }}_enabled" value="0">
                                         <input type="checkbox" name="{{ $anahtar }}_enabled"
-                                               id="{{ $anahtar }}-acik" value="1"
+                                               id="{{ $anahtar }}-open" value="1"
                                                @checked($protocols[$anahtar]['enabled'])>
                                         <span>Açık</span>
                                     </label>
@@ -141,9 +141,9 @@
                                                :selected="old('alarm_ethernet_link_down', $switch->alarm_ethernet_link_down)" />
                             </x-form.field>
 
-                            <x-form.field name="alarm_management_link_down" label="Yönetim portu alarmı" id="alarm-yonetim"
+                            <x-form.field name="alarm_management_link_down" label="Yönetim portu alarmı" id="alarm-management"
                                           hint="Yönetim arayüzü düştüğünde verilecek alarm.">
-                                <x-form.select name="alarm_management_link_down" id="alarm-yonetim"
+                                <x-form.select name="alarm_management_link_down" id="alarm-management"
                                                :options="$alarmOptions"
                                                :selected="old('alarm_management_link_down', $switch->alarm_management_link_down)" />
                             </x-form.field>
@@ -165,21 +165,21 @@
                         @method('PUT')
 
                         <div class="form-grid">
-                            <x-form.field name="name" label="SNMP adı (sysName)" id="snmp-adi"
+                            <x-form.field name="name" label="SNMP adı (sysName)" id="snmp-name"
                                           hint="Envanterdeki ad önerilir; cihazdaki ad ondan farklı olabilir.">
-                                <x-form.input name="name" id="snmp-adi" :value="old('name', $snmpName)" mono required />
+                                <x-form.input name="name" id="snmp-name" :value="old('name', $snmpName)" mono required />
                             </x-form.field>
 
                             {{-- Boş bırakmak cihazdaki değeri SİLER. --}}
-                            <x-form.field name="location" label="Konum" id="snmp-konum"
+                            <x-form.field name="location" label="Konum" id="snmp-location"
                                           hint="Cihazın bulunduğu yer. Boş bırakılırsa cihazdan silinir.">
-                                <x-form.input name="location" id="snmp-konum"
+                                <x-form.input name="location" id="snmp-location"
                                               :value="old('location', $switch->snmp_location)" placeholder="Lokasyon-A" />
                             </x-form.field>
 
-                            <x-form.field name="contact" label="İletişim" id="snmp-iletisim"
+                            <x-form.field name="contact" label="İletişim" id="snmp-contact"
                                           hint="Sorumlu ekip ya da e-posta.">
-                                <x-form.input name="contact" id="snmp-iletisim"
+                                <x-form.input name="contact" id="snmp-contact"
                                               :value="old('contact', $switch->snmp_contact)" placeholder="noc@ornek.test" />
                             </x-form.field>
                         </div>
@@ -199,11 +199,11 @@
                 <x-ui.panel title="SNMP community" subtitle="İzleme sisteminin cihazdan veri çekmek için kullandığı anahtarlar. Adlar ekranda gösterilmez.">
                     <x-slot:actions>
                         <button type="button" class="btn btn--primary btn--sm"
-                                data-modal-open="community-ekle">Community ekle</button>
+                                data-modal-open="community-add">Community ekle</button>
                     </x-slot:actions>
 
                     @forelse ($communities as $community)
-                        <div class="grid-row grid-row--static ayar-row">
+                        <div class="grid-row grid-row--static setting-row">
                             <span class="mono">{{ $community->masked_name }}</span>
                             <span>
                                 <x-ui.badge :variant="$community->authorization === 'read-write' ? 'orange' : 'gray'">
@@ -238,7 +238,7 @@
                             sabit genişlikli bir hücrede yandaki sütunun
                             üstüne taşar.
                         --}}
-                        <div class="grid-row grid-row--static sir-row">
+                        <div class="grid-row grid-row--static secret-row">
                             <span class="text-muted">Hesap</span>
                             <span class="truncate">
                                 <x-ui.secret :source="route('switches.password', $switch)"
@@ -262,11 +262,11 @@
                             subtitle="Switche konsoldan ya da SSH’tan bağlananların kullandığı yerel hesaplar. Parolalar cihazda tutulur, panelde saklanmaz.">
                     <x-slot:actions>
                         <button type="button" class="btn btn--primary btn--sm"
-                                data-modal-open="hesap-ekle">Hesap ekle</button>
+                                data-modal-open="account-add">Hesap ekle</button>
                     </x-slot:actions>
 
                     @forelse ($loginUsers as $loginUser)
-                        <div class="grid-row grid-row--static ayar-row">
+                        <div class="grid-row grid-row--static setting-row">
                             <span class="mono">
                                 {{ $loginUser->name }}
                                 @if ($loginUser->is_panel_account)
@@ -304,29 +304,29 @@
                         <x-form.version :record="$switch" />
 
                         <div class="form-grid">
-                            <x-form.field name="enabled" label="Commit sonrası gönder" id="yedek-acik"
+                            <x-form.field name="enabled" label="Commit sonrası gönder" id="backup-open"
                                           hint="Junos’ta “transfer-on-commit”. Kapatılırsa ayar cihazdan silinir.">
                                 <label class="checkbox">
-                                    <input type="checkbox" name="enabled" value="1" id="yedek-acik"
+                                    <input type="checkbox" name="enabled" value="1" id="backup-open"
                                            @checked(old('enabled', $switch->archival_enabled))>
                                     <span>Açık</span>
                                 </label>
                             </x-form.field>
 
-                            <x-form.field name="site" label="Yedek adresi" id="yedek-adres"
+                            <x-form.field name="site" label="Yedek adresi" id="backup-address"
                                           :hint="$archivalCustom
                                               ? 'Bu cihaza özel adres kayıtlı. Boş bırakılırsa korunur.'
                                               : 'Girilmezse .env’deki varsayılan sunucu kullanılır.'">
-                                <x-form.input type="password" name="site" id="yedek-adres" mono
+                                <x-form.input type="password" name="site" id="backup-address" mono
                                               autocomplete="new-password"
                                               placeholder="ftp://kullanici:parola@192.0.2.51/sw1/" />
                             </x-form.field>
 
                             @if ($archivalCustom)
-                                <x-form.field name="reset_site" label="Kayıtlı adres" id="yedek-sifirla"
+                                <x-form.field name="reset_site" label="Kayıtlı adres" id="backup-reset"
                                               hint="Silinirse cihaz varsayılan sunucuya döner.">
                                     <label class="checkbox">
-                                        <input type="checkbox" name="reset_site" value="1" id="yedek-sifirla">
+                                        <input type="checkbox" name="reset_site" value="1" id="backup-reset">
                                         <span>Sil, varsayılana dön</span>
                                     </label>
                                 </x-form.field>
@@ -349,28 +349,28 @@
         </div>
     </div>
 
-    <x-ui.modal id="community-ekle" title="SNMP community ekle">
+    <x-ui.modal id="community-add" title="SNMP community ekle">
         <form method="POST" action="{{ route('switches.snmp-communities.store', $switch) }}"
               data-confirm="Cihaza yeni bir SNMP community yazılacak."
               data-confirm-title="Cihaza yaz"
               data-confirm-verify="{{ $switch->hostname }}">
             @csrf
             <div class="modal__body stack">
-                <x-form.field name="name" label="Community" id="community-adi"
+                <x-form.field name="name" label="Community" id="community-name"
                               hint="Cihazda kimliktir ve sonradan değiştirilemez. Ekranda bir daha gösterilmez.">
-                    <x-form.input type="password" name="name" id="community-adi"
+                    <x-form.input type="password" name="name" id="community-name"
                                   autocomplete="new-password" mono required />
                 </x-form.field>
 
-                <x-form.field name="authorization" label="Yetki" id="community-yetki"
+                <x-form.field name="authorization" label="Yetki" id="community-permission"
                               hint="Okuma yeterlidir; yazma yetkisi cihazı SNMP üzerinden değiştirilebilir kılar.">
-                    <x-form.select name="authorization" id="community-yetki"
+                    <x-form.select name="authorization" id="community-permission"
                                    :options="$authorizationOptions" selected="read-only" />
                 </x-form.field>
 
-                <x-form.field name="clients" label="İzinli ağlar" id="community-istemci"
+                <x-form.field name="clients" label="İzinli ağlar" id="community-client"
                               hint="Her satıra bir ağ: 198.18.20.0/24. Boş bırakılırsa herkes erişebilir.">
-                    <x-form.textarea name="clients" id="community-istemci" rows="3" class="input--mono" />
+                    <x-form.textarea name="clients" id="community-client" rows="3" class="input--mono" />
                 </x-form.field>
             </div>
             <x-ui.modal-actions submit="Cihaza yaz" />
@@ -399,13 +399,13 @@
                     </x-form.field>
                 </div>
                 <x-ui.modal-actions submit="Cihaza yaz">
-                    <button type="submit" form="community-sil-{{ $community->uuid }}"
+                    <button type="submit" form="community-delete-{{ $community->uuid }}"
                             class="btn btn--danger btn--sm">Sil</button>
                     <span class="spacer"></span>
                 </x-ui.modal-actions>
             </form>
 
-            <form method="POST" id="community-sil-{{ $community->uuid }}" hidden
+            <form method="POST" id="community-delete-{{ $community->uuid }}" hidden
                   action="{{ route('switches.snmp-communities.destroy', [$switch, $community]) }}"
                   data-confirm="Bu community CİHAZDAN silinecek. İzleme sistemi bu anahtarı kullanıyorsa veri çekemez olur."
                   data-confirm-title="Community sil" data-confirm-variant="danger"
@@ -416,42 +416,42 @@
         </x-ui.modal>
     @endforeach
 
-    <x-ui.modal id="hesap-ekle" title="Cihaz hesabı ekle">
+    <x-ui.modal id="account-add" title="Cihaz hesabı ekle">
         <form method="POST" action="{{ route('switches.login-users.store', $switch) }}"
               data-confirm="Cihaza yeni bir giriş hesabı yazılacak."
               data-confirm-title="Cihaza yaz"
               data-confirm-verify="{{ $switch->hostname }}">
             @csrf
             <div class="modal__body stack">
-                <x-form.field name="name" label="Hesap adı" id="hesap-adi"
+                <x-form.field name="name" label="Hesap adı" id="account-name"
                               hint="Cihazda kimliktir ve sonradan değiştirilemez.">
-                    <x-form.input name="name" id="hesap-adi" mono required autocomplete="off" />
+                    <x-form.input name="name" id="account-name" mono required autocomplete="off" />
                 </x-form.field>
 
-                <x-form.field name="class" label="Yetki sınıfı" id="hesap-sinif"
+                <x-form.field name="class" label="Yetki sınıfı" id="account-class"
                               hint="Yalnızca süper kullanıcı yapılandırma yazabilir.">
-                    <x-form.select name="class" id="hesap-sinif"
+                    <x-form.select name="class" id="account-class"
                                    :options="$userClassOptions" selected="read-only" />
                 </x-form.field>
 
-                <x-form.field name="full_name" label="Tam ad" id="hesap-tam-ad"
+                <x-form.field name="full_name" label="Tam ad" id="account-full-name"
                               hint="Kimin hesabı olduğunu yazmak, sonradan bakanın işini kolaylaştırır.">
-                    <x-form.input name="full_name" id="hesap-tam-ad" />
+                    <x-form.input name="full_name" id="account-full-name" />
                 </x-form.field>
 
-                <x-form.field name="uid" label="uid" id="hesap-uid"
+                <x-form.field name="uid" label="uid" id="account-uid"
                               hint="Boş bırakılırsa cihaz seçer. 100 ile 64000 arası.">
-                    <x-form.input type="number" name="uid" id="hesap-uid" min="100" max="64000" mono />
+                    <x-form.input type="number" name="uid" id="account-uid" min="100" max="64000" mono />
                 </x-form.field>
 
-                <x-form.field name="password" label="Parola" id="hesap-parola"
+                <x-form.field name="password" label="Parola" id="account-password"
                               hint="En az 8 karakter; rakam ya da noktalama içermeli. Cihazda saklanır, panelde tutulmaz.">
-                    <x-form.input type="password" name="password" id="hesap-parola"
+                    <x-form.input type="password" name="password" id="account-password"
                                   autocomplete="new-password" />
                 </x-form.field>
 
-                <x-form.field name="password_confirmation" label="Parola (tekrar)" id="hesap-parola-tekrar">
-                    <x-form.input type="password" name="password_confirmation" id="hesap-parola-tekrar"
+                <x-form.field name="password_confirmation" label="Parola (tekrar)" id="account-password-repeat">
+                    <x-form.input type="password" name="password_confirmation" id="account-password-repeat"
                                   autocomplete="new-password" />
                 </x-form.field>
             </div>
@@ -497,9 +497,9 @@
                         boşuna denemeye çağırır.
                     --}}
                     @unless ($loginUser->is_panel_account)
-                        <x-form.field name="password" label="Yeni parola" :id="'parola-'.$loginUser->uuid"
+                        <x-form.field name="password" label="Yeni parola" :id="'password-'.$loginUser->uuid"
                                       hint="Boş bırakılırsa cihazdaki parola değişmez.">
-                            <x-form.input type="password" name="password" :id="'parola-'.$loginUser->uuid"
+                            <x-form.input type="password" name="password" :id="'password-'.$loginUser->uuid"
                                           autocomplete="new-password" />
                         </x-form.field>
 
@@ -512,7 +512,7 @@
                 </div>
                 <x-ui.modal-actions submit="Cihaza yaz">
                     @unless ($loginUser->is_panel_account)
-                        <button type="submit" form="hesap-sil-{{ $loginUser->uuid }}"
+                        <button type="submit" form="account-delete-{{ $loginUser->uuid }}"
                                 class="btn btn--danger btn--sm">Sil</button>
                         <span class="spacer"></span>
                     @endunless
@@ -520,7 +520,7 @@
             </form>
 
             @unless ($loginUser->is_panel_account)
-                <form method="POST" id="hesap-sil-{{ $loginUser->uuid }}" hidden
+                <form method="POST" id="account-delete-{{ $loginUser->uuid }}" hidden
                       action="{{ route('switches.login-users.destroy', [$switch, $loginUser]) }}"
                       data-confirm="{{ $loginUser->name }} hesabı CİHAZDAN silinecek. Bu hesapla bağlananlar bir daha giremez."
                       data-confirm-title="Hesabı sil" data-confirm-variant="danger"

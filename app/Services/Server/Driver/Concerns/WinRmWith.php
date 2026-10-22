@@ -25,18 +25,18 @@ use Illuminate\Support\Facades\Process;
  */
 trait WinRmWith
 {
-    public function ac(Server $sunucu, string $kullanici, string $parola): ServerSession
+    public function open(Server $server, string $user, string $password): ServerSession
     {
         /* Kimlik burada sınanır: bağlanamıyorsak tur daha başlamadan durmalı. */
-        $this->call($sunucu, $kullanici, $parola, ['action' => 'verify'], 'Bağlantı kurulamadı.');
+        $this->call($server, $user, $password, ['action' => 'verify'], 'Bağlantı kurulamadı.');
 
-        return new ServerSession($sunucu, $kullanici, $parola, static fn () => null);
+        return new ServerSession($server, $user, $password, static fn () => null);
     }
 
-    public function dogrula(Server $sunucu, string $kullanici, string $parola): bool
+    public function verify(Server $server, string $user, string $password): bool
     {
         try {
-            $this->ac($sunucu, $kullanici, $parola)->kapat();
+            $this->open($server, $user, $password)->close();
 
             return true;
         } catch (RotationError) {
@@ -44,28 +44,28 @@ trait WinRmWith
         }
     }
 
-    protected function powerShellCalistir(
-        ServerSession $oturum,
+    protected function powerShellRun(
+        ServerSession $session,
         string $encodedCommand,
         string $failure,
         string $stdin,
     ): void {
         /** @var Server $sunucu */
-        $sunucu = $oturum->tutamac;
+        $server = $session->handle;
 
-        $sonuc = $this->call($sunucu, $oturum->kullanici, $oturum->parola, [
+        $result = $this->call($server, $session->user, $session->password, [
             'action' => 'run',
             'program' => 'powershell.exe',
             'arguments' => ['-NonInteractive', '-NoProfile', '-EncodedCommand', $encodedCommand],
             'stdin' => $stdin,
         ], $failure);
 
-        if ((int) ($sonuc['status'] ?? 1) !== 0) {
+        if ((int) ($result['status'] ?? 1) !== 0) {
             /*
              * Çıktı hata mesajına KOYULMAZ: komut girdiyi yankılamış olabilir
              * ve o yankıda parola vardır. Mesaj kullanıcıya gösteriliyor.
              */
-            throw new RotationError($failure.' Hedef makine komutu reddetti (kod '.($sonuc['status'] ?? '?').').');
+            throw new RotationError($failure.' Hedef makine komutu reddetti (kod '.($result['status'] ?? '?').').');
         }
     }
 
@@ -79,18 +79,18 @@ trait WinRmWith
      * @return array<string, mixed>
      */
     private function call(
-        Server $sunucu,
-        string $kullanici,
-        string $parola,
-        array $istek,
+        Server $server,
+        string $user,
+        string $password,
+        array $request,
         string $failure,
     ): array {
-        $ayar = config('server.winrm');
+        $setting = config('server.winrm');
 
-        $sonuc = Process::timeout((int) $ayar['timeout'] + 15)
-            ->env(['OPENSSL_CONF' => $ayar['openssl_conf']])
+        $result = Process::timeout((int) $setting['timeout'] + 15)
+            ->env(['OPENSSL_CONF' => $setting['openssl_conf']])
             ->input(json_encode([
-                'host' => $sunucu->ip_address,
+                'host' => $server->ip_address,
                 /*
                  * PORT KAYITTAN ALINMAZ.
                  *
@@ -98,29 +98,29 @@ trait WinRmWith
                  * oraya bağlanmaz. Kayıttan okunsaydı her Windows sunucusunda
                  * tur "makineye ulaşılamadı" ile düşerdi.
                  */
-                'port' => $ayar['port'],
-                'username' => $kullanici,
-                'password' => $parola,
-                'timeout' => (int) $ayar['timeout'],
-                ...$istek,
+                'port' => $setting['port'],
+                'username' => $user,
+                'password' => $password,
+                'timeout' => (int) $setting['timeout'],
+                ...$request,
             ], JSON_THROW_ON_ERROR))
-            ->run([$ayar['python'], $ayar['runner']]);
+            ->run([$setting['python'], $setting['runner']]);
 
-        if (! $sonuc->successful()) {
+        if (! $result->successful()) {
             throw new RotationError($failure.' WinRM yardımcısı çalıştırılamadı.');
         }
 
-        $yanit = json_decode(trim($sonuc->output()), true);
+        $response = json_decode(trim($result->output()), true);
 
-        if (! is_array($yanit)) {
+        if (! is_array($response)) {
             throw new RotationError($failure.' WinRM yardımcısı anlaşılmayan bir yanıt verdi.');
         }
 
-        if (($yanit['ok'] ?? false) !== true) {
-            throw new RotationError($failure.' '.$this->humanize((string) ($yanit['error'] ?? '')));
+        if (($response['ok'] ?? false) !== true) {
+            throw new RotationError($failure.' '.$this->humanize((string) ($response['error'] ?? '')));
         }
 
-        return $yanit;
+        return $response;
     }
 
     /**

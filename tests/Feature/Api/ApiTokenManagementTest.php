@@ -193,28 +193,28 @@ final class ApiTokenManagementTest extends TestCase
     public function test_sahibi_sonradan_degistirilemez(): void
     {
         $token = ApiToken::factory()->create();
-        $baska = User::factory()->create();
+        $other = User::factory()->create();
 
         $this->actingAs($this->admin())
             ->put(route('settings.api.update', $token), [
                 'name' => $token->name,
-                'user' => $baska->uuid,
+                'user' => $other->uuid,
             ])
             ->assertSessionHasErrors('user');
 
-        $this->assertNotSame($baska->id, $token->fresh()->user_id);
+        $this->assertNotSame($other->id, $token->fresh()->user_id);
     }
 
     public function test_yeni_sir_uretilir_ve_eskisi_gecersiz_olur(): void
     {
         $token = ApiToken::factory()->create();
-        $eski = $token->token_hash;
+        $old = $token->token_hash;
 
         $this->actingAs($this->admin())
             ->put(route('settings.api.rotate', $token))
             ->assertRedirect();
 
-        $this->assertNotSame($eski, $token->fresh()->token_hash);
+        $this->assertNotSame($old, $token->fresh()->token_hash);
         $this->assertSame(hash('sha256', session('token_plain')), $token->fresh()->token_hash);
     }
 

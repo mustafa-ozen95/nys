@@ -30,7 +30,7 @@ class SecurityHeaders
             }
         }
 
-        $this->onbellekKapat($request, $response);
+        $this->cacheClose($request, $response);
 
         return $response;
     }
@@ -58,7 +58,7 @@ class SecurityHeaders
      * Var olan başlık yine ezilmez (bkz. yukarısı): parola ucu kendi
      * `no-store`unu zaten yazıyor.
      */
-    private function onbellekKapat(Request $request, Response $response): void
+    private function cacheClose(Request $request, Response $response): void
     {
         /*
          * "Zaten var mı" diye BAKILMAZ: Laravel oturumlu her yanıta
@@ -74,9 +74,9 @@ class SecurityHeaders
             return;
         }
 
-        $tur = (string) $response->headers->get('Content-Type', '');
+        $round = (string) $response->headers->get('Content-Type', '');
 
-        if (! str_contains($tur, 'text/html')) {
+        if (! str_contains($round, 'text/html')) {
             return;
         }
 

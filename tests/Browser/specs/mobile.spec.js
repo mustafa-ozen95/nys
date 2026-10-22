@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { girisYap } from '../support/login.js';
+import { performLogin } from '../support/login.js';
 
 /**
  * Mobil uyum.
@@ -18,29 +18,29 @@ test.describe('mobil', () => {
     });
 
     test('sayfalar yatay kaymaz', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/switchler');
+        await performLogin(page);
+        await page.goto('/switches');
 
-        const ilk = await page.locator('a.switch-row').first().getAttribute('href');
+        const first = await page.locator('a.switch-row').first().getAttribute('href');
 
-        const adresler = [
-            '/switchler', ilk, `${ilk}/portlar`, `${ilk}/toplama`, `${ilk}/firewall`,
-            `${ilk}/politikalar`, `${ilk}/bgp`, '/bgp', '/adresleme', '/sunucular',
+        const addresses = [
+            '/switches', first, `${first}/ports`, `${first}/aggregation`, `${first}/firewall`,
+            `${first}/policies`, `${first}/bgp`, '/bgp', '/addressing', '/servers',
 
             // Yönetim ekranları da listede: kayıtlar sayfası sayfalama şeridi
             // yüzünden taşıyordu ve test onu hiç gezmiyordu.
-            '/kullanicilar', '/kayitlar', '/ayarlar', '/ayarlar/parolalar', '/config', '/prefix-anonsu',
+            '/users', '/logs', '/settings', '/settings/passwords', '/config', '/prefix-announcement',
         ];
 
-        for (const adres of adresler) {
-            await page.goto(adres);
+        for (const address of addresses) {
+            await page.goto(address);
             await page.waitForLoadState('networkidle');
 
-            const tasma = await page.evaluate(
+            const overflow = await page.evaluate(
                 () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
             );
 
-            expect(tasma, `${adres} yatay kayıyor`).toBeLessThanOrEqual(1);
+            expect(overflow, `${address} yatay kayıyor`).toBeLessThanOrEqual(1);
         }
     });
 
@@ -51,28 +51,28 @@ test.describe('mobil', () => {
      * bölmenin ortasında kalır.
      */
     test('her bölme tam ekran genişliğinde', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/switchler');
+        await performLogin(page);
+        await page.goto('/switches');
 
-        const ilk = await page.locator('a.switch-row').first().getAttribute('href');
-        await page.goto(`${ilk}/portlar`);
+        const first = await page.locator('a.switch-row').first().getAttribute('href');
+        await page.goto(`${first}/ports`);
         await page.waitForLoadState('networkidle');
 
-        const olcum = await page.evaluate(() => ({
+        const measurement = await page.evaluate(() => ({
             /*
              * Yalnızca GÖRÜNEN bölmeler ölçülür: bazı ekranlarda detay paneli
              * hiç çizilmez (display: none) ve genişliği sıfırdır.
              */
-            genislikler: [...document.querySelectorAll('.columns > .column, .columns > .detail')]
+            widths: [...document.querySelectorAll('.columns > .column, .columns > .detail')]
                 .filter((el) => getComputedStyle(el).display !== 'none')
                 .map((el) => Math.round(el.getBoundingClientRect().width)),
-            ekran: document.documentElement.clientWidth,
+            screen: document.documentElement.clientWidth,
         }));
 
-        expect(olcum.genislikler.length).toBeGreaterThan(1);
+        expect(measurement.widths.length).toBeGreaterThan(1);
 
-        for (const genislik of olcum.genislikler) {
-            expect(genislik).toBeGreaterThanOrEqual(olcum.ekran - 2);
+        for (const width of measurement.widths) {
+            expect(width).toBeGreaterThanOrEqual(measurement.screen - 2);
         }
     });
 
@@ -86,48 +86,48 @@ test.describe('mobil', () => {
      * için seçilen komşunun bilgileri açılmıyordu.
      */
     test('her ekranda en sağdaki bölme açılır', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/switchler');
+        await performLogin(page);
+        await page.goto('/switches');
 
         const sw = await page.locator('a.switch-row').first().getAttribute('href');
 
-        const olc = () => page.evaluate(() => {
-            const serit = document.querySelector('.columns');
-            const bolmeler = [...serit.querySelectorAll(':scope > .column, :scope > .detail')]
+        const measure = () => page.evaluate(() => {
+            const strip = document.querySelector('.columns');
+            const segments = [...strip.querySelectorAll(':scope > .column, :scope > .detail')]
                 .filter((b) => getComputedStyle(b).display !== 'none');
-            const son = bolmeler[bolmeler.length - 1];
+            const last = segments[segments.length - 1];
 
-            return Math.abs(serit.scrollLeft - (son.offsetLeft - serit.offsetLeft));
+            return Math.abs(strip.scrollLeft - (last.offsetLeft - strip.offsetLeft));
         });
 
         // Seçim yapılan ekranlar: seçimden sonra DETAY açılmalı.
-        for (const [adres, secici] of [
+        for (const [address, selector] of [
             ['/bgp', 'a.bgp-row'],
-            ['/sunucular', 'a.grid-row'],
+            ['/servers', 'a.grid-row'],
             // Portlarda seçim sayfa yenilemeden yapılır; kural yine geçerli.
-            [`${sw}/portlar`, '.grid-row.port-row'],
+            [`${sw}/ports`, '.grid-row.port-row'],
         ]) {
-            await page.goto(adres);
+            await page.goto(address);
 
-            const satir = page.locator(secici).first();
+            const row = page.locator(selector).first();
 
-            if (await satir.count() === 0) {
+            if (await row.count() === 0) {
                 continue;
             }
 
-            await satir.click();
+            await row.click();
             await page.waitForLoadState('networkidle');
             await page.waitForTimeout(400);
 
-            expect(await olc(), `${adres} seçimden sonra detayı açmıyor`).toBeLessThanOrEqual(2);
+            expect(await measure(), `${address} seçimden sonra detayı açmıyor`).toBeLessThanOrEqual(2);
         }
 
         // Seçim olmayan ekranlar: içerik/liste açılmalı.
-        for (const adres of [`${sw}/firewall`, sw, '/switchler']) {
-            await page.goto(adres);
+        for (const address of [`${sw}/firewall`, sw, '/switches']) {
+            await page.goto(address);
             await page.waitForLoadState('networkidle');
 
-            expect(await olc(), `${adres} en sağdaki bölmeyi açmıyor`).toBeLessThanOrEqual(2);
+            expect(await measure(), `${address} en sağdaki bölmeyi açmıyor`).toBeLessThanOrEqual(2);
         }
     });
 
@@ -136,15 +136,15 @@ test.describe('mobil', () => {
      * kesiliyordu; şerit kayar, yazı bölünmez.
      */
     test('üst menü bağlantıları tek satırda kalır', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/switchler');
+        await performLogin(page);
+        await page.goto('/switches');
 
-        const yukseklikler = await page.locator('.topbar__link').evaluateAll(
-            (baglantilar) => baglantilar.map((b) => Math.round(b.getBoundingClientRect().height)),
+        const heights = await page.locator('.topbar__link').evaluateAll(
+            (connections) => connections.map((b) => Math.round(b.getBoundingClientRect().height)),
         );
 
         // Hepsi aynı yükseklikte olmalı: biri iki satıra düşerse ayrışır.
-        expect(new Set(yukseklikler).size).toBe(1);
+        expect(new Set(heights).size).toBe(1);
     });
 
     /**
@@ -152,21 +152,21 @@ test.describe('mobil', () => {
      * sıkışıp okunmaz hâle gelmemeli.
      */
     test('panel satırları yığılır', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/switchler');
+        await performLogin(page);
+        await page.goto('/switches');
 
-        const ilk = await page.locator('a.switch-row').first().getAttribute('href');
-        await page.goto(`${ilk}/firewall`);
+        const first = await page.locator('a.switch-row').first().getAttribute('href');
+        await page.goto(`${first}/firewall`);
 
-        const satir = page.locator('.panel__body .row--between').first();
-        test.skip(await satir.count() === 0, 'ekranda panel satırı yok');
+        const row = page.locator('.panel__body .row--between').first();
+        test.skip(await row.count() === 0, 'ekranda panel satırı yok');
 
-        const kutular = await satir.locator('> *').evaluateAll(
-            (cocuklar) => cocuklar.map((c) => Math.round(c.getBoundingClientRect().top)),
+        const boxes = await row.locator('> *').evaluateAll(
+            (children) => children.map((c) => Math.round(c.getBoundingClientRect().top)),
         );
 
         // En az iki farklı satır olmalı: hepsi aynı hizadaysa yığılmamış demektir.
-        expect(new Set(kutular).size).toBeGreaterThan(1);
+        expect(new Set(boxes).size).toBeGreaterThan(1);
     });
 
     /**
@@ -178,20 +178,20 @@ test.describe('mobil', () => {
      * hangisinin "Bağlan" olduğu anlaşılmıyordu.
      */
     test('tablo hücreleri etiketli', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/kullanicilar');
-        await page.locator('a[href*="/yetkiler"]').first().click();
-        await page.waitForURL(/yetkiler/);
+        await performLogin(page);
+        await page.goto('/users');
+        await page.locator('a[href*="/permissions"]').first().click();
+        await page.waitForURL(/permissions/);
 
-        const hucreler = page.locator('.table tbody td');
-        test.skip(await hucreler.count() === 0, 'ekranda tablo yok');
+        const cells = page.locator('.table tbody td');
+        test.skip(await cells.count() === 0, 'ekranda tablo yok');
 
-        const etiketler = await hucreler.evaluateAll((liste) => liste.map(
-            (hucre) => getComputedStyle(hucre, '::before').content,
+        const tags = await cells.evaluateAll((list) => list.map(
+            (cell) => getComputedStyle(cell, '::before').content,
         ));
 
         // Hiçbir hücre boş etiketle kalmamalı.
-        expect(etiketler.filter((e) => !e || e === 'none' || e === '""')).toHaveLength(0);
+        expect(tags.filter((e) => !e || e === 'none' || e === '""')).toHaveLength(0);
     });
 
     /**
@@ -202,37 +202,37 @@ test.describe('mobil', () => {
      * viewport'a "user-scalable=no" yazmak parmakla büyütmeyi de öldürür.
      */
     test('form alanları yakınlaştırma eşiğinin üstünde', async ({ page }) => {
-        await girisYap(page);
+        await performLogin(page);
 
         // Farklı alan türlerinin geçtiği ekranlar: ayar formu, config metni,
         // yetki matrisindeki dar seçim kutuları, kayıt filtreleri.
-        const adresler = ['/ayarlar/cihaz', '/config', '/kayitlar'];
+        const addresses = ['/settings/device', '/config', '/logs'];
 
-        await page.goto('/kullanicilar');
-        const yetki = await page.locator('a[href*="/yetkiler"]').first().getAttribute('href');
+        await page.goto('/users');
+        const permission = await page.locator('a[href*="/permissions"]').first().getAttribute('href');
 
-        if (yetki) {
-            adresler.push(yetki);
+        if (permission) {
+            addresses.push(permission);
         }
 
-        for (const adres of adresler) {
-            await page.goto(adres);
-            await denetle(page, adres);
+        for (const address of addresses) {
+            await page.goto(address);
+            await check(page, address);
         }
     });
 
-    async function denetle(page, adres) {
-        const boyutlar = await page.locator('input, select, textarea').evaluateAll(
-            (alanlar) => alanlar
-                .filter((alan) => alan.type !== 'hidden' && alan.type !== 'checkbox')
-                .map((alan) => ({
-                    ad: alan.name || alan.id || alan.tagName,
-                    boyut: parseFloat(getComputedStyle(alan).fontSize),
+    async function check(page, address) {
+        const sizes = await page.locator('input, select, textarea').evaluateAll(
+            (fields) => fields
+                .filter((field) => field.type !== 'hidden' && field.type !== 'checkbox')
+                .map((field) => ({
+                    ad: field.name || field.id || field.tagName,
+                    size: parseFloat(getComputedStyle(field).fontSize),
                 })),
         );
 
-        const kucukler = boyutlar.filter((alan) => alan.boyut < 16);
+        const smaller = sizes.filter((field) => field.size < 16);
 
-        expect(kucukler, `${adres} → 16px altında alan var: ${JSON.stringify(kucukler)}`).toHaveLength(0);
+        expect(smaller, `${address} → 16px altında alan var: ${JSON.stringify(smaller)}`).toHaveLength(0);
     }
 });

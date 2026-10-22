@@ -22,7 +22,7 @@ final class ActivityLogTest extends TestCase
         parent::setUp();
 
         /* Bu sınıf yetki düzeneğini sınıyor; üretimde kapalı (bkz. TestCase). */
-        $this->yetkiDagitimiAc();
+        $this->permissionDistributionOpen();
     }
 
     /**
@@ -38,7 +38,7 @@ final class ActivityLogTest extends TestCase
     }
 
     /** Yönetici olmayan, yalnızca kayıt okuma yetkisi verilmiş kişi. */
-    private function sinirliOkuyucu(): User
+    private function limitedReader(): User
     {
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'logs', ['view']);
@@ -150,27 +150,27 @@ final class ActivityLogTest extends TestCase
      */
     public function test_goremedigi_cihazin_kaydi_gorunmez(): void
     {
-        $okuyucu = $this->sinirliOkuyucu();
+        $reader = $this->limitedReader();
 
-        $gorunur = NetworkSwitch::factory()->create(['hostname' => 'GORUNUR-SW']);
-        $gizli = NetworkSwitch::factory()->create(['hostname' => 'GIZLI-SW']);
+        $visible = NetworkSwitch::factory()->create(['hostname' => 'GORUNUR-SW']);
+        $hidden = NetworkSwitch::factory()->create(['hostname' => 'GIZLI-SW']);
 
         app(UserPermissionResolver::class)
-            ->syncResource($okuyucu, 'switches', [], ['view' => [$gorunur->id]]);
+            ->syncResource($reader, 'switches', [], ['view' => [$visible->id]]);
 
         ActivityLog::factory()->create([
             'description' => 'GORUNUR KAYIT',
-            'subject_type' => $gorunur->getMorphClass(),
-            'subject_id' => $gorunur->id,
+            'subject_type' => $visible->getMorphClass(),
+            'subject_id' => $visible->id,
         ]);
 
         ActivityLog::factory()->create([
             'description' => 'GIZLI KAYIT',
-            'subject_type' => $gizli->getMorphClass(),
-            'subject_id' => $gizli->id,
+            'subject_type' => $hidden->getMorphClass(),
+            'subject_id' => $hidden->id,
         ]);
 
-        $this->actingAs($okuyucu->fresh())
+        $this->actingAs($reader->fresh())
             ->get(route('logs.index'))
             ->assertOk()
             ->assertSee('GORUNUR KAYIT')
@@ -186,13 +186,13 @@ final class ActivityLogTest extends TestCase
      */
     public function test_baskasinin_hareketi_gorunmez(): void
     {
-        $okuyucu = $this->sinirliOkuyucu();
-        $baskasi = User::factory()->create();
+        $reader = $this->limitedReader();
+        $other = User::factory()->create();
 
-        ActivityLog::factory()->create(['user_id' => $okuyucu->id, 'description' => 'KENDI HAREKETIM']);
-        ActivityLog::factory()->create(['user_id' => $baskasi->id, 'description' => 'BASKASININ HAREKETI']);
+        ActivityLog::factory()->create(['user_id' => $reader->id, 'description' => 'KENDI HAREKETIM']);
+        ActivityLog::factory()->create(['user_id' => $other->id, 'description' => 'BASKASININ HAREKETI']);
 
-        $this->actingAs($okuyucu)
+        $this->actingAs($reader)
             ->get(route('logs.index'))
             ->assertOk()
             ->assertSee('KENDI HAREKETIM')
@@ -202,8 +202,8 @@ final class ActivityLogTest extends TestCase
     /** Yönetici hepsini görür: denetim kaydının varlık sebebi budur. */
     public function test_yonetici_hepsini_gorur(): void
     {
-        $baskasi = User::factory()->create();
-        ActivityLog::factory()->create(['user_id' => $baskasi->id, 'description' => 'BASKASININ HAREKETI']);
+        $other = User::factory()->create();
+        ActivityLog::factory()->create(['user_id' => $other->id, 'description' => 'BASKASININ HAREKETI']);
 
         $this->actingAs($this->reader())
             ->get(route('logs.index'))
@@ -216,10 +216,10 @@ final class ActivityLogTest extends TestCase
      */
     public function test_suzgec_listesi_kadroyu_acmaz(): void
     {
-        $okuyucu = $this->sinirliOkuyucu();
+        $reader = $this->limitedReader();
         User::factory()->create(['name' => 'LISTEDE OLMAMALI']);
 
-        $this->actingAs($okuyucu)
+        $this->actingAs($reader)
             ->get(route('logs.index'))
             ->assertOk()
             ->assertDontSee('LISTEDE OLMAMALI');

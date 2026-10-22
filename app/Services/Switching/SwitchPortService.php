@@ -68,11 +68,11 @@ class SwitchPortService
 
         foreach ($switch->firewallFilters()->get(['name', 'bindings']) as $filter) {
             foreach ((array) $filter->bindings as $binding) {
-                $arayuz = $binding['interface'] ?? null;
-                $yon = $binding['direction'] ?? null;
+                $interface = $binding['interface'] ?? null;
+                $direction = $binding['direction'] ?? null;
 
-                if ($arayuz !== null && $yon !== null) {
-                    $bindings[$arayuz][$yon] = (string) $filter->name;
+                if ($interface !== null && $direction !== null) {
+                    $bindings[$interface][$direction] = (string) $filter->name;
                 }
             }
         }
@@ -99,15 +99,15 @@ class SwitchPortService
     private function present(SwitchPort $port, array $traffic, ?string $selected, array $bindings): array
     {
         $rates = $traffic[$port->if_index] ?? ['in' => null, 'out' => null];
-        $bagli = $bindings[$port->name.'.0'] ?? [];
+        $bound = $bindings[$port->name.'.0'] ?? [];
 
         return [
             'model' => $port,
             'selected' => $selected === $port->name,
 
             // Yönlendirme modunda düzenlenebilen filtre bağlamaları.
-            'input_filter' => $bagli['input'] ?? null,
-            'output_filter' => $bagli['output'] ?? null,
+            'input_filter' => $bound['input'] ?? null,
+            'output_filter' => $bound['output'] ?? null,
 
             /*
              * Modalda SEÇİLİ gelecek mod. Yalnızca YAPILANDIRILMAMIŞ portta
@@ -177,9 +177,9 @@ class SwitchPortService
 
     private function linkSpeedDisplay(SwitchPort $port): string
     {
-        $hiz = $this->linkSpeed($port);
+        $speed = $this->linkSpeed($port);
 
-        return $hiz === null ? '—' : $hiz.' Mbps';
+        return $speed === null ? '—' : $speed.' Mbps';
     }
 
     /**

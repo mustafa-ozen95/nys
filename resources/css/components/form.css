@@ -29,11 +29,11 @@
  * Basit modda kapatılmış alan: görünmez ama girdisi formda kalır ve
  * dokunulmamış değeriyle gönderilir (bkz. Field::gizli, config/simple_mode.php).
  */
-.field--basit-gizli {
+.field--simple-hidden {
     display: none !important;
 }
 
-.field--kilitli {
+.field--locked {
     padding: var(--space-2) var(--space-3);
     background: var(--color-sunken);
     border: 1px dashed var(--color-line);
@@ -41,7 +41,7 @@
     gap: var(--space-1);
 }
 
-.field__deger {
+.field__value {
     font-family: var(--font-mono);
     font-size: var(--text-md);
     color: var(--color-text);

@@ -28,12 +28,12 @@ final class ActivityChainTest extends TestCase
     {
         $chain = app(ActivityChain::class);
 
-        $ilk = $chain->append($this->row('birinci'));
-        $ikinci = $chain->append($this->row('ikinci'));
+        $first = $chain->append($this->row('birinci'));
+        $second = $chain->append($this->row('ikinci'));
 
-        $this->assertNull($ilk->previous_hash);
-        $this->assertNotNull($ilk->hash);
-        $this->assertSame($ilk->hash, $ikinci->previous_hash);
+        $this->assertNull($first->previous_hash);
+        $this->assertNotNull($first->hash);
+        $this->assertSame($first->hash, $second->previous_hash);
         $this->assertTrue($chain->verify()['ok']);
     }
 
@@ -42,19 +42,19 @@ final class ActivityChainTest extends TestCase
         $chain = app(ActivityChain::class);
 
         $chain->append($this->row('birinci'));
-        $hedef = $chain->append($this->row('ikinci'));
+        $target = $chain->append($this->row('ikinci'));
         $chain->append($this->row('ucuncu'));
 
         /*
          * Zincirin etrafından dolaşılır: doğrudan SQL ile, model olayları
          * çalışmadan. Saldırganın yapacağı şey tam olarak budur.
          */
-        DB::table('activity_logs')->where('id', $hedef->id)->update(['description' => 'aslinda boyle degildi']);
+        DB::table('activity_logs')->where('id', $target->id)->update(['description' => 'aslinda boyle degildi']);
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertFalse($sonuc['ok']);
-        $this->assertSame($hedef->id, $sonuc['broken_id']);
+        $this->assertFalse($result['ok']);
+        $this->assertSame($target->id, $result['broken_id']);
     }
 
     public function test_silinen_satir_yakalanir(): void
@@ -62,16 +62,16 @@ final class ActivityChainTest extends TestCase
         $chain = app(ActivityChain::class);
 
         $chain->append($this->row('birinci'));
-        $silinecek = $chain->append($this->row('ikinci'));
-        $sonraki = $chain->append($this->row('ucuncu'));
+        $toDelete = $chain->append($this->row('ikinci'));
+        $next = $chain->append($this->row('ucuncu'));
 
-        DB::table('activity_logs')->where('id', $silinecek->id)->delete();
+        DB::table('activity_logs')->where('id', $toDelete->id)->delete();
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
         // Silinen satırın özeti sonrakinin içindeydi; kırılma orada görünür.
-        $this->assertFalse($sonuc['ok']);
-        $this->assertSame($sonraki->id, $sonuc['broken_id']);
+        $this->assertFalse($result['ok']);
+        $this->assertSame($next->id, $result['broken_id']);
     }
 
     public function test_zincirden_once_yazilmis_satirlar_kirik_sayilmaz(): void
@@ -82,11 +82,11 @@ final class ActivityChainTest extends TestCase
         $chain = app(ActivityChain::class);
         $chain->append($this->row('yeni'));
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertTrue($sonuc['ok']);
-        $this->assertSame(1, $sonuc['checked']);
-        $this->assertSame(1, $sonuc['unprotected']);
+        $this->assertTrue($result['ok']);
+        $this->assertSame(1, $result['checked']);
+        $this->assertSame(1, $result['unprotected']);
     }
 
     public function test_budama_zinciri_kirmaz(): void
@@ -172,12 +172,12 @@ final class ActivityChainTest extends TestCase
     {
         $chain = app(ActivityChain::class);
 
-        $ilk = $chain->append($this->row('denetim bir'));
+        $first = $chain->append($this->row('denetim bir'));
         $chain->append($this->accessRow('arada erisim'));
-        $ikinci = $chain->append($this->row('denetim iki'));
+        $second = $chain->append($this->row('denetim iki'));
 
-        $this->assertSame($ilk->hash, $ikinci->previous_hash);
-        $this->assertSame(ActivityChain::AUDIT, $ikinci->chain);
+        $this->assertSame($first->hash, $second->previous_hash);
+        $this->assertSame(ActivityChain::AUDIT, $second->chain);
     }
 
     /**
@@ -190,16 +190,16 @@ final class ActivityChainTest extends TestCase
 
         $chain->append($this->row('birinci'));
         $chain->append($this->row('ikinci'));
-        $son = $chain->append($this->row('ucuncu'));
+        $last = $chain->append($this->row('ucuncu'));
 
         $this->assertTrue($chain->verify()['ok']);
 
-        DB::table('activity_logs')->where('id', $son->id)->delete();
+        DB::table('activity_logs')->where('id', $last->id)->delete();
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertFalse($sonuc['ok']);
-        $this->assertSame($son->id, $sonuc['broken_id']);
+        $this->assertFalse($result['ok']);
+        $this->assertSame($last->id, $result['broken_id']);
     }
 
     /**
@@ -211,13 +211,13 @@ final class ActivityChainTest extends TestCase
         $chain = app(ActivityChain::class);
 
         $chain->append($this->row('birinci'));
-        $son = $chain->append($this->row('ikinci'));
+        $last = $chain->append($this->row('ikinci'));
 
         // Son nokta hiç yazılmamış.
         Cache::flush();
         $this->assertTrue($chain->verify()['ok']);
 
-        DB::table('activity_logs')->where('id', $son->id)->delete();
+        DB::table('activity_logs')->where('id', $last->id)->delete();
         $this->assertFalse($chain->verify()['ok']);
     }
 
@@ -268,10 +268,10 @@ final class ActivityChainTest extends TestCase
         DB::table('activity_logs')->where('id', $a->id)->update(['description' => 'degisti-1']);
         DB::table('activity_logs')->where('id', $c->id)->update(['description' => 'degisti-2']);
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertSame($a->id, $sonuc['broken_id']);
-        $this->assertSame([$a->id, $c->id], $sonuc['broken_ids']);
+        $this->assertSame($a->id, $result['broken_id']);
+        $this->assertSame([$a->id, $c->id], $result['broken_ids']);
     }
 
     /**
@@ -283,12 +283,12 @@ final class ActivityChainTest extends TestCase
         $user = User::factory()->create();
         $chain = app(ActivityChain::class);
 
-        $satir = $chain->append(['user_id' => $user->id] + $this->row('kullanicinin isi'));
+        $row = $chain->append(['user_id' => $user->id] + $this->row('kullanicinin isi'));
         $chain->append($this->row('baska is'));
 
         $user->delete();
 
-        $this->assertSame($user->id, $satir->fresh()->user_id);
+        $this->assertSame($user->id, $row->fresh()->user_id);
         $this->assertTrue($chain->verify()['ok']);
     }
 
@@ -312,10 +312,10 @@ final class ActivityChainTest extends TestCase
         $this->assertFalse($chain->verify()['ok']);
 
         $chain->seal('test');
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertTrue($sonuc['ok']);
-        $this->assertSame(1, $sonuc['acknowledged']);
+        $this->assertTrue($result['ok']);
+        $this->assertSame(1, $result['acknowledged']);
         $this->assertSame('eski kirik', DB::table('activity_logs')->where('id', $b->id)->value('description'));
     }
 
@@ -329,11 +329,11 @@ final class ActivityChainTest extends TestCase
 
         DB::table('activity_logs')->where('id', $b->id)->update(['description' => 'mühürden sonra oynandı']);
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertFalse($sonuc['ok']);
-        $this->assertSame($b->id, $sonuc['broken_id']);
-        $this->assertSame(0, $sonuc['acknowledged']);
+        $this->assertFalse($result['ok']);
+        $this->assertSame($b->id, $result['broken_id']);
+        $this->assertSame(0, $result['acknowledged']);
     }
 
     public function test_muhurden_sonraki_yeni_kirik_kabul_edilmez(): void
@@ -344,14 +344,14 @@ final class ActivityChainTest extends TestCase
         DB::table('activity_logs')->where('id', $a->id)->update(['description' => 'eski kirik']);
         $chain->seal('test');
 
-        $yeni = $chain->append($this->row('yeni'));
-        DB::table('activity_logs')->where('id', $yeni->id)->update(['description' => 'yeni oyun']);
+        $new = $chain->append($this->row('yeni'));
+        DB::table('activity_logs')->where('id', $new->id)->update(['description' => 'yeni oyun']);
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertFalse($sonuc['ok']);
-        $this->assertSame([$yeni->id], $sonuc['broken_ids']);
-        $this->assertSame(1, $sonuc['acknowledged']);
+        $this->assertFalse($result['ok']);
+        $this->assertSame([$new->id], $result['broken_ids']);
+        $this->assertSame(1, $result['acknowledged']);
     }
 
     public function test_imzasi_bozulan_muhur_yok_sayilir(): void
@@ -362,13 +362,13 @@ final class ActivityChainTest extends TestCase
         DB::table('activity_logs')->where('id', $a->id)->update(['description' => 'eski kirik']);
         $chain->seal('test');
 
-        $yol = storage_path('app/private/zincir-muhru.json');
-        file_put_contents($yol, str_replace('"note":"test"', '"note":"elle"', (string) file_get_contents($yol)));
+        $path = storage_path('app/private/zincir-muhru.json');
+        file_put_contents($path, str_replace('"note":"test"', '"note":"elle"', (string) file_get_contents($path)));
 
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        $this->assertFalse($sonuc['ok']);
-        $this->assertSame($a->id, $sonuc['broken_id']);
+        $this->assertFalse($result['ok']);
+        $this->assertSame($a->id, $result['broken_id']);
     }
 
     /**

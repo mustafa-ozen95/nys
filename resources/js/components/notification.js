@@ -8,67 +8,67 @@ import { emit } from './toast.js';
  * herkese aynı içeriği gösterir. Sunucu hazır metin döndürür; burada karar
  * verilmez, yalnızca çizilir.
  */
-const ARALIK_MS = 15000;
-const ILK_GECIKME_MS = 800;
+const INTERVAL_MS = 15000;
+const FIRST_DELAY_MS = 800;
 
-let sonGorulen = new Set();
-let ilkTur = true;
+let lastSeen = new Set();
+let firstType = true;
 
-function satir(kayit) {
+function row(record) {
     const el = document.createElement('a');
 
-    el.className = `bildirim__satir${kayit.unseen ? ' bildirim__satir--yeni' : ''}`;
-    el.href = kayit.switch_uuid ? `/switchler/${kayit.switch_uuid}` : '#';
+    el.className = `notification__row${record.unseen ? ' notification__row--new' : ''}`;
+    el.href = record.switch_uuid ? `/switches/${record.switch_uuid}` : '#';
 
-    const ust = document.createElement('div');
-    ust.className = 'bildirim__ust';
+    const top = document.createElement('div');
+    top.className = 'notification__top';
 
-    const baslik = document.createElement('span');
-    baslik.textContent = kayit.switch ? `${kayit.switch} · ${kayit.title}` : kayit.title;
+    const header = document.createElement('span');
+    header.textContent = record.switch ? `${record.switch} · ${record.title}` : record.title;
 
-    const rozet = document.createElement('span');
-    rozet.className = `badge badge-${kayit.badge}`;
-    rozet.textContent = kayit.label;
+    const badge = document.createElement('span');
+    badge.className = `badge badge-${record.badge}`;
+    badge.textContent = record.label;
 
-    ust.append(baslik, rozet);
-    el.append(ust);
+    top.append(header, badge);
+    el.append(top);
 
-    if (kayit.detail) {
-        const detay = document.createElement('p');
-        detay.className = 'bildirim__detay';
-        detay.textContent = kayit.detail;
-        el.append(detay);
+    if (record.detail) {
+        const detail = document.createElement('p');
+        detail.className = 'notification__detail';
+        detail.textContent = record.detail;
+        el.append(detail);
     }
 
     const alt = document.createElement('p');
-    alt.className = 'bildirim__detay';
-    alt.textContent = kayit.actor ? `${kayit.actor} · ${kayit.ago}` : kayit.ago;
+    alt.className = 'notification__detail';
+    alt.textContent = record.actor ? `${record.actor} · ${record.ago}` : record.ago;
     el.append(alt);
 
     return el;
 }
 
-function ciz(veri) {
-    const liste = $('[data-bildirim-liste]');
-    const sayac = $('[data-bildirim-sayac]');
+function draw(data) {
+    const list = $('[data-notification-list]');
+    const counter = $('[data-notification-counter]');
 
-    if (!liste || !sayac) {
+    if (!list || !counter) {
         return;
     }
 
-    liste.textContent = '';
+    list.textContent = '';
 
-    if (veri.items.length === 0) {
-        const bos = document.createElement('p');
-        bos.className = 'bildirim__bos';
-        bos.textContent = 'Son 24 saatte bildirim yok.';
-        liste.append(bos);
+    if (data.items.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'notification__empty';
+        empty.textContent = 'Son 24 saatte bildirim yok.';
+        list.append(empty);
     } else {
-        veri.items.forEach((kayit) => liste.append(satir(kayit)));
+        data.items.forEach((record) => list.append(row(record)));
     }
 
-    sayac.textContent = String(veri.unseen);
-    sayac.hidden = veri.unseen === 0;
+    counter.textContent = String(data.unseen);
+    counter.hidden = data.unseen === 0;
 }
 
 /**
@@ -77,37 +77,37 @@ function ciz(veri) {
  * İlk turda gösterilmez: sayfa açılışında son 24 saatin tamamı "yeni"
  * sayılıp ekran toast yağmuruna dönerdi.
  */
-function duyur(veri) {
-    const yeniler = veri.items.filter((kayit) => !sonGorulen.has(kayit.id));
+function announce(data) {
+    const fresh = data.items.filter((record) => !lastSeen.has(record.id));
 
-    sonGorulen = new Set(veri.items.map((kayit) => kayit.id));
+    lastSeen = new Set(data.items.map((record) => record.id));
 
-    if (ilkTur) {
-        ilkTur = false;
+    if (firstType) {
+        firstType = false;
 
         return;
     }
 
-    yeniler.slice(0, 3).forEach((kayit) => {
+    fresh.slice(0, 3).forEach((record) => {
         emit(
-            kayit.switch ? `${kayit.switch} · ${kayit.title} — ${kayit.label}` : `${kayit.title} — ${kayit.label}`,
-            kayit.kind === 'failure' ? 'danger' : 'success',
+            record.switch ? `${record.switch} · ${record.title} — ${record.label}` : `${record.title} — ${record.label}`,
+            record.kind === 'failure' ? 'danger' : 'success',
         );
     });
 }
 
-async function yokla() {
+async function poll() {
     try {
-        const yanit = await fetch('/bildirimler', { headers: { Accept: 'application/json' } });
+        const response = await fetch('/notifications', { headers: { Accept: 'application/json' } });
 
-        if (!yanit.ok) {
+        if (!response.ok) {
             return;
         }
 
-        const veri = await yanit.json();
+        const data = await response.json();
 
-        ciz(veri);
-        duyur(veri);
+        draw(data);
+        announce(data);
     } catch {
         // Geçici bir ağ hatası akışı bitirmesin; bir sonraki tur dener.
     }
@@ -120,14 +120,14 @@ async function yokla() {
  * açıp kapatabilir ve sayacı kaybetmek, görülmemiş bir hatayı kaybetmektir.
  * İşaret yalnızca bu kullanıcı için düşer.
  */
-async function okunduIsaretle() {
+async function markRead() {
     /*
      * SONUÇ KONTROL EDİLİR. Yanıt bakılmadan yutulursa uç 422 dönerken ekran
      * hiçbir şey söylemez: gerekçe ara katmanı isteği reddeder, kullanıcı
      * yalnızca "işaretlenmedi" görür. fetch 4xx'te throw ETMEZ.
      */
     try {
-        const yanit = await fetch('/bildirimler/okundu', {
+        const response = await fetch('/notifications/seen', {
             method: 'POST',
             headers: {
                 Accept: 'application/json',
@@ -135,7 +135,7 @@ async function okunduIsaretle() {
             },
         });
 
-        if (!yanit.ok) {
+        if (!response.ok) {
             emit('Bildirimler okundu işaretlenemedi.', 'danger');
 
             return false;
@@ -150,10 +150,10 @@ async function okunduIsaretle() {
 }
 
 /** Yoklama bir kez kurulur; init her sayfa geçişinde koşuyor. */
-let yoklamaKuruldu = false;
+let pollingStarted = false;
 
 export function init() {
-    if (! $('[data-bildirim]')) {
+    if (! $('[data-notification]')) {
         return;
     }
 
@@ -162,26 +162,26 @@ export function init() {
      * (bkz. navigation.js); düğümün kendisine bağlanan bir dinleyici ilk
      * geçişte kopardı.
      */
-    on('click', '[data-bildirim-ac]', (olay, dugme) => {
-        const panel = $('[data-bildirim-panel]');
+    on('click', '[data-notification-open]', (event, button) => {
+        const panel = $('[data-notification-panel]');
 
         if (! panel) {
             return;
         }
 
-        const acik = ! panel.hidden;
+        const open = ! panel.hidden;
 
-        panel.hidden = acik;
-        dugme.setAttribute('aria-expanded', String(! acik));
+        panel.hidden = open;
+        button.setAttribute('aria-expanded', String(! open));
 
-        if (! acik) {
-            yokla();
+        if (! open) {
+            poll();
         }
     });
 
-    on('click', '[data-bildirim-okundu]', async () => {
-        await okunduIsaretle();
-        yokla();
+    on('click', '[data-notification-read]', async () => {
+        await markRead();
+        poll();
     });
 
     /*
@@ -189,36 +189,36 @@ export function init() {
      * bildirimleri görmüş demektir. İşaret gönderilmeden sayfa değişmesin
      * diye varsayılan davranış beklenir.
      */
-    on('click', '[data-bildirim-tumu]', async (olay, baglanti) => {
+    on('click', '[data-notification-all]', async (event, connection) => {
         /*
          * ADRES ÖNCE ALINIR: "await"ten sonra olay.currentTarget NULL olur
          * (tarayıcı işleyici dönünce onu sıfırlıyor) ve bağlantı hiçbir yere
          * gitmezdi. Bir kez tam olarak böyle oldu.
          */
-        const adres = baglanti.href;
+        const address = connection.href;
 
-        olay.preventDefault();
-        await okunduIsaretle();
+        event.preventDefault();
+        await markRead();
 
-        window.location.href = adres;
+        window.location.href = address;
     });
 
-    on('click', 'body', (olay) => {
-        const kok = $('[data-bildirim]');
-        const panel = $('[data-bildirim-panel]');
+    on('click', 'body', (event) => {
+        const root = $('[data-notification]');
+        const panel = $('[data-notification-panel]');
 
-        if (kok && panel && ! panel.hidden && ! kok.contains(olay.target)) {
+        if (root && panel && ! panel.hidden && ! root.contains(event.target)) {
             panel.hidden = true;
-            $('[data-bildirim-ac]')?.setAttribute('aria-expanded', 'false');
+            $('[data-notification-open]')?.setAttribute('aria-expanded', 'false');
         }
     });
 
-    if (yoklamaKuruldu) {
+    if (pollingStarted) {
         return;
     }
 
-    yoklamaKuruldu = true;
+    pollingStarted = true;
 
-    setTimeout(yokla, ILK_GECIKME_MS);
-    setInterval(yokla, ARALIK_MS);
+    setTimeout(poll, FIRST_DELAY_MS);
+    setInterval(poll, INTERVAL_MS);
 }

@@ -469,15 +469,15 @@ class NetworkSwitch extends Model
      */
     public function scopeOrderByRole(Builder $query): void
     {
-        $roller = collect(SwitchRole::cases())->sortBy(
-            fn (SwitchRole $rol): int => $rol->listingOrder(),
+        $roles = collect(SwitchRole::cases())->sortBy(
+            fn (SwitchRole $role): int => $role->listingOrder(),
         );
 
-        $ifade = 'case '.$roller
-            ->map(fn (SwitchRole $rol): string => 'when role = ? then '.$rol->listingOrder())
+        $expression = 'case '.$roles
+            ->map(fn (SwitchRole $role): string => 'when role = ? then '.$role->listingOrder())
             ->implode(' ').' else '.count(SwitchRole::cases()).' end';
 
-        $query->orderByRaw($ifade, $roller->pluck('value')->all());
+        $query->orderByRaw($expression, $roles->pluck('value')->all());
     }
 
     /** @param  Builder<$this>  $query */

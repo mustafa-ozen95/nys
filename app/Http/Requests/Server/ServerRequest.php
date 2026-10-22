@@ -77,11 +77,11 @@ class ServerRequest extends FormRequest
                 return;
             }
 
-            $degisti = $this->string('ip_address')->toString() !== (string) $server->ip_address
+            $changed = $this->string('ip_address')->toString() !== (string) $server->ip_address
                 || (int) $this->input('connection_port') !== (int) $server->connection_port
                 || $this->string('connection_protocol')->toString() !== (string) $server->connection_protocol?->value;
 
-            if ($degisti) {
+            if ($changed) {
                 $validator->errors()->add(
                     'connection_password',
                     'Bağlantı hedefi (adres, port, protokol) değişirken kayıtlı parola yeni hedefe gönderilir; '

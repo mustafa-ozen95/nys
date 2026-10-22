@@ -91,16 +91,16 @@ class SwitchViewService
      */
     private function clockDrift(NetworkSwitch $switch): ?array
     {
-        $sapma = $switch->clock_offset_seconds;
-        $esik = (int) config('measurement.clock_drift_threshold');
+        $deviation = $switch->clock_offset_seconds;
+        $threshold = (int) config('measurement.clock_drift_threshold');
 
-        if ($sapma === null || abs($sapma) < $esik) {
+        if ($deviation === null || abs($deviation) < $threshold) {
             return null;
         }
 
         return [
-            'seconds' => $sapma,
-            'label' => CarbonInterval::seconds(abs($sapma))->cascade()->forHumans(short: true, parts: 2),
+            'seconds' => $deviation,
+            'label' => CarbonInterval::seconds(abs($deviation))->cascade()->forHumans(short: true, parts: 2),
             'checked_at' => $switch->clock_checked_at?->diffForHumans(),
         ];
     }
@@ -152,7 +152,7 @@ class SwitchViewService
              */
             'loginUsers' => $switch->loginUsers()->orderBy('name')->get(),
             'userClassOptions' => collect(JunosUserClass::cases())
-                ->mapWithKeys(fn (JunosUserClass $sinif): array => [$sinif->value => $sinif->label()])
+                ->mapWithKeys(fn (JunosUserClass $class): array => [$class->value => $class->label()])
                 ->all(),
 
             /*

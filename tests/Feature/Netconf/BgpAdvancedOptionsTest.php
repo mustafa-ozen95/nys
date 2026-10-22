@@ -54,23 +54,23 @@ final class BgpAdvancedOptionsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<hold-time>30</hold-time>', $yazilan);
-        $this->assertStringContainsString('<cluster>10.0.0.1</cluster>', $yazilan);
-        $this->assertStringContainsString('<graceful-restart/>', $yazilan);
-        $this->assertStringContainsString('<remove-private/>', $yazilan);
-        $this->assertStringContainsString('<as-override/>', $yazilan);
-        $this->assertStringContainsString('<advertise-inactive/>', $yazilan);
-        $this->assertStringContainsString('<multipath/>', $yazilan);
-        $this->assertStringContainsString('<damping/>', $yazilan);
-        $this->assertStringContainsString('<out-delay>15</out-delay>', $yazilan);
+        $this->assertStringContainsString('<hold-time>30</hold-time>', $written);
+        $this->assertStringContainsString('<cluster>10.0.0.1</cluster>', $written);
+        $this->assertStringContainsString('<graceful-restart/>', $written);
+        $this->assertStringContainsString('<remove-private/>', $written);
+        $this->assertStringContainsString('<as-override/>', $written);
+        $this->assertStringContainsString('<advertise-inactive/>', $written);
+        $this->assertStringContainsString('<multipath/>', $written);
+        $this->assertStringContainsString('<damping/>', $written);
+        $this->assertStringContainsString('<out-delay>15</out-delay>', $written);
         $this->assertStringContainsString(
             '<bfd-liveness-detection><minimum-interval>300</minimum-interval></bfd-liveness-detection>',
-            $yazilan,
+            $written,
         );
-        $this->assertStringContainsString('<allow>10.9.0.0/24</allow>', $yazilan);
-        $this->assertStringContainsString('<allow>10.9.1.0/24</allow>', $yazilan);
+        $this->assertStringContainsString('<allow>10.9.0.0/24</allow>', $written);
+        $this->assertStringContainsString('<allow>10.9.1.0/24</allow>', $written);
     }
 
     /**
@@ -211,11 +211,11 @@ final class BgpAdvancedOptionsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
         // Silme belgesi durur, yeniden yazma olmaz.
-        $this->assertStringContainsString('<authentication-key delete="delete"/>', $yazilan);
-        $this->assertStringNotContainsString('<authentication-key>$9$', $yazilan);
+        $this->assertStringContainsString('<authentication-key delete="delete"/>', $written);
+        $this->assertStringNotContainsString('<authentication-key>$9$', $written);
     }
 
     public function test_anahtar_ile_birlikte_yeni_deger_verilemez(): void
@@ -250,11 +250,11 @@ final class BgpAdvancedOptionsTest extends TestCase
             ])
             ->assertRedirect();
 
-        $kayitlar = ActivityLog::query()->pluck('description')->implode(' ');
+        $records = ActivityLog::query()->pluck('description')->implode(' ');
 
-        $this->assertStringNotContainsString('$9$gizliDeger', $kayitlar);
-        $this->assertStringNotContainsString('duz-metin-anahtar', $kayitlar);
-        $this->assertStringContainsString('authentication-key', $kayitlar);
+        $this->assertStringNotContainsString('$9$gizliDeger', $records);
+        $this->assertStringNotContainsString('duz-metin-anahtar', $records);
+        $this->assertStringContainsString('authentication-key', $records);
     }
 
     public function test_hizasiz_dinamik_komsu_agi_reddedilir(): void
@@ -292,14 +292,14 @@ final class BgpAdvancedOptionsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<neighbor><name>198.51.100.134</name>', $yazilan);
-        $this->assertStringContainsString('<authentication-key>komsuya-ozel</authentication-key>', $yazilan);
-        $this->assertStringContainsString('<hold-time>45</hold-time>', $yazilan);
-        $this->assertStringContainsString('<passive/>', $yazilan);
-        $this->assertStringContainsString('<multihop><ttl>2</ttl></multihop>', $yazilan);
-        $this->assertStringContainsString('<import>gelen</import>', $yazilan);
+        $this->assertStringContainsString('<neighbor><name>198.51.100.134</name>', $written);
+        $this->assertStringContainsString('<authentication-key>komsuya-ozel</authentication-key>', $written);
+        $this->assertStringContainsString('<hold-time>45</hold-time>', $written);
+        $this->assertStringContainsString('<passive/>', $written);
+        $this->assertStringContainsString('<multihop><ttl>2</ttl></multihop>', $written);
+        $this->assertStringContainsString('<import>gelen</import>', $written);
     }
 
     /**
@@ -320,10 +320,10 @@ final class BgpAdvancedOptionsTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
         foreach (['authentication-key', 'hold-time', 'passive', 'multihop', 'import', 'export'] as $alan) {
-            $this->assertStringContainsString("<{$alan} delete=\"delete\"/>", $yazilan);
+            $this->assertStringContainsString("<{$alan} delete=\"delete\"/>", $written);
         }
     }
 

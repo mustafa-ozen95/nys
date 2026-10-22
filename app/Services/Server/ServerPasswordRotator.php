@@ -45,27 +45,27 @@ use Throwable;
 class ServerPasswordRotator
 {
     /** Kayıt başına döndürme kilidi. */
-    private const KILIT = 'nys:sunucu-dondurme:';
+    private const LOCK = 'nys:sunucu-dondurme:';
 
     public function __construct(
-        private DriverSelector $secici,
-        private PasswordGenerator $uretici,
+        private DriverSelector $selector,
+        private PasswordGenerator $generator,
         private ActivityRecorder $activity,
     ) {}
 
-    public function dondur(Server $sunucu, ?User $kullanici = null, ?string $gerekce = null): ServerPasswordRotation
+    public function rotate(Server $server, ?User $user = null, ?string $reason = null): ServerPasswordRotation
     {
-        $tur = $sunucu->passwordRotations()->create([
-            'user_id' => $kullanici?->id,
+        $round = $server->passwordRotations()->create([
+            'user_id' => $user?->id,
             'status' => PasswordRotationStatus::Running,
             'stage' => PasswordRotationStage::Started,
             'started_at' => now(),
         ]);
 
-        $engel = $this->secici->engel($sunucu);
+        $engel = $this->selector->engel($server);
 
         if ($engel !== null) {
-            return $this->bitir($sunucu, $tur, PasswordRotationStatus::Failed, $engel, $kullanici, $gerekce);
+            return $this->finish($server, $round, PasswordRotationStatus::Failed, $engel, $user, $reason);
         }
 
         /*
@@ -79,29 +79,29 @@ class ServerPasswordRotator
          *
          * Kilit SUNUCU BAŞINADIR: farklı sunucular birbirini beklemez.
          */
-        $kilit = Cache::lock(self::KILIT.$sunucu->getKey(), $this->kilitSaniye());
+        $lock = Cache::lock(self::LOCK.$server->getKey(), $this->lockSecond());
 
-        if (! $kilit->get()) {
-            return $this->bitir(
-                $sunucu,
-                $tur,
+        if (! $lock->get()) {
+            return $this->finish(
+                $server,
+                $round,
                 PasswordRotationStatus::Failed,
                 'Bu sunucu için bir güncelleme zaten sürüyor; ikinci tur başlatılmadı.',
-                $kullanici,
-                $gerekce,
+                $user,
+                $reason,
             );
         }
 
         try {
-            $this->calistir($sunucu, $tur, $kullanici, $gerekce);
+            $this->run($server, $round, $user, $reason);
         } catch (Throwable $e) {
-            return $this->dustu($sunucu, $tur, $e, $kullanici, $gerekce);
+            return $this->dropped($server, $round, $e, $user, $reason);
         } finally {
             /* Tur nasıl biterse bitsin kilit BIRAKILIR. */
-            $kilit->release();
+            $lock->release();
         }
 
-        return $tur->refresh();
+        return $round->refresh();
     }
 
     /**
@@ -111,12 +111,12 @@ class ServerPasswordRotator
      * eski parola, yeni parola ya da yalnızca kurtarma hesabı çalışıyor
      * olabilir. Üçü de sırayla denenir; ilk açılan oturum yolu belirler.
      */
-    public function onar(ServerPasswordRotation $tur, ?User $kullanici = null): ServerPasswordRotation
+    public function repair(ServerPasswordRotation $round, ?User $user = null): ServerPasswordRotation
     {
-        $sunucu = $tur->server;
+        $server = $round->server;
 
-        if (! $tur->recovery_active || $sunucu === null) {
-            return $tur;
+        if (! $round->recovery_active || $server === null) {
+            return $round;
         }
 
         /*
@@ -124,63 +124,63 @@ class ServerPasswordRotator
          * dener ve kurtarma hesabını siler; sürmekte olan bir turun ortasında
          * bunu yapmak, o turun az önce açtığı hesabı silmek demekti.
          */
-        $kilit = Cache::lock(self::KILIT.$sunucu->getKey(), $this->kilitSaniye());
+        $lock = Cache::lock(self::LOCK.$server->getKey(), $this->lockSecond());
 
-        if (! $kilit->get()) {
-            $this->yaz($sunucu, $kullanici, null, 'server_password_repair_deferred',
-                "{$sunucu->short_name}: bir güncelleme sürüyor, onarım şimdi yapılmadı.");
+        if (! $lock->get()) {
+            $this->write($server, $user, null, 'server_password_repair_deferred',
+                "{$server->short_name}: bir güncelleme sürüyor, onarım şimdi yapılmadı.");
 
-            return $tur;
+            return $round;
         }
 
         try {
-            return $this->onarimiCalistir($sunucu, $tur, $kullanici);
+            return $this->repairRun($server, $round, $user);
         } finally {
-            $kilit->release();
+            $lock->release();
         }
     }
 
-    private function calistir(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
-        ?User $kullanici,
-        ?string $gerekce,
+    private function run(
+        Server $server,
+        ServerPasswordRotation $round,
+        ?User $user,
+        ?string $reason,
     ): void {
-        $surucu = $this->secici->icin($sunucu);
+        $driver = $this->selector->for($server);
 
-        $surucu->kurtarmaDestekler()
-            ? $this->kurtarmaliSira($sunucu, $tur, $surucu, $kullanici, $gerekce)
-            : $this->dogrudanSira($sunucu, $tur, $surucu, $kullanici, $gerekce);
+        $driver->recoverySupports()
+            ? $this->recoverableOrder($server, $round, $driver, $user, $reason)
+            : $this->directOrder($server, $round, $driver, $user, $reason);
     }
 
     /**
      * Kurtarma hesaplı sıra — parolasını değiştirdiğimiz hesapla bağlandığımız
      * platformlar için (Linux/SSH).
      */
-    private function kurtarmaliSira(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
-        ServerDriver $surucu,
-        ?User $kullanici,
-        ?string $gerekce,
+    private function recoverableOrder(
+        Server $server,
+        ServerPasswordRotation $round,
+        ServerDriver $driver,
+        ?User $user,
+        ?string $reason,
     ): void {
-        $kurtarmaAdi = $this->kurtarmaAdi();
-        $kurtarmaParolasi = $this->yeniParola();
+        $recoveryName = $this->recoveryName();
+        $recoveryPassword = $this->newPassword();
 
         /*
          * Kurtarma KİMLİĞİ makineye gitmeden önce kayda geçer: hesap açılırken
          * süreç ölürse makinede parolasını bilmediğimiz bir hesap kalırdı.
          */
-        $tur->forceFill([
-            'recovery_username' => $kurtarmaAdi,
-            'recovery_password' => $kurtarmaParolasi,
+        $round->forceFill([
+            'recovery_username' => $recoveryName,
+            'recovery_password' => $recoveryPassword,
         ])->save();
 
-        $ad = (string) $sunucu->connection_username;
-        $parola = (string) $sunucu->connection_password;
+        $name = (string) $server->connection_username;
+        $password = (string) $server->connection_password;
 
         // 1 — kurtarma hesabı.
-        $oturum = $surucu->ac($sunucu, $ad, $parola);
+        $session = $driver->open($server, $name, $password);
 
         try {
             /*
@@ -190,55 +190,55 @@ class ServerPasswordRotator
              * kesilirse hesap makinede kalmış olabilir ve o ihtimalde
              * susmaktansa fazladan uyarmak doğrudur.
              */
-            $tur->forceFill(['recovery_active' => true])->save();
+            $round->forceFill(['recovery_active' => true])->save();
 
-            $surucu->kurtarmaAc($oturum, $kurtarmaAdi, $kurtarmaParolasi);
-            $tur->forceFill(['stage' => PasswordRotationStage::RecoveryCreated])->save();
+            $driver->recoveryOpen($session, $recoveryName, $recoveryPassword);
+            $round->forceFill(['stage' => PasswordRotationStage::RecoveryCreated])->save();
         } finally {
-            $oturum->kapat();
+            $session->close();
         }
 
         // 2 — kurtarma hesabı gerçekten çalışıyor mu.
-        if (! $surucu->dogrula($sunucu, $kurtarmaAdi, $kurtarmaParolasi)) {
-            $this->kurtarmayiSil($sunucu, $tur, $surucu, $ad, $parola);
+        if (! $driver->verify($server, $recoveryName, $recoveryPassword)) {
+            $this->recoveryDelete($server, $round, $driver, $name, $password);
 
             throw new RotationError('Kurtarma hesabı açıldı ama onunla bağlanılamadı; tur iptal edildi.');
         }
 
-        $tur->forceFill(['stage' => PasswordRotationStage::RecoveryVerified])->save();
+        $round->forceFill(['stage' => PasswordRotationStage::RecoveryVerified])->save();
 
         // 3 — parola değişimi, KURTARMA hesabıyla.
-        $yeni = $this->yeniParola();
-        $tur->forceFill(['new_password' => $yeni])->save();
+        $new = $this->newPassword();
+        $round->forceFill(['new_password' => $new])->save();
 
-        $kurtarma = $surucu->ac($sunucu, $kurtarmaAdi, $kurtarmaParolasi);
+        $recovery = $driver->open($server, $recoveryName, $recoveryPassword);
 
         try {
-            $surucu->parolaDegistir($kurtarma, $ad, $yeni);
-            $tur->forceFill(['stage' => PasswordRotationStage::PasswordChanged])->save();
+            $driver->passwordChange($recovery, $name, $new);
+            $round->forceFill(['stage' => PasswordRotationStage::PasswordChanged])->save();
         } finally {
-            $kurtarma->kapat();
+            $recovery->close();
         }
 
         // 4 — yeni parola deneniyor.
-        if (! $surucu->dogrula($sunucu, $ad, $yeni)) {
+        if (! $driver->verify($server, $name, $new)) {
             throw new RotationError('Yeni parola makineye yazıldı ama onunla bağlanılamadı.');
         }
 
-        $tur->forceFill(['stage' => PasswordRotationStage::PasswordVerified])->save();
+        $round->forceFill(['stage' => PasswordRotationStage::PasswordVerified])->save();
 
         // 5 — paneldeki kayıt ancak şimdi değişir.
-        $this->parolayiYaz($sunucu, $yeni);
+        $this->passwordWrite($server, $new);
 
         // 6 — kurtarma hesabı YENİ parolayla silinir.
-        $this->kurtarmayiSil($sunucu, $tur, $surucu, $ad, $yeni);
+        $this->recoveryDelete($server, $round, $driver, $name, $new);
 
-        $tur->forceFill(['stage' => PasswordRotationStage::RecoveryRemoved])->save();
+        $round->forceFill(['stage' => PasswordRotationStage::RecoveryRemoved])->save();
 
-        $this->bitir(
-            $sunucu, $tur, PasswordRotationStatus::Succeeded,
+        $this->finish(
+            $server, $round, PasswordRotationStatus::Succeeded,
             'Parola güncellendi, doğrulandı ve kurtarma hesabı silindi.',
-            $kullanici, $gerekce,
+            $user, $reason,
         );
     }
 
@@ -250,56 +250,56 @@ class ServerPasswordRotator
      * dönüş de çalışır; çalışmazsa elde kalan tek şey kayıttaki parolalardır
      * ve ikisi de tur kaydında durur.
      */
-    private function dogrudanSira(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
-        ServerDriver $surucu,
-        ?User $kullanici,
-        ?string $gerekce,
+    private function directOrder(
+        Server $server,
+        ServerPasswordRotation $round,
+        ServerDriver $driver,
+        ?User $user,
+        ?string $reason,
     ): void {
-        $ad = (string) $sunucu->connection_username;
-        $onceki = (string) $sunucu->connection_password;
-        $yeni = $this->yeniParola();
+        $name = (string) $server->connection_username;
+        $previous = (string) $server->connection_password;
+        $new = $this->newPassword();
 
-        $tur->forceFill(['new_password' => $yeni])->save();
+        $round->forceFill(['new_password' => $new])->save();
 
-        $oturum = $surucu->ac($sunucu, $ad, $onceki);
+        $session = $driver->open($server, $name, $previous);
 
         try {
-            $surucu->parolaDegistir($oturum, $ad, $yeni);
-            $tur->forceFill(['stage' => PasswordRotationStage::PasswordChanged])->save();
+            $driver->passwordChange($session, $name, $new);
+            $round->forceFill(['stage' => PasswordRotationStage::PasswordChanged])->save();
         } finally {
-            $oturum->kapat();
+            $session->close();
         }
 
-        if ($surucu->dogrula($sunucu, $ad, $yeni)) {
-            $tur->forceFill(['stage' => PasswordRotationStage::PasswordVerified])->save();
-            $this->parolayiYaz($sunucu, $yeni);
+        if ($driver->verify($server, $name, $new)) {
+            $round->forceFill(['stage' => PasswordRotationStage::PasswordVerified])->save();
+            $this->passwordWrite($server, $new);
 
-            $this->bitir(
-                $sunucu, $tur, PasswordRotationStatus::Succeeded,
+            $this->finish(
+                $server, $round, PasswordRotationStatus::Succeeded,
                 'Parola güncellendi ve doğrulandı.',
-                $kullanici, $gerekce,
+                $user, $reason,
             );
 
             return;
         }
 
         /* Doğrulanamadı: aynı kanaldan eskiye dön. */
-        if ($onceki !== '') {
-            $geri = $surucu->ac($sunucu, $ad, $yeni);
+        if ($previous !== '') {
+            $back = $driver->open($server, $name, $new);
 
             try {
-                $surucu->parolaDegistir($geri, $ad, $onceki);
+                $driver->passwordChange($back, $name, $previous);
             } finally {
-                $geri->kapat();
+                $back->close();
             }
 
-            if ($surucu->dogrula($sunucu, $ad, $onceki)) {
-                $this->bitir(
-                    $sunucu, $tur, PasswordRotationStatus::Failed,
+            if ($driver->verify($server, $name, $previous)) {
+                $this->finish(
+                    $server, $round, PasswordRotationStatus::Failed,
                     'Yeni parola doğrulanamadı; eski parola geri kondu ve çalışıyor.',
-                    $kullanici, $gerekce,
+                    $user, $reason,
                 );
 
                 return;
@@ -309,31 +309,31 @@ class ServerPasswordRotator
         throw new RotationError('Yeni parola doğrulanamadı ve eskisi geri konamadı.');
     }
 
-    private function onarimiCalistir(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
-        ?User $kullanici,
+    private function repairRun(
+        Server $server,
+        ServerPasswordRotation $round,
+        ?User $user,
     ): ServerPasswordRotation {
-        $surucu = $this->secici->icin($sunucu);
-        $ad = (string) $sunucu->connection_username;
+        $driver = $this->selector->for($server);
+        $name = (string) $server->connection_username;
 
         /*
          * Kayıttaki parola ÖNCE denenir. Tur 3. adımdan sonra takıldıysa
          * makinedeki parola yeni olabilir; o yüzden denenen parola da listede.
          * Sonuncu çare kurtarma hesabının kendisi.
          */
-        $adaylar = [
-            [$ad, (string) $sunucu->connection_password],
-            [$ad, (string) $tur->new_password],
-            [(string) $tur->recovery_username, (string) $tur->recovery_password],
+        $candidates = [
+            [$name, (string) $server->connection_password],
+            [$name, (string) $round->new_password],
+            [(string) $round->recovery_username, (string) $round->recovery_password],
         ];
 
-        foreach ($adaylar as [$kim, $parola]) {
-            if ($kim === '' || $parola === '') {
+        foreach ($candidates as [$who, $password]) {
+            if ($who === '' || $password === '') {
                 continue;
             }
 
-            if (! $surucu->dogrula($sunucu, $kim, $parola)) {
+            if (! $driver->verify($server, $who, $password)) {
                 continue;
             }
 
@@ -341,57 +341,57 @@ class ServerPasswordRotator
              * Makinedeki parola denenen parolaysa panel geride kalmış demektir;
              * ikisi ayrışmış hâlde bırakılmaz.
              */
-            if ($kim === $ad && $parola === (string) $tur->new_password) {
-                $this->parolayiYaz($sunucu, $parola);
+            if ($who === $name && $password === (string) $round->new_password) {
+                $this->passwordWrite($server, $password);
             }
 
             try {
-                $this->kurtarmayiSil($sunucu, $tur, $surucu, $kim, $parola);
+                $this->recoveryDelete($server, $round, $driver, $who, $password);
             } catch (Throwable $e) {
-                return $this->bitir(
-                    $sunucu, $tur, PasswordRotationStatus::Failed,
+                return $this->finish(
+                    $server, $round, PasswordRotationStatus::Failed,
                     'Kurtarma hesabı silinemedi: '.$e->getMessage(),
-                    $kullanici, null,
+                    $user, null,
                 );
             }
 
-            $tur->forceFill(['stage' => PasswordRotationStage::RecoveryRemoved])->save();
+            $round->forceFill(['stage' => PasswordRotationStage::RecoveryRemoved])->save();
 
-            return $this->bitir(
-                $sunucu, $tur, PasswordRotationStatus::Succeeded,
+            return $this->finish(
+                $server, $round, PasswordRotationStatus::Succeeded,
                 'Tur kapatıldı; kurtarma hesabı silindi.',
-                $kullanici, null,
+                $user, null,
             );
         }
 
-        return $this->bitir(
-            $sunucu, $tur, PasswordRotationStatus::Failed,
+        return $this->finish(
+            $server, $round, PasswordRotationStatus::Failed,
             'Hiçbir kimlikle bağlanılamadı. Makineye elle girip kurtarma hesabını silmek gerekiyor.',
-            $kullanici, null,
+            $user, null,
         );
     }
 
     /** Kurtarma hesabını siler ve panelden sırrını temizler. */
-    private function kurtarmayiSil(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
-        ServerDriver $surucu,
-        string $kullaniciAdi,
-        string $parola,
+    private function recoveryDelete(
+        Server $server,
+        ServerPasswordRotation $round,
+        ServerDriver $driver,
+        string $userName,
+        string $password,
     ): void {
-        if (blank($tur->recovery_username)) {
+        if (blank($round->recovery_username)) {
             return;
         }
 
-        $oturum = $surucu->ac($sunucu, $kullaniciAdi, $parola);
+        $session = $driver->open($server, $userName, $password);
 
         try {
-            $surucu->kurtarmaSil($oturum, (string) $tur->recovery_username);
+            $driver->recoveryDelete($session, (string) $round->recovery_username);
         } finally {
-            $oturum->kapat();
+            $session->close();
         }
 
-        $tur->kurtarmayiTemizle();
+        $round->recoveryClean();
     }
 
     /**
@@ -400,67 +400,67 @@ class ServerPasswordRotator
      * Sunucunun TEK kimliği var (connection_username/password); ayrı bir
      * döndürme hesabı yok, bu yüzden yayılacak başka bir alan da yok.
      */
-    private function parolayiYaz(Server $sunucu, string $yeniParola): void
+    private function passwordWrite(Server $server, string $newPassword): void
     {
-        $sunucu->forceFill(['connection_password' => $yeniParola])->save();
+        $server->forceFill(['connection_password' => $newPassword])->save();
     }
 
-    private function dustu(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
+    private function dropped(
+        Server $server,
+        ServerPasswordRotation $round,
         Throwable $e,
-        ?User $kullanici,
-        ?string $gerekce,
+        ?User $user,
+        ?string $reason,
     ): ServerPasswordRotation {
-        return $this->bitir($sunucu, $tur, PasswordRotationStatus::Failed, $e->getMessage(), $kullanici, $gerekce);
+        return $this->finish($server, $round, PasswordRotationStatus::Failed, $e->getMessage(), $user, $reason);
     }
 
-    private function bitir(
-        Server $sunucu,
-        ServerPasswordRotation $tur,
-        PasswordRotationStatus $durum,
-        string $mesaj,
-        ?User $kullanici,
-        ?string $gerekce,
+    private function finish(
+        Server $server,
+        ServerPasswordRotation $round,
+        PasswordRotationStatus $status,
+        string $message,
+        ?User $user,
+        ?string $reason,
     ): ServerPasswordRotation {
-        $tur->forceFill([
-            'status' => $durum,
-            'error' => $durum === PasswordRotationStatus::Succeeded ? null : Str::limit($mesaj, 500),
+        $round->forceFill([
+            'status' => $status,
+            'error' => $status === PasswordRotationStatus::Succeeded ? null : Str::limit($message, 500),
             'finished_at' => now(),
         ])->save();
 
-        $this->yaz(
-            $sunucu,
-            $kullanici,
-            $gerekce,
-            $durum === PasswordRotationStatus::Succeeded ? 'server_password_rotated' : 'server_password_rotation_failed',
-            "{$sunucu->short_name}: {$mesaj}",
+        $this->write(
+            $server,
+            $user,
+            $reason,
+            $status === PasswordRotationStatus::Succeeded ? 'server_password_rotated' : 'server_password_rotation_failed',
+            "{$server->short_name}: {$message}",
         );
 
-        return $tur->refresh();
+        return $round->refresh();
     }
 
-    private function yaz(
-        Server $sunucu,
-        ?User $kullanici,
-        ?string $gerekce,
-        string $eylem,
-        string $metin,
+    private function write(
+        Server $server,
+        ?User $user,
+        ?string $reason,
+        string $action,
+        string $text,
     ): void {
         $this->activity->recordAs(
-            $kullanici?->id,
-            $gerekce,
+            $user?->id,
+            $reason,
             request()->ip(),
-            $sunucu,
-            $eylem,
-            $metin,
+            $server,
+            $action,
+            $text,
             ActivityChannel::Crud,
         );
     }
 
-    private function yeniParola(): string
+    private function newPassword(): string
     {
-        return $this->uretici->generate((int) config('server.parola_uzunlugu', 24));
+        return $this->generator->generate((int) config('server.password_length', 24));
     }
 
     /**
@@ -469,13 +469,13 @@ class ServerPasswordRotator
      * Sabit bir ad, yarıda kalmış eski bir turun hesabıyla çakışır ve
      * "useradd: user already exists" hatası turu daha ilk adımda düşürürdü.
      */
-    private function kurtarmaAdi(): string
+    private function recoveryName(): string
     {
         return 'nys-kurtarma-'.Str::lower(Str::random(6));
     }
 
-    private function kilitSaniye(): int
+    private function lockSecond(): int
     {
-        return (int) config('server.kilit_saniye', 600);
+        return (int) config('server.lock_seconds', 600);
     }
 }

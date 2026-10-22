@@ -251,12 +251,12 @@ trait BuildsPolicyConditions
         }
 
         $ipv6 = str_contains($address, ':');
-        $beklenen = $ipv6 ? 'inet6' : 'inet';
+        $expected = $ipv6 ? 'inet6' : 'inet';
 
-        if (! in_array($beklenen, $families, true) && array_intersect(['inet', 'inet6'], $families) !== []) {
+        if (! in_array($expected, $families, true) && array_intersect(['inet', 'inet6'], $families) !== []) {
             $validator->errors()->add(
                 "{$key}.route_filters.{$index}.address",
-                "Adres {$beklenen} ailesinden; terim yalnızca ".implode(', ', $families).' ailesine bakıyor.',
+                "Adres {$expected} ailesinden; terim yalnızca ".implode(', ', $families).' ailesine bakıyor.',
             );
         }
     }
@@ -266,18 +266,18 @@ trait BuildsPolicyConditions
      */
     protected function guardActions(Validator $validator, string $key): void
     {
-        $sayac = [];
+        $counter = [];
 
         foreach ((array) $this->input("{$key}.communities", []) as $community) {
             $name = (string) ($community['name'] ?? '');
 
             if ($name !== '') {
-                $sayac[$name][] = (string) ($community['operation'] ?? '');
+                $counter[$name][] = (string) ($community['operation'] ?? '');
             }
         }
 
-        foreach ($sayac as $name => $islemler) {
-            if (count(array_unique($islemler)) > 1) {
+        foreach ($counter as $name => $operations) {
+            if (count(array_unique($operations)) > 1) {
                 $validator->errors()->add(
                     "{$key}.communities",
                     "“{$name}” community’sine tek terimde birden çok işlem uygulanamaz.",
@@ -384,7 +384,7 @@ trait BuildsPolicyConditions
      */
     protected function conditionAttributeNames(string $key, string $label): array
     {
-        $adlar = [
+        $names = [
             "{$key}.prefix_lists" => "{$label} · prefix listeler",
             "{$key}.as_paths" => "{$label} · as-path",
             "{$key}.communities" => "{$label} · community",
@@ -392,10 +392,10 @@ trait BuildsPolicyConditions
         ];
 
         foreach (array_keys(self::MATCH_LISTS) as $field) {
-            $adlar["{$key}.{$field}"] = "{$label} · ".str_replace('_', ' ', $field);
+            $names["{$key}.{$field}"] = "{$label} · ".str_replace('_', ' ', $field);
         }
 
-        return $adlar;
+        return $names;
     }
 
     /**
@@ -404,13 +404,13 @@ trait BuildsPolicyConditions
     private function splitValues(mixed $raw): array
     {
         if (is_array($raw)) {
-            $parcalar = $raw;
+            $fragments = $raw;
         } else {
-            $parcalar = preg_split('/[\s,]+/', (string) $raw) ?: [];
+            $fragments = preg_split('/[\s,]+/', (string) $raw) ?: [];
         }
 
         return array_values(array_filter(
-            array_map(static fn (mixed $value): string => trim((string) $value), $parcalar),
+            array_map(static fn (mixed $value): string => trim((string) $value), $fragments),
             static fn (string $value): bool => $value !== '',
         ));
     }

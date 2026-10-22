@@ -209,9 +209,9 @@ class DeviceSettingsReader
      */
     private function scoped(SimpleXMLElement $reply, string $protocol, string $child): ?array
     {
-        $kok = $reply->xpath('//*[local-name()="protocols"]/*[local-name()="'.$protocol.'"]');
+        $root = $reply->xpath('//*[local-name()="protocols"]/*[local-name()="'.$protocol.'"]');
 
-        if ($kok === false || $kok === []) {
+        if ($root === false || $root === []) {
             return null;
         }
 

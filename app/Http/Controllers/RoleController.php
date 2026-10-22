@@ -46,7 +46,7 @@ class RoleController extends Controller implements HasMiddleware
     public function index(): View
     {
         return view('settings.roles', [
-            'sections' => $this->catalog->tabs('roller'),
+            'sections' => $this->catalog->tabs('roles'),
             'roles' => Role::query()->ordered()->withCount('users')->get(),
             'badgeOptions' => collect(BadgeVariant::cases())
                 ->mapWithKeys(fn (BadgeVariant $variant): array => [$variant->value => $variant->value])
@@ -57,7 +57,7 @@ class RoleController extends Controller implements HasMiddleware
     public function show(Role $role): View
     {
         return view('settings.role', [
-            'sections' => $this->catalog->tabs('roller'),
+            'sections' => $this->catalog->tabs('roles'),
             'role' => $role,
             'resources' => $this->resources(),
             'actionLabels' => $this->registry->actions(),
@@ -91,7 +91,7 @@ class RoleController extends Controller implements HasMiddleware
 
     public function update(RoleRequest $request, Role $role): RedirectResponse
     {
-        $etkilenen = DB::transaction(function () use ($request, $role): int {
+        $affected = DB::transaction(function () use ($request, $role): int {
             $role->fill([
                 ...$request->safe()->only(['label', 'description', 'badge', 'position']),
                 'is_admin' => $request->boolean('is_admin'),
@@ -117,11 +117,11 @@ class RoleController extends Controller implements HasMiddleware
         $this->activity->updated(
             $role,
             "Rol güncellendi: {$role->label} ({$role->slug})"
-                .($etkilenen > 0 ? " · roldeki {$etkilenen} kullanıcıyı etkiler" : ''),
+                .($affected > 0 ? " · roldeki {$affected} kullanıcıyı etkiler" : ''),
         );
 
-        return back()->with('status', $etkilenen > 0
-            ? "{$role->label} kaydedildi; roldeki {$etkilenen} kullanıcı için hemen geçerli."
+        return back()->with('status', $affected > 0
+            ? "{$role->label} kaydedildi; roldeki {$affected} kullanıcı için hemen geçerli."
             : "{$role->label} kaydedildi.");
     }
 

@@ -86,16 +86,16 @@ final class PolicyThen
             return $actions;
         }
 
-        $taninan = [];
+        $known = [];
 
-        $actions['action'] = self::action($then, $taninan)?->value;
+        $actions['action'] = self::action($then, $known)?->value;
 
         foreach (self::VALUES as $key => $element) {
             $value = self::readValue($then, $element);
 
             if ($value !== null) {
                 $actions[$key] = $value;
-                $taninan[] = $element;
+                $known[] = $element;
             }
         }
 
@@ -104,12 +104,12 @@ final class PolicyThen
 
             if ($value !== null) {
                 $actions[$key] = $value;
-                $taninan[] = $element;
+                $known[] = $element;
             }
         }
 
-        $actions['communities'] = self::readCommunities($then, $taninan);
-        $actions['residual'] = ResidualXml::collect($then, $taninan);
+        $actions['communities'] = self::readCommunities($then, $known);
+        $actions['residual'] = ResidualXml::collect($then, $known);
 
         return $actions;
     }
@@ -164,39 +164,39 @@ final class PolicyThen
             return [];
         }
 
-        $parcalar = [];
+        $fragments = [];
 
         foreach (self::VALUES as $key => $element) {
             $value = $actions[$key] ?? null;
 
             if (is_array($value)) {
-                $islem = PolicyValueOperation::tryFrom((string) ($value['operation'] ?? 'set'));
-                $ek = $islem === null || $islem === PolicyValueOperation::Set ? '' : $islem->value.' ';
-                $parcalar[] = "{$element} {$ek}".($value['value'] ?? '');
+                $operation = PolicyValueOperation::tryFrom((string) ($value['operation'] ?? 'set'));
+                $extra = $operation === null || $operation === PolicyValueOperation::Set ? '' : $operation->value.' ';
+                $fragments[] = "{$element} {$extra}".($value['value'] ?? '');
             }
         }
 
         foreach ($actions['communities'] ?? [] as $community) {
-            $parcalar[] = 'community '.($community['operation'] ?? '').' '.($community['name'] ?? '');
+            $fragments[] = 'community '.($community['operation'] ?? '').' '.($community['name'] ?? '');
         }
 
         foreach (self::TEXTS as $key => $element) {
             if (filled($actions[$key] ?? null)) {
-                $parcalar[] = "{$element} {$actions[$key]}";
+                $fragments[] = "{$element} {$actions[$key]}";
             }
         }
 
-        foreach (ResidualXml::names($actions['residual'] ?? null) as $ad) {
-            $parcalar[] = $ad;
+        foreach (ResidualXml::names($actions['residual'] ?? null) as $name) {
+            $fragments[] = $name;
         }
 
         $action = PolicyAction::tryFrom((string) ($actions['action'] ?? ''));
 
         if ($action !== null) {
-            $parcalar[] = $action->label();
+            $fragments[] = $action->label();
         }
 
-        return $parcalar;
+        return $fragments;
     }
 
     /**
@@ -208,7 +208,7 @@ final class PolicyThen
      *
      * @param  list<string>  $taninan
      */
-    private static function action(SimpleXMLElement $then, array &$taninan): ?PolicyAction
+    private static function action(SimpleXMLElement $then, array &$known): ?PolicyAction
     {
         $next = XmlNode::text($then, 'next');
 
@@ -221,7 +221,7 @@ final class PolicyThen
 
             // Tanınmayan argüman çözümlenmiş sayılmaz; ham hâliyle korunur.
             if ($action !== null) {
-                $taninan[] = 'next';
+                $known[] = 'next';
             }
 
             return $action;
@@ -229,7 +229,7 @@ final class PolicyThen
 
         foreach (PolicyAction::cases() as $action) {
             if (XmlNode::has($then, $action->value)) {
-                $taninan[] = $action->value;
+                $known[] = $action->value;
 
                 return $action;
             }
@@ -280,14 +280,14 @@ final class PolicyThen
             return ['operation' => $operation, 'value' => $inner, 'nested' => true];
         }
 
-        $duz = trim((string) $node);
+        $flat = trim((string) $node);
 
-        if ($duz === '' || ! ctype_digit($duz)) {
+        if ($flat === '' || ! ctype_digit($flat)) {
             // Çözümlenemedi; artığa düşsün ve ham hâliyle korunsun.
             return null;
         }
 
-        return ['operation' => PolicyValueOperation::Set->value, 'value' => (int) $duz, 'nested' => false];
+        return ['operation' => PolicyValueOperation::Set->value, 'value' => (int) $flat, 'nested' => false];
     }
 
     /**
@@ -299,18 +299,18 @@ final class PolicyThen
             return '';
         }
 
-        $sayi = (int) $value['value'];
+        $number = (int) $value['value'];
         $nested = (bool) ($value['nested'] ?? true);
 
         if (! $nested) {
-            return "<{$element}>{$sayi}</{$element}>";
+            return "<{$element}>{$number}</{$element}>";
         }
 
         $operation = PolicyValueOperation::tryFrom((string) ($value['operation'] ?? 'set')) ?? PolicyValueOperation::Set;
-        $isaret = $operation->element();
-        $ic = ($isaret === null ? '' : "<{$isaret}/>")."<{$element}>{$sayi}</{$element}>";
+        $mark = $operation->element();
+        $inner = ($mark === null ? '' : "<{$mark}/>")."<{$element}>{$number}</{$element}>";
 
-        return XmlNode::wrap($element, $ic);
+        return XmlNode::wrap($element, $inner);
     }
 
     /**
@@ -322,13 +322,13 @@ final class PolicyThen
      * @param  list<string>  $taninan
      * @return list<array{operation: string, name: string}>
      */
-    private static function readCommunities(SimpleXMLElement $then, array &$taninan): array
+    private static function readCommunities(SimpleXMLElement $then, array &$known): array
     {
-        $dugumler = XmlNode::children($then, 'community');
+        $nodes = XmlNode::children($then, 'community');
         $communities = [];
-        $cozumlenen = 0;
+        $parsed = 0;
 
-        foreach ($dugumler as $node) {
+        foreach ($nodes as $node) {
             $operation = XmlNode::firstFlag($node, array_column(CommunityOperation::cases(), 'value'));
             $names = XmlNode::texts($node, 'community-name');
 
@@ -336,15 +336,15 @@ final class PolicyThen
                 continue;
             }
 
-            $cozumlenen++;
+            $parsed++;
 
             foreach ($names as $name) {
                 $communities[] = ['operation' => $operation, 'name' => $name];
             }
         }
 
-        if ($dugumler !== [] && $cozumlenen === count($dugumler)) {
-            $taninan[] = 'community';
+        if ($nodes !== [] && $parsed === count($nodes)) {
+            $known[] = 'community';
         }
 
         return $communities;

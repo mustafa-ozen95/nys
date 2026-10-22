@@ -70,7 +70,7 @@ final class IncompatibleJunosTest extends TestCase
      */
     public function test_yeni_aile_yalnizca_farkli_olani_yazar(): void
     {
-        $gelecek = new class extends JunosDialect
+        $future = new class extends JunosDialect
         {
             public function key(): string
             {
@@ -83,13 +83,13 @@ final class IncompatibleJunosTest extends TestCase
             }
         };
 
-        $this->assertSame('xrb', $gelecek->l3InterfaceName());
+        $this->assertSame('xrb', $future->l3InterfaceName());
 
         // Ezilmeyenler ELS öncesi varsayılanında kalır.
-        $this->assertSame('port-mode', $gelecek->switchingModeElement());
-        $this->assertSame('ethernet-switching-options', $gelecek->analyzerRootElement());
-        $this->assertFalse($gelecek->usesPlainSpeed());
-        $this->assertFalse($gelecek->requiresMacLimitAction());
+        $this->assertSame('port-mode', $future->switchingModeElement());
+        $this->assertSame('ethernet-switching-options', $future->analyzerRootElement());
+        $this->assertFalse($future->usesPlainSpeed());
+        $this->assertFalse($future->requiresMacLimitAction());
     }
 
     /**
@@ -102,7 +102,7 @@ final class IncompatibleJunosTest extends TestCase
     {
         $switch = NetworkSwitch::factory()->create(['schema_profile' => null]);
 
-        $this->actingAs($this->gozlemci())
+        $this->actingAs($this->observer())
             ->get(route('switches.show', $switch))
             ->assertOk()
             ->assertSee('Bilinmiyor — ELS öncesi varsayılıyor');
@@ -112,13 +112,13 @@ final class IncompatibleJunosTest extends TestCase
     {
         $switch = NetworkSwitch::factory()->create(['schema_profile' => JunosSchemaProfile::Els]);
 
-        $this->actingAs($this->gozlemci())
+        $this->actingAs($this->observer())
             ->get(route('switches.show', $switch))
             ->assertOk()
             ->assertSee(JunosSchemaProfile::Els->label());
     }
 
-    private function gozlemci(): User
+    private function observer(): User
     {
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'switches', ['view']);

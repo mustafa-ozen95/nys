@@ -16,32 +16,32 @@
 </x-ui.alert>
 
 @if ($vlanScopedFields)
-    <x-form.field kural="switch_secure_access.arayuz:vlan_name" name="vlan_name" label="VLAN" :id="$prefix.'-vlan'"
+    <x-form.field rule="switch_secure_access.arayuz:vlan_name" name="vlan_name" label="VLAN" :id="$prefix.'-vlan'"
                   hint="Bu cihazda DHCP güveni ve izinli MAC listesi VLAN’a bağlıdır; hangi VLAN olduğu sorulur.">
         <x-form.select name="vlan_name" :id="$prefix.'-vlan'" :options="$vlanOptions"
                        :selected="$rule?->vlan_name" />
     </x-form.field>
 @endif
 
-<x-form.field kural="switch_secure_access.arayuz:dhcp_trusted" name="dhcp_trusted" label="DHCP güven durumu" :id="$prefix.'-guven'"
+<x-form.field rule="switch_secure_access.arayuz:dhcp_trusted" name="dhcp_trusted" label="DHCP güven durumu" :id="$prefix.'-trust'"
               hint="Cihazın varsayılanı: trunk portlar güvenilir, erişim portları güvenilmezdir. Buradan yazmak o varsayılanı AÇIKÇA ezer.">
-    <x-form.select name="dhcp_trusted" :id="$prefix.'-guven'" :options="$trustOptions"
+    <x-form.select name="dhcp_trusted" :id="$prefix.'-trust'" :options="$trustOptions"
                    :selected="$rule?->trust_value ?? ''" />
 </x-form.field>
 
-<x-form.field kural="switch_secure_access.arayuz:mac_limit" name="mac_limit" label="MAC sınırı" :id="$prefix.'-limit'"
+<x-form.field rule="switch_secure_access.arayuz:mac_limit" name="mac_limit" label="MAC sınırı" :id="$prefix.'-limit'"
               hint="Portun öğrenebileceği en fazla MAC adresi sayısı. Altına takılan bir switch bu sınırı hemen aşar.">
     <x-form.input type="number" name="mac_limit" :id="$prefix.'-limit'"
                   :value="$rule?->mac_limit" min="1" />
 </x-form.field>
 
-<x-form.field kural="switch_secure_access.arayuz:mac_limit_action" name="mac_limit_action" label="Sınır aşılınca" :id="$prefix.'-eylem'"
+<x-form.field rule="switch_secure_access.arayuz:mac_limit_action" name="mac_limit_action" label="Sınır aşılınca" :id="$prefix.'-action'"
               hint="“Portu kapat” seçildiğinde sınırı aşan port HİZMET DIŞI kalır ve kendiliğinden geri gelmez; sahada birinin gitmesi gerekir.">
-    <x-form.select name="mac_limit_action" :id="$prefix.'-eylem'" :options="$actionOptions"
+    <x-form.select name="mac_limit_action" :id="$prefix.'-action'" :options="$actionOptions"
                    :selected="$rule?->mac_limit_action?->value" />
 </x-form.field>
 
-<x-form.field kural="switch_secure_access.arayuz:allowed_macs" name="allowed_macs" label="İzin verilen MAC adresleri" :id="$prefix.'-mac'"
+<x-form.field rule="switch_secure_access.arayuz:allowed_macs" name="allowed_macs" label="İzin verilen MAC adresleri" :id="$prefix.'-mac'"
               class="field--wide"
               hint="Her satıra bir adres: 00:11:22:33:44:55. Liste doluyken porta yalnızca bu adresler bağlanabilir; boş bırakılırsa kısıt yoktur.">
     {{-- Bileşen diziyi kendisi satırlara açar; Blade'de birleştirme yapılmaz. --}}

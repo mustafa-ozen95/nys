@@ -31,36 +31,36 @@ final class Workbook
      * @param  array<int, array<int, string|null>>  $satirlar
      * @return string Dosyanın ham içeriği.
      */
-    public static function uret(string $sayfaAdi, array $basliklar, array $satirlar): string
+    public static function generate(string $pageName, array $headers, array $rows): string
     {
-        $yol = tempnam(sys_get_temp_dir(), 'xlsx-');
+        $path = tempnam(sys_get_temp_dir(), 'xlsx-');
 
-        if ($yol === false) {
+        if ($path === false) {
             throw new RuntimeException('Geçici dosya açılamadı.');
         }
 
         $zip = new ZipArchive;
 
-        if ($zip->open($yol, ZipArchive::OVERWRITE) !== true) {
+        if ($zip->open($path, ZipArchive::OVERWRITE) !== true) {
             throw new RuntimeException('Çalışma kitabı yazılamadı.');
         }
 
-        $zip->addFromString('[Content_Types].xml', self::icerikTurleri());
-        $zip->addFromString('_rels/.rels', self::kokIliskileri());
-        $zip->addFromString('xl/workbook.xml', self::kitap($sayfaAdi));
-        $zip->addFromString('xl/_rels/workbook.xml.rels', self::kitapIliskileri());
-        $zip->addFromString('xl/styles.xml', self::bicemler());
-        $zip->addFromString('xl/worksheets/sheet1.xml', self::sayfa($basliklar, $satirlar));
+        $zip->addFromString('[Content_Types].xml', self::contentTypes());
+        $zip->addFromString('_rels/.rels', self::rootRelations());
+        $zip->addFromString('xl/workbook.xml', self::book($pageName));
+        $zip->addFromString('xl/_rels/workbook.xml.rels', self::bookRelations());
+        $zip->addFromString('xl/styles.xml', self::formats());
+        $zip->addFromString('xl/worksheets/sheet1.xml', self::page($headers, $rows));
         $zip->close();
 
-        $icerik = (string) file_get_contents($yol);
+        $content = (string) file_get_contents($path);
 
-        unlink($yol);
+        unlink($path);
 
-        return $icerik;
+        return $content;
     }
 
-    private static function icerikTurleri(): string
+    private static function contentTypes(): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -72,7 +72,7 @@ final class Workbook
             .'</Types>';
     }
 
-    private static function kokIliskileri(): string
+    private static function rootRelations(): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
@@ -80,16 +80,16 @@ final class Workbook
             .'</Relationships>';
     }
 
-    private static function kitap(string $sayfaAdi): string
+    private static function book(string $pageName): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
             .' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            .'<sheets><sheet name="'.self::kacis(self::sayfaAdi($sayfaAdi)).'" sheetId="1" r:id="rId1"/></sheets>'
+            .'<sheets><sheet name="'.self::escape(self::pageName($pageName)).'" sheetId="1" r:id="rId1"/></sheets>'
             .'</workbook>';
     }
 
-    private static function kitapIliskileri(): string
+    private static function bookRelations(): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
@@ -99,7 +99,7 @@ final class Workbook
     }
 
     /** Tek biçem: kalın başlık satırı (s="1"). */
-    private static function bicemler(): string
+    private static function formats(): string
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -116,55 +116,55 @@ final class Workbook
      * @param  array<int, string>  $basliklar
      * @param  array<int, array<int, string|null>>  $satirlar
      */
-    private static function sayfa(array $basliklar, array $satirlar): string
+    private static function page(array $headers, array $rows): string
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            .self::sutunGenislikleri(count($basliklar))
+            .self::columnWidths(count($headers))
             .'<sheetData>'
-            .self::satir(1, $basliklar, kalin: true);
+            .self::row(1, $headers, thick: true);
 
         $no = 2;
 
-        foreach ($satirlar as $satir) {
-            $xml .= self::satir($no++, array_values($satir));
+        foreach ($rows as $row) {
+            $xml .= self::row($no++, array_values($row));
         }
 
         return $xml.'</sheetData></worksheet>';
     }
 
     /** Sütunlar okunabilir genişlikte açılsın; hepsi aynı. */
-    private static function sutunGenislikleri(int $adet): string
+    private static function columnWidths(int $count): string
     {
-        return $adet === 0 ? '' : '<cols><col min="1" max="'.$adet.'" width="26" customWidth="1"/></cols>';
+        return $count === 0 ? '' : '<cols><col min="1" max="'.$count.'" width="26" customWidth="1"/></cols>';
     }
 
     /** @param  array<int, string|null>  $hucreler */
-    private static function satir(int $no, array $hucreler, bool $kalin = false): string
+    private static function row(int $no, array $cells, bool $thick = false): string
     {
         $xml = '<row r="'.$no.'">';
 
-        foreach ($hucreler as $sira => $deger) {
-            $adres = self::sutunAdi($sira).$no;
-            $bicem = $kalin ? ' s="1"' : '';
+        foreach ($cells as $order => $value) {
+            $address = self::columnName($order).$no;
+            $format = $thick ? ' s="1"' : '';
 
-            $xml .= '<c r="'.$adres.'"'.$bicem.' t="inlineStr"><is><t xml:space="preserve">'
-                .self::kacis((string) $deger).'</t></is></c>';
+            $xml .= '<c r="'.$address.'"'.$format.' t="inlineStr"><is><t xml:space="preserve">'
+                .self::escape((string) $value).'</t></is></c>';
         }
 
         return $xml.'</row>';
     }
 
     /** 0 => A, 25 => Z, 26 => AA ... */
-    private static function sutunAdi(int $sira): string
+    private static function columnName(int $order): string
     {
-        $ad = '';
+        $name = '';
 
-        for ($n = $sira + 1; $n > 0; $n = intdiv($n - 1, 26)) {
-            $ad = chr(65 + ($n - 1) % 26).$ad;
+        for ($n = $order + 1; $n > 0; $n = intdiv($n - 1, 26)) {
+            $name = chr(65 + ($n - 1) % 26).$name;
         }
 
-        return $ad;
+        return $name;
     }
 
     /**
@@ -173,11 +173,11 @@ final class Workbook
      * Sınırı aşan ya da : \ / ? * [ ] içeren bir ad dosyayı AÇILMAZ yapıyor —
      * hata da vermiyor, Excel "onarılması gereken içerik" diyor.
      */
-    private static function sayfaAdi(string $ad): string
+    private static function pageName(string $name): string
     {
-        $temiz = (string) preg_replace('#[:\\\\/?*\[\]]#', ' ', $ad);
+        $clean = (string) preg_replace('#[:\\\\/?*\[\]]#', ' ', $name);
 
-        return mb_substr(trim($temiz) === '' ? 'Sayfa1' : trim($temiz), 0, 31);
+        return mb_substr(trim($clean) === '' ? 'Sayfa1' : trim($clean), 0, 31);
     }
 
     /**
@@ -187,10 +187,10 @@ final class Workbook
      * bile dosyayı bozuyorlar. Parolada böyle bir karakter bulunması olası
      * değil ama değeri her zaman panel üretmiyor (elle de girilebiliyor).
      */
-    private static function kacis(string $deger): string
+    private static function escape(string $value): string
     {
-        $temiz = (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $deger);
+        $clean = (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $value);
 
-        return htmlspecialchars($temiz, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars($clean, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 }

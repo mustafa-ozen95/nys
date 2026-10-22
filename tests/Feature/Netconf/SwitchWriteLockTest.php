@@ -70,10 +70,10 @@ final class SwitchWriteLockTest extends TestCase
 
         app(SwitchWriteLock::class)->run($switch, fn () => null);
 
-        $sonuc = app(ConfigurationWriter::class)
+        $result = app(ConfigurationWriter::class)
             ->apply($switch, '<configuration><system/></configuration>', 'deneme');
 
-        $this->assertTrue($sonuc['committed']);
+        $this->assertTrue($result['committed']);
     }
 
     /**

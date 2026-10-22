@@ -24,11 +24,11 @@ use Throwable;
 class RemoteDatabase
 {
     /** Laravel'in desteklediği en eski sürümler. */
-    private const EN_ESKI = ['MariaDB' => '10.3', 'MySQL' => '5.7'];
+    private const OLDEST = ['MariaDB' => '10.3', 'MySQL' => '5.7'];
 
-    private const SINAMA_TABLOLARI = ['dc_baglanti_sinamasi_b', 'dc_baglanti_sinamasi_a'];
+    private const TEST_TABLES = ['dc_baglanti_sinamasi_b', 'dc_baglanti_sinamasi_a'];
 
-    public function __construct(private ConnectionFile $dosya) {}
+    public function __construct(private ConnectionFile $file) {}
 
     /**
      * Şu anki veritabanı.
@@ -36,21 +36,21 @@ class RemoteDatabase
      * @return array{kaynak: string, host: string, port: string, database: string, username: string,
      *               surum: ?string, boyut: ?int, tablo: ?int, ozel: ?int}
      */
-    public function bilgi(): array
+    public function info(): array
     {
-        $ayar = (array) config('database.connections.'.config('database.default'));
-        $host = (string) ($ayar['host'] ?? '');
+        $setting = (array) config('database.connections.'.config('database.default'));
+        $host = (string) ($setting['host'] ?? '');
 
         // ortam: kurulumun verdiği (DB_*; varsayılan compose'taki db servisi).
         // panel: bu sekmeden taşınmış, bağlantı dosyası ortamı eziyor.
-        $kaynak = $this->dosya->asama() === 'etkin' ? 'panel' : 'ortam';
+        $source = $this->file->stage() === 'etkin' ? 'panel' : 'ortam';
 
-        $bilgi = [
-            'kaynak' => $kaynak,
+        $info = [
+            'kaynak' => $source,
             'host' => $host,
-            'port' => (string) ($ayar['port'] ?? ''),
-            'database' => (string) ($ayar['database'] ?? ''),
-            'username' => (string) ($ayar['username'] ?? ''),
+            'port' => (string) ($setting['port'] ?? ''),
+            'database' => (string) ($setting['database'] ?? ''),
+            'username' => (string) ($setting['username'] ?? ''),
             'surum' => null,
             'boyut' => null,
             'tablo' => null,
@@ -58,17 +58,17 @@ class RemoteDatabase
         ];
 
         try {
-            $bilgi['surum'] = (string) DB::scalar('SELECT VERSION()');
-            $satir = DB::selectOne('SELECT COUNT(*) AS tablo, COALESCE(SUM(data_length + index_length), 0) AS boyut
+            $info['surum'] = (string) DB::scalar('SELECT VERSION()');
+            $row = DB::selectOne('SELECT COUNT(*) AS tablo, COALESCE(SUM(data_length + index_length), 0) AS boyut
                 FROM information_schema.tables WHERE table_schema = DATABASE()');
-            $bilgi['tablo'] = (int) $satir->tablo;
-            $bilgi['boyut'] = (int) $satir->boyut;
-            $bilgi['ozel'] = $this->ozelNesneler();
+            $info['tablo'] = (int) $row->table;
+            $info['boyut'] = (int) $row->size;
+            $info['ozel'] = $this->customObjects();
         } catch (Throwable) {
             // Ekran yine açılır; değerler "bilinmiyor" görünür.
         }
 
-        return $bilgi;
+        return $info;
     }
 
     /**
@@ -78,82 +78,82 @@ class RemoteDatabase
      * @param  array{host: string, port: int, database: string, username: string, password: string}  $hedef
      * @return list<array{ad: string, tamam: bool, ayrinti: string}>
      */
-    public function sina(array $hedef): array
+    public function sina(array $target): array
     {
-        $sonuc = [];
-        $kaynak = $this->bilgi();
+        $result = [];
+        $source = $this->info();
 
-        $adres = $kaynak['host'].':'.$kaynak['port'].'/'.$kaynak['database'];
-        $sonuc[] = $this->madde(
+        $address = $source['host'].':'.$source['port'].'/'.$source['database'];
+        $result[] = $this->item(
             'Panel kurulumun veritabanında',
-            $kaynak['kaynak'] === 'ortam',
-            $kaynak['kaynak'] === 'ortam'
-                ? 'Kopya şu anki veritabanından ('.$adres.') alınacak.'
-                : 'Panel zaten bu sekmeden taşınmış bir veritabanında ('.$adres.'); ikinci kez taşınmaz.',
+            $source['kaynak'] === 'ortam',
+            $source['kaynak'] === 'ortam'
+                ? 'Kopya şu anki veritabanından ('.$address.') alınacak.'
+                : 'Panel zaten bu sekmeden taşınmış bir veritabanında ('.$address.'); ikinci kez taşınmaz.',
         );
 
-        $ayni = strtolower($hedef['host']) === strtolower($kaynak['host'])
-            && (string) $hedef['port'] === $kaynak['port'] && $hedef['database'] === $kaynak['database'];
-        $sonuc[] = $this->madde(
+        $same = strtolower($target['host']) === strtolower($source['host'])
+            && (string) $target['port'] === $source['port'] && $target['database'] === $source['database'];
+        $result[] = $this->item(
             'Hedef başka bir veritabanı',
-            ! $ayni,
-            $ayni ? 'Hedef, panelin şu anki veritabanının kendisi.' : 'Şu anki veritabanından farklı.',
+            ! $same,
+            $same ? 'Hedef, panelin şu anki veritabanının kendisi.' : 'Şu anki veritabanından farklı.',
         );
 
-        $sonuc[] = $this->madde(
+        $result[] = $this->item(
             'Şu anki veritabanında yalnızca tablo var',
-            $kaynak['ozel'] === 0,
-            match ($kaynak['ozel']) {
+            $source['ozel'] === 0,
+            match ($source['ozel']) {
                 0 => 'Görünüm, yordam, tetikleyici ya da zamanlanmış olay yok.',
                 null => 'Şu anki veritabanı okunamadı.',
-                default => $kaynak['ozel'].' görünüm/yordam/tetikleyici/olay var; taşıma bunları kopyalamaz.',
+                default => $source['ozel'].' görünüm/yordam/tetikleyici/olay var; taşıma bunları kopyalamaz.',
             },
         );
 
-        if ($ayni) {
-            return $sonuc;
+        if ($same) {
+            return $result;
         }
 
         try {
-            $pdo = $this->baglan($hedef);
+            $pdo = $this->connect($target);
         } catch (Throwable $e) {
-            $sonuc[] = $this->madde('Bağlantı', false, self::temizMesaj($e));
+            $result[] = $this->item('Bağlantı', false, self::cleanMessage($e));
 
-            return $sonuc;
+            return $result;
         }
 
-        $sonuc[] = $this->madde('Bağlantı', true, $hedef['username'].'@'.$hedef['host'].':'.$hedef['port'].'/'.$hedef['database']);
+        $result[] = $this->item('Bağlantı', true, $target['username'].'@'.$target['host'].':'.$target['port'].'/'.$target['database']);
 
-        $surum = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
-        $sonuc[] = $this->surumMaddesi($surum);
+        $version = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
+        $result[] = $this->versionItem($version);
 
-        $tablo = (int) $pdo->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()')->fetchColumn();
-        $sonuc[] = $this->madde(
+        $table = (int) $pdo->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()')->fetchColumn();
+        $result[] = $this->item(
             'Hedef veritabanı boş',
-            $tablo === 0,
-            $tablo === 0 ? 'Tablo yok.' : $tablo.' tablo var; dolu bir veritabanının üzerine yazılmaz.',
+            $table === 0,
+            $table === 0 ? 'Tablo yok.' : $table.' tablo var; dolu bir veritabanının üzerine yazılmaz.',
         );
 
-        if ($tablo === 0) {
-            $sonuc[] = $this->yetkiMaddesi($pdo);
+        if ($table === 0) {
+            $result[] = $this->permissionItem($pdo);
         }
 
-        return $sonuc;
+        return $result;
     }
 
     /** @param  list<array{tamam: bool}>  $sonuc */
-    public static function hepsiTamam(array $sonuc): bool
+    public static function allDone(array $result): bool
     {
-        return $sonuc !== [] && collect($sonuc)->every(fn (array $m): bool => $m['tamam']);
+        return $result !== [] && collect($result)->every(fn (array $m): bool => $m['tamam']);
     }
 
-    public static function icMi(string $host): bool
+    public static function isInner(string $host): bool
     {
         return in_array(strtolower(trim($host)), ['', '127.0.0.1', 'localhost', '::1'], true);
     }
 
     /** @param  array{host: string, port: int, database: string, username: string, password: string}  $h */
-    protected function baglan(array $h): PDO
+    protected function connect(array $h): PDO
     {
         return new PDO(
             sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $h['host'], $h['port'], $h['database']),
@@ -163,7 +163,7 @@ class RemoteDatabase
         );
     }
 
-    protected function ozelNesneler(): int
+    protected function customObjects(): int
     {
         return (int) DB::scalar('SELECT
             (SELECT COUNT(*) FROM information_schema.views WHERE table_schema = DATABASE())
@@ -173,16 +173,16 @@ class RemoteDatabase
     }
 
     /** @return array{ad: string, tamam: bool, ayrinti: string} */
-    private function surumMaddesi(string $surum): array
+    private function versionItem(string $version): array
     {
-        $tur = stripos($surum, 'mariadb') !== false ? 'MariaDB' : 'MySQL';
-        preg_match('/^\d+\.\d+(\.\d+)?/', $surum, $m);
-        $yeterli = isset($m[0]) && version_compare($m[0], self::EN_ESKI[$tur], '>=');
+        $round = stripos($version, 'mariadb') !== false ? 'MariaDB' : 'MySQL';
+        preg_match('/^\d+\.\d+(\.\d+)?/', $version, $m);
+        $sufficient = isset($m[0]) && version_compare($m[0], self::OLDEST[$round], '>=');
 
-        return $this->madde(
+        return $this->item(
             'Sürüm',
-            $yeterli,
-            $tur.' '.$surum.($yeterli ? '' : ' — en az '.$tur.' '.self::EN_ESKI[$tur].' gerekir.'),
+            $sufficient,
+            $round.' '.$version.($sufficient ? '' : ' — en az '.$round.' '.self::OLDEST[$round].' gerekir.'),
         );
     }
 
@@ -192,51 +192,51 @@ class RemoteDatabase
      *
      * @return array{ad: string, tamam: bool, ayrinti: string}
      */
-    private function yetkiMaddesi(PDO $pdo): array
+    private function permissionItem(PDO $pdo): array
     {
-        [$b, $a] = self::SINAMA_TABLOLARI;
-        $adim = 'tablo açma';
+        [$b, $a] = self::TEST_TABLES;
+        $step = 'tablo açma';
 
         try {
             $pdo->exec("CREATE TABLE `$a` (id INT UNSIGNED NOT NULL PRIMARY KEY, ad VARCHAR(20)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-            $adim = 'yabancı anahtar';
+            $step = 'yabancı anahtar';
             $pdo->exec("CREATE TABLE `$b` (id INT UNSIGNED NOT NULL PRIMARY KEY, a_id INT UNSIGNED NOT NULL,
                 CONSTRAINT `{$b}_fk` FOREIGN KEY (a_id) REFERENCES `$a` (id) ON DELETE CASCADE) ENGINE=InnoDB");
-            $adim = 'dizin';
+            $step = 'dizin';
             $pdo->exec("CREATE INDEX `{$a}_ad` ON `$a` (ad)");
-            $adim = 'tablo değiştirme';
+            $step = 'tablo değiştirme';
             $pdo->exec("ALTER TABLE `$a` ADD COLUMN ek INT NULL");
-            $adim = 'yazma';
+            $step = 'yazma';
             $pdo->exec("INSERT INTO `$a` (id, ad) VALUES (1, 'sınama')");
             $pdo->exec("INSERT INTO `$b` (id, a_id) VALUES (1, 1)");
-            $adim = 'güncelleme';
+            $step = 'güncelleme';
             $pdo->exec("UPDATE `$a` SET ek = 1 WHERE id = 1");
-            $adim = 'silme';
+            $step = 'silme';
             $pdo->exec("DELETE FROM `$a` WHERE id = 1");
-            $adim = 'tablo kaldırma';
+            $step = 'tablo kaldırma';
             $pdo->exec("DROP TABLE `$b`, `$a`");
         } catch (Throwable $e) {
-            foreach (self::SINAMA_TABLOLARI as $t) {
+            foreach (self::TEST_TABLES as $t) {
                 try {
                     $pdo->exec("DROP TABLE IF EXISTS `$t`");
                 } catch (Throwable) {
                 }
             }
 
-            return $this->madde('Yetki', false, 'Göçlerin ihtiyacı olan "'.$adim.'" yapılamadı: '.self::temizMesaj($e));
+            return $this->item('Yetki', false, 'Göçlerin ihtiyacı olan "'.$step.'" yapılamadı: '.self::cleanMessage($e));
         }
 
-        return $this->madde('Yetki', true, 'Tablo, dizin, yabancı anahtar, değişiklik, yazma ve silme denendi; sınama tabloları kaldırıldı.');
+        return $this->item('Yetki', true, 'Tablo, dizin, yabancı anahtar, değişiklik, yazma ve silme denendi; sınama tabloları kaldırıldı.');
     }
 
     /** @return array{ad: string, tamam: bool, ayrinti: string} */
-    private function madde(string $ad, bool $tamam, string $ayrinti): array
+    private function item(string $name, bool $done, string $detail): array
     {
-        return ['ad' => $ad, 'tamam' => $tamam, 'ayrinti' => $ayrinti];
+        return ['ad' => $name, 'tamam' => $done, 'ayrinti' => $detail];
     }
 
     /** PDO iletisinin başındaki "SQLSTATE[...]" gürültüsü atılır; parola iletide geçmez. */
-    private static function temizMesaj(Throwable $e): string
+    private static function cleanMessage(Throwable $e): string
     {
         return mb_substr(trim((string) preg_replace('/^SQLSTATE\[[^\]]*\]\s*(\[\d+\]\s*)?/', '', $e->getMessage())), 0, 300);
     }

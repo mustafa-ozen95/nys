@@ -42,7 +42,7 @@ final class DeviceWriteGuardTest extends TestCase
     /**
      * @return array<string, array{string}>
      */
-    public static function yazmaUclari(): array
+    public static function writeEndpoints(): array
     {
         return [
             'port ayarları' => ['port'],
@@ -77,17 +77,17 @@ final class DeviceWriteGuardTest extends TestCase
         ];
     }
 
-    #[DataProvider('yazmaUclari')]
-    public function test_yazma_uclari_configure_yetkisi_ister(string $uc): void
+    #[DataProvider('writeEndpoints')]
+    public function test_yazma_uclari_configure_yetkisi_ister(string $endpoint): void
     {
         $switch = $this->switch();
         $device = $this->fakeDevice();
-        $kullanici = $this->operator(['view', 'create', 'update', 'delete']);
+        $user = $this->operator(['view', 'create', 'update', 'delete']);
 
-        $istek = $this->istek($uc, $switch);
+        $request = $this->request($endpoint, $switch);
 
-        $this->actingAs($kullanici)
-            ->call($istek['method'], $istek['url'], $istek['data'])
+        $this->actingAs($user)
+            ->call($request['method'], $request['url'], $request['data'])
             ->assertForbidden();
 
         // Yetki reddedildiyse cihaza hiç bağlanılmamalı.
@@ -97,7 +97,7 @@ final class DeviceWriteGuardTest extends TestCase
     /**
      * @return array{method: string, url: string, data: array<string, mixed>}
      */
-    private function istek(string $uc, NetworkSwitch $switch): array
+    private function request(string $endpoint, NetworkSwitch $switch): array
     {
         $port = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ge-0/0/5']);
         $vlan = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 30, 'name' => 'V30']);
@@ -119,7 +119,7 @@ final class DeviceWriteGuardTest extends TestCase
         $firewall = SwitchFirewallFilter::factory()->for($switch, 'switch')->create();
         $firewallTerm = SwitchFirewallTerm::factory()->for($firewall, 'filter')->create();
 
-        return match ($uc) {
+        return match ($endpoint) {
             'port' => ['method' => 'PUT', 'url' => route('switches.ports.update', [$switch, $port]), 'data' => ['port_mode' => 'access']],
             'route-store' => ['method' => 'POST', 'url' => route('switches.routes.store', $switch), 'data' => ['destination' => '10.8.8.0', 'prefix_length' => 24]],
             'route-destroy' => ['method' => 'DELETE', 'url' => route('switches.routes.destroy', [$switch, $route]), 'data' => []],

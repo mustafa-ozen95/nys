@@ -23,38 +23,38 @@ class UpdateScreenTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const JETON = 'github_pat_SINAMA_JETONU_123';
+    private const TOKEN = 'github_pat_SINAMA_JETONU_123';
 
-    private const CALISAN = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    private const RUNNING = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
-    private const SON = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    private const LAST = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
-    private string $dizin;
+    private string $directory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->dizin = sys_get_temp_dir().'/guncelleme-'.bin2hex(random_bytes(4));
-        $this->instance(UpdateCheck::class, new UpdateCheck($this->dizin));
+        $this->directory = sys_get_temp_dir().'/guncelleme-'.bin2hex(random_bytes(4));
+        $this->instance(UpdateCheck::class, new UpdateCheck($this->directory));
         config([
-            'update.depo' => 'mustafa-ozen95/ornek',
-            'update.jeton' => self::JETON,
-            'update.surum' => self::CALISAN,
+            'update.repo' => 'mustafa-ozen95/ornek',
+            'update.token' => self::TOKEN,
+            'update.version' => self::RUNNING,
         ]);
 
         Http::fake([
-            'api.github.com/*/runs*' => Http::response(['workflow_runs' => [['head_sha' => self::SON, 'updated_at' => '2026-10-20T10:00:00Z']]]),
+            'api.github.com/*/runs*' => Http::response(['workflow_runs' => [['head_sha' => self::LAST, 'updated_at' => '2026-10-20T10:00:00Z']]]),
             'api.github.com/*/compare/*' => Http::response(['status' => 'ahead', 'ahead_by' => 3, 'behind_by' => 0, 'commits' => [
-                ['sha' => self::SON, 'commit' => ['message' => 'Yeni özellik: güncelleme sekmesi', 'committer' => ['date' => '2026-10-20T09:00:00Z']]],
+                ['sha' => self::LAST, 'commit' => ['message' => 'Yeni özellik: güncelleme sekmesi', 'committer' => ['date' => '2026-10-20T09:00:00Z']]],
             ]]),
         ]);
     }
 
     protected function tearDown(): void
     {
-        @unlink($this->dizin.'/state.json');
-        @rmdir($this->dizin);
+        @unlink($this->directory.'/state.json');
+        @rmdir($this->directory);
 
         parent::tearDown();
     }
@@ -62,21 +62,21 @@ class UpdateScreenTest extends TestCase
     public function test_ekran_yalnizca_yoneticide_acilir(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get(route('settings.guncelleme'))
+            ->get(route('settings.updates'))
             ->assertForbidden();
 
         $this->actingAs(User::factory()->create())
-            ->post(route('settings.guncelleme.denetle'))
+            ->post(route('settings.updates.check'))
             ->assertForbidden();
 
         // Ayar bölümleri devredilebilir; güncelleme ekranı devredilmez.
         $this->actingAs(User::factory()->network()->create())
-            ->get(route('settings.guncelleme'))
+            ->get(route('settings.updates'))
             ->assertForbidden();
         Http::assertNothingSent();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.guncelleme'))
+            ->get(route('settings.updates'))
             ->assertOk()
             ->assertSee('aaaaaaa')
             ->assertSee('henüz yapılmadı')
@@ -85,70 +85,70 @@ class UpdateScreenTest extends TestCase
 
     public function test_dugme_kontrol_eder_commitler_gorunur_jeton_gorunmez(): void
     {
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
-        $this->actingAs($yonetici)
-            ->from(route('settings.guncelleme'))
-            ->post(route('settings.guncelleme.denetle'))
-            ->assertRedirect(route('settings.guncelleme'))
+        $this->actingAs($admin)
+            ->from(route('settings.updates'))
+            ->post(route('settings.updates.check'))
+            ->assertRedirect(route('settings.updates'))
             ->assertSessionHas('status');
 
-        $this->actingAs($yonetici)
-            ->get(route('settings.guncelleme'))
+        $this->actingAs($admin)
+            ->get(route('settings.updates'))
             ->assertOk()
             ->assertSee('yeni sürüm var')
             ->assertSee('Yeni özellik: güncelleme sekmesi')
             ->assertSee('bbbbbbb')
             ->assertSee('ve 2 commit daha.')
-            ->assertSee($yonetici->name)
-            ->assertDontSee(self::JETON);
+            ->assertSee($admin->name)
+            ->assertDontSee(self::TOKEN);
     }
 
     public function test_yeni_surum_uyarisi_yalnizca_yoneticide_ve_guncellenince_susar(): void
     {
-        app(UpdateCheck::class)->denetle('günlük tur');
+        app(UpdateCheck::class)->check('günlük tur');
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('hesap.profil'))
+            ->get(route('account.profile'))
             ->assertOk()
             ->assertSee('Panelin yeni sürümü var.')
             ->assertSee('3 commit geride');
 
         $this->actingAs(User::factory()->create())
-            ->get(route('hesap.profil'))
+            ->get(route('account.profile'))
             ->assertOk()
             ->assertDontSee('Panelin yeni sürümü var.');
 
-        config(['update.surum' => self::SON]);
+        config(['update.version' => self::LAST]);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('hesap.profil'))
+            ->get(route('account.profile'))
             ->assertOk()
             ->assertDontSee('Panelin yeni sürümü var.');
     }
 
     public function test_kontrol_her_sabah_zamanlanmis(): void
     {
-        $olay = collect(app(Schedule::class)->events())
-            ->first(fn ($olay): bool => str_contains((string) $olay->command, 'guncelleme:denetle'));
+        $event = collect(app(Schedule::class)->events())
+            ->first(fn ($event): bool => str_contains((string) $event->command, 'update:check'));
 
-        $this->assertNotNull($olay, 'guncelleme:denetle zamanlayıcıda yok.');
-        $this->assertSame('50 6 * * *', $olay->expression);
+        $this->assertNotNull($event, 'update:check zamanlayıcıda yok.');
+        $this->assertSame('50 6 * * *', $event->expression);
     }
 
     public function test_kontrol_edilemezse_sebep_gorunur(): void
     {
         // Testler ağa çıkmaz: GitHub'a ulaşılamıyormuş gibi.
         Http::fake(fn () => throw new ConnectionException('ağ kapalı'));
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
-        $this->actingAs($yonetici)
-            ->from(route('settings.guncelleme'))
-            ->post(route('settings.guncelleme.denetle'))
+        $this->actingAs($admin)
+            ->from(route('settings.updates'))
+            ->post(route('settings.updates.check'))
             ->assertSessionHas('error');
 
-        $this->actingAs($yonetici)
-            ->get(route('settings.guncelleme'))
+        $this->actingAs($admin)
+            ->get(route('settings.updates'))
             ->assertSee('kontrol edilemedi')
             ->assertSee('erişilemedi');
     }

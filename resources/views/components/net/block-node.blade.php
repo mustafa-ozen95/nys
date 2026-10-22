@@ -10,12 +10,12 @@
 @props(['dugum', 'selected' => null])
 
 @if ($dugum['satirlar'] !== [])
-    <details class="agac__dal" @if ($selected && ($selected->is($dugum['block']) || $selected->parent?->is($dugum['block']))) open @endif>
-        <summary class="agac__ozet">
+    <details class="agac__branch" @if ($selected && ($selected->is($dugum['block']) || $selected->parent?->is($dugum['block']))) open @endif>
+        <summary class="agac__summary">
             <x-net.block-row :block="$dugum['block']" :selected="$selected" />
         </summary>
 
-        <div class="agac__ic">
+        <div class="agac__inner">
             @foreach ($dugum['satirlar'] as $satir)
                 @if ($satir['tur'] === 'alt-ag')
                     @isset($satir['alt'])
@@ -29,14 +29,14 @@
                         verilmemiş yer. Hangi maskelerin sığdığı yazar çünkü
                         kullanıcı oraya alt ağ açacak.
                     --}}
-                    <div class="grid-row grid-row--static block-row agac__bosluk">
+                    <div class="grid-row grid-row--static block-row agac__gap">
                         <span class="mono block-row__cidr">{{ $satir['cidr'] }}</span>
-                        <span class="text-sm text-muted truncate block-row__aciklama">
+                        <span class="text-sm text-muted truncate block-row__description">
                             Boşta · sığan bloklar:
                             <span class="mono">{{ implode(', ', $satir['parcalar']) }}</span>
                         </span>
-                        <span class="block-row__atama assignment--bos">—</span>
-                        <span class="text-sm text-muted block-row__sayi">
+                        <span class="block-row__assignment assignment--empty">—</span>
+                        <span class="text-sm text-muted block-row__number">
                             {{ $satir['adres'] === null ? '' : number_format($satir['adres'], 0, ',', '.').' adres' }}
                         </span>
                     </div>
@@ -44,7 +44,7 @@
             @endforeach
 
             @if ($dugum['kesildi'])
-                <p class="agac__kesildi text-sm text-muted">
+                <p class="agac__truncated text-sm text-muted">
                     Liste kısaltıldı. Devamı için bloğa tıklayın.
                 </p>
             @endif

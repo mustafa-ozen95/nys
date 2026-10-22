@@ -149,11 +149,11 @@ class AnalyzerConfigurator
              * "syntax error" veriyor (test4'te ölçüldü). Giriş tarafı ikisinde
              * de sarmalanmıştır — yalnızca çıkış farklı.
              */
-            $ad = $this->escape((string) $settings['output_interface']);
+            $name = $this->escape((string) $settings['output_interface']);
 
             $body .= $profile->usesPlainAnalyzerOutput()
-                ? "<interface>{$ad}</interface>"
-                : "<interface><name>{$ad}</name></interface>";
+                ? "<interface>{$name}</interface>"
+                : "<interface><name>{$name}</name></interface>";
         } elseif (filled($settings['output_vlan'] ?? null)) {
             $body .= '<vlan><name>'.$this->escape((string) $settings['output_vlan']).'</name>'
                 .ResidualXml::emit($this->residual($settings, SwitchAnalyzer::RESIDUAL_OUTPUT_VLAN))
@@ -197,9 +197,9 @@ class AnalyzerConfigurator
 
     private function wrap(string $body, JunosSchemaProfile $profile): string
     {
-        $kok = $profile->analyzerRootElement();
+        $root = $profile->analyzerRootElement();
 
-        return "<configuration><{$kok}>{$body}</{$kok}></configuration>";
+        return "<configuration><{$root}>{$body}</{$root}></configuration>";
     }
 
     /**

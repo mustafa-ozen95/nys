@@ -25,10 +25,10 @@ class NetworkTeamPermissionSeeder extends Seeder
      *
      * @return list<string>
      */
-    private function haricTutulanlar(): array
+    private function exceptKept(): array
     {
         /** @var list<string> */
-        return LocalInventory::al('ekibe_kapali_sunucular');
+        return LocalInventory::take('ekibe_kapali_sunucular');
     }
 
     public function __construct(private PermissionRegistry $registry) {}
@@ -38,7 +38,7 @@ class NetworkTeamPermissionSeeder extends Seeder
         $emails = array_column(NetworkTeamSeeder::members(), 'email');
         $users = User::query()->whereIn('email', $emails)->get();
         $serverIds = Server::query()
-            ->whereNotIn('ip_address', $this->haricTutulanlar())
+            ->whereNotIn('ip_address', $this->exceptKept())
             ->pluck('id');
 
         foreach ($users as $user) {

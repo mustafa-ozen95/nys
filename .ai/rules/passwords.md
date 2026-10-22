@@ -4,7 +4,7 @@ Panelin switchlere bağlandığı hesabın parolası panelden değiştirilir. He
 cihaza AYRI ve rastgele bir parola verilir; tek bir parolanın bütün sahayı
 açması diye bir durum kalmaz.
 
-Ekran: `/ayarlar/parolalar`. Yalnızca yönetici — bu ekran panelin bütün
+Ekran: `/settings/passwords`. Yalnızca yönetici — bu ekran panelin bütün
 cihazlara erişimini tek tuşla değiştirir ve yanlış giderse saha yönetilemez
 hâle gelir. "Cihaza yaz" yetkisi bunu KAPSAMAZ.
 

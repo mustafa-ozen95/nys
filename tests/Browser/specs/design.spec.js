@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { girisYap } from '../support/login.js';
+import { performLogin } from '../support/login.js';
 
 /**
  * Tasarım tutarlılığı.
@@ -16,18 +16,18 @@ import { girisYap } from '../support/login.js';
  * Üç genişlikte de çalışır: masaüstü, tablet, mobil.
  */
 
-async function sayfalar(page) {
-    await page.goto('/switchler');
-    const ilk = await page.locator('a.switch-row').first().getAttribute('href');
+async function pages(page) {
+    await page.goto('/switches');
+    const first = await page.locator('a.switch-row').first().getAttribute('href');
 
     return [
-        '/switchler', ilk, `${ilk}/portlar`, `${ilk}/vlanlar`, `${ilk}/firewall`,
-        `${ilk}/politikalar`, '/adresleme', '/sunucular', '/kullanicilar',
+        '/switches', first, `${first}/ports`, `${first}/vlans`, `${first}/firewall`,
+        `${first}/policies`, '/addressing', '/servers', '/users',
     ];
 }
 
 /** Bir CSS ölçüsünü piksele çevirir; "12px" -> 12. */
-const px = (deger) => Math.round(parseFloat(deger) || 0);
+const px = (value) => Math.round(parseFloat(value) || 0);
 
 test.describe('tasarım', () => {
     /**
@@ -37,22 +37,22 @@ test.describe('tasarım', () => {
      * gözle fark edilmesi en zor tutarsızlıktır.
      */
     test('kartlar aynı sütunda aynı genişlikte', async ({ page }) => {
-        await girisYap(page);
+        await performLogin(page);
 
-        for (const adres of await sayfalar(page)) {
-            await page.goto(adres);
+        for (const address of await pages(page)) {
+            await page.goto(address);
 
-            const genislikler = await page.locator('.panel:visible').evaluateAll(
-                (kartlar) => kartlar.map((k) => Math.round(k.getBoundingClientRect().width)),
+            const widths = await page.locator('.panel:visible').evaluateAll(
+                (cards) => cards.map((k) => Math.round(k.getBoundingClientRect().width)),
             );
 
-            if (genislikler.length < 2) {
+            if (widths.length < 2) {
                 continue;
             }
 
-            const benzersiz = [...new Set(genislikler)];
+            const unique = [...new Set(widths)];
 
-            expect(benzersiz, `${adres} sayfasında kart genişlikleri ayrışıyor: ${genislikler.join(', ')}`)
+            expect(unique, `${address} sayfasında kart genişlikleri ayrışıyor: ${widths.join(', ')}`)
                 .toHaveLength(1);
         }
     });
@@ -62,25 +62,25 @@ test.describe('tasarım', () => {
      * yükseklik üretilmemeli.
      */
     test('düğme yükseklikleri sınırlı bir kümeden gelir', async ({ page }) => {
-        await girisYap(page);
+        await performLogin(page);
 
-        const yukseklikler = new Set();
+        const heights = new Set();
 
-        for (const adres of await sayfalar(page)) {
-            await page.goto(adres);
+        for (const address of await pages(page)) {
+            await page.goto(address);
 
-            const olculer = await page.locator('.btn:visible').evaluateAll(
-                (dugmeler) => dugmeler.map((d) => Math.round(d.getBoundingClientRect().height)),
+            const measures = await page.locator('.btn:visible').evaluateAll(
+                (buttons) => buttons.map((d) => Math.round(d.getBoundingClientRect().height)),
             );
 
-            olculer.forEach((h) => h > 0 && yukseklikler.add(h));
+            measures.forEach((h) => h > 0 && heights.add(h));
         }
 
-        expect([...yukseklikler].sort((a, b) => a - b).join(', '))
+        expect([...heights].sort((a, b) => a - b).join(', '))
             .toMatch(/^[\d, ]+$/);
 
         // Üç boy sınıfı var: normal, sm, icon. Dörtten fazlası icat demektir.
-        expect(yukseklikler.size, `düğme yüksekliği çeşidi: ${[...yukseklikler].join(', ')}`)
+        expect(heights.size, `düğme yüksekliği çeşidi: ${[...heights].join(', ')}`)
             .toBeLessThanOrEqual(4);
     });
 
@@ -89,21 +89,21 @@ test.describe('tasarım', () => {
      * bir ekran bütün panelden ayrışır.
      */
     test('kart iç boşlukları tek değerde', async ({ page }) => {
-        await girisYap(page);
+        await performLogin(page);
 
-        const bosluklar = new Set();
+        const gaps = new Set();
 
-        for (const adres of await sayfalar(page)) {
-            await page.goto(adres);
+        for (const address of await pages(page)) {
+            await page.goto(address);
 
-            const olculer = await page.locator('.panel:visible').evaluateAll(
-                (kartlar) => kartlar.map((k) => getComputedStyle(k).paddingLeft),
+            const measures = await page.locator('.panel:visible').evaluateAll(
+                (cards) => cards.map((k) => getComputedStyle(k).paddingLeft),
             );
 
-            olculer.forEach((p) => bosluklar.add(px(p)));
+            measures.forEach((p) => gaps.add(px(p)));
         }
 
-        expect(bosluklar.size, `kart iç boşluğu çeşidi: ${[...bosluklar].join(', ')}`)
+        expect(gaps.size, `kart iç boşluğu çeşidi: ${[...gaps].join(', ')}`)
             .toBe(1);
     });
 
@@ -112,19 +112,19 @@ test.describe('tasarım', () => {
      * değerde olmalı, yoksa aynı pencerede alanlar farklı sıklıkta dizilir.
      */
     test('form alanları aynı dikey ritmi paylaşır', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/switchler');
+        await performLogin(page);
+        await page.goto('/switches');
 
-        const ilk = await page.locator('a.switch-row').first().getAttribute('href');
-        await page.goto(`${ilk}/portlar`);
+        const first = await page.locator('a.switch-row').first().getAttribute('href');
+        await page.goto(`${first}/ports`);
 
-        const izgaralar = await page.locator('.form-grid').evaluateAll(
-            (kutular) => kutular.map((k) => getComputedStyle(k).rowGap),
+        const grids = await page.locator('.form-grid').evaluateAll(
+            (boxes) => boxes.map((k) => getComputedStyle(k).rowGap),
         );
 
-        const benzersiz = [...new Set(izgaralar.map((g) => Math.round(parseFloat(g) || 0)))];
+        const unique = [...new Set(grids.map((g) => Math.round(parseFloat(g) || 0)))];
 
-        expect(benzersiz.length, `form ızgarası satır boşluğu çeşidi: ${benzersiz.join(', ')}`)
+        expect(unique.length, `form ızgarası satır boşluğu çeşidi: ${unique.join(', ')}`)
             .toBeLessThanOrEqual(1);
     });
 
@@ -133,19 +133,19 @@ test.describe('tasarım', () => {
      * (ör. ayrıntı düzeyi) onu büyütmemeli.
      */
     test('üst çubuk her sayfada aynı yükseklikte', async ({ page }) => {
-        await girisYap(page);
+        await performLogin(page);
 
-        const yukseklikler = new Set();
+        const heights = new Set();
 
-        for (const adres of await sayfalar(page)) {
-            await page.goto(adres);
+        for (const address of await pages(page)) {
+            await page.goto(address);
 
-            yukseklikler.add(await page.locator('.topbar').evaluate(
+            heights.add(await page.locator('.topbar').evaluate(
                 (c) => Math.round(c.getBoundingClientRect().height),
             ));
         }
 
-        expect(yukseklikler.size, `üst çubuk yüksekliği değişiyor: ${[...yukseklikler].join(', ')}`)
+        expect(heights.size, `üst çubuk yüksekliği değişiyor: ${[...heights].join(', ')}`)
             .toBe(1);
     });
 
@@ -161,24 +161,24 @@ test.describe('tasarım', () => {
      * kırılır, bu yüzden her sayfa tek tek denenir.
      */
     test('hiçbir sayfa yatay kaymaz', async ({ page }) => {
-        await girisYap(page);
+        await performLogin(page);
 
-        const kayanlar = [];
+        const overflowing = [];
 
-        for (const adres of await sayfalar(page)) {
-            await page.goto(adres);
+        for (const address of await pages(page)) {
+            await page.goto(address);
 
-            const tasma = await page.evaluate(
+            const overflow = await page.evaluate(
                 () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
             );
 
             // Yuvarlama payı: 1 piksel taşma göze görünmez, 2 piksel kayar.
-            if (tasma > 1) {
-                kayanlar.push(`${adres} (+${tasma}px)`);
+            if (overflow > 1) {
+                overflowing.push(`${address} (+${overflow}px)`);
             }
         }
 
-        expect(kayanlar, `yatay kayan sayfalar: ${kayanlar.join(', ')}`).toEqual([]);
+        expect(overflowing, `yatay kayan sayfalar: ${overflowing.join(', ')}`).toEqual([]);
     });
 
     /**
@@ -195,35 +195,35 @@ test.describe('tasarım', () => {
      * yapışkan içeriğinkinden büyük olmalı.
      */
     test('üst çubuk yapışkan içeriğin üstünde bir katman kurar', async ({ page }) => {
-        await girisYap(page);
-        await page.goto('/sunucular');
+        await performLogin(page);
+        await page.goto('/servers');
 
-        const katmanlar = await page.evaluate(() => {
-            const sayi = (el) => {
+        const layers = await page.evaluate(() => {
+            const number = (el) => {
                 const z = el ? getComputedStyle(el).zIndex : 'auto';
 
                 return z === 'auto' ? null : Number(z);
             };
 
-            const yapiskan = [...document.querySelectorAll('*')].find(
-                (el) => getComputedStyle(el).position === 'sticky' && sayi(el) !== null,
+            const sticky = [...document.querySelectorAll('*')].find(
+                (el) => getComputedStyle(el).position === 'sticky' && number(el) !== null,
             );
 
             return {
-                topbar: sayi(document.querySelector('.topbar')),
-                yapiskan: sayi(yapiskan),
-                yapiskanAd: yapiskan?.className ?? '(yok)',
+                topbar: number(document.querySelector('.topbar')),
+                sticky: number(sticky),
+                stickyName: sticky?.className ?? '(yok)',
             };
         });
 
-        expect(katmanlar.topbar, 'üst çubuk yığılma bağlamı kurmuyor (z-index: auto)')
+        expect(layers.topbar, 'üst çubuk yığılma bağlamı kurmuyor (z-index: auto)')
             .not.toBeNull();
 
-        if (katmanlar.yapiskan !== null) {
+        if (layers.sticky !== null) {
             expect(
-                katmanlar.topbar,
-                `üst çubuk (${katmanlar.topbar}) yapışkan içeriğin (${katmanlar.yapiskanAd}: ${katmanlar.yapiskan}) altında`,
-            ).toBeGreaterThan(katmanlar.yapiskan);
+                layers.topbar,
+                `üst çubuk (${layers.topbar}) yapışkan içeriğin (${layers.stickyName}: ${layers.sticky}) altında`,
+            ).toBeGreaterThan(layers.sticky);
         }
     });
 });

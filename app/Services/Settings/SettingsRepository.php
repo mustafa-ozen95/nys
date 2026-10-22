@@ -87,11 +87,11 @@ class SettingsRepository
          * dilimini AÇILIŞTA bir kez kuruyor ve sonraki config değişikliği ona
          * ulaşmıyor. Ayarlanmış olsa bile bütün tarihler eski dilimde kalırdı.
          */
-        $dilim = config('app.timezone');
+        $zone = config('app.timezone');
 
-        if (is_string($dilim) && $dilim !== '') {
-            if ($dilim !== date_default_timezone_get()) {
-                date_default_timezone_set($dilim);
+        if (is_string($zone) && $zone !== '') {
+            if ($zone !== date_default_timezone_get()) {
+                date_default_timezone_set($zone);
             }
 
             /*
@@ -99,7 +99,7 @@ class SettingsRepository
              * bilerek ayrılmadıysa iki ayrı dilim ortaya çıkmasın.
              */
             if (env('APP_DISPLAY_TIMEZONE') === null) {
-                config(['app.display_timezone' => $dilim]);
+                config(['app.display_timezone' => $zone]);
             }
         }
     }
@@ -190,7 +190,7 @@ class SettingsRepository
          * Burada gereken tek şey ad; ilişki hiç açılmaz.
          */
         return Setting::query()
-            ->with(['editor' => fn ($sorgu) => $sorgu->select('id', 'name')->without('role')])
+            ->with(['editor' => fn ($query) => $query->select('id', 'name')->without('role')])
             ->get()
             ->mapWithKeys(fn (Setting $setting): array => [
                 LegacyKeys::toCurrent($setting->key) => ['at' => $setting->updated_at, 'by' => $setting->editor?->name],
@@ -218,14 +218,14 @@ class SettingsRepository
         $values = [];
 
         foreach ($rows as $row) {
-            $anahtar = LegacyKeys::toCurrent($row->key);
-            $definition = $this->catalog->find($anahtar);
+            $key = LegacyKeys::toCurrent($row->key);
+            $definition = $this->catalog->find($key);
 
             if ($definition === null) {
                 continue;
             }
 
-            $values[$anahtar] = $this->decode($definition, $row->value);
+            $values[$key] = $this->decode($definition, $row->value);
         }
 
         return $values;

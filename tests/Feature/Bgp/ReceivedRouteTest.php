@@ -58,11 +58,11 @@ final class ReceivedRouteTest extends TestCase
     public function test_baska_switchin_komsusu_okunamaz(): void
     {
         [$switch] = $this->neighbor();
-        [, $yabanci] = $this->neighbor('198.18.20.196', '198.18.8.41');
+        [, $foreign] = $this->neighbor('198.18.20.196', '198.18.8.41');
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->getJson(route('ajax.bgp.received', [$switch, $yabanci]))
+            ->getJson(route('ajax.bgp.received', [$switch, $foreign]))
             ->assertNotFound();
 
         $this->assertNull($device->connection);

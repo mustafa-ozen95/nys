@@ -181,12 +181,12 @@ class AddressBlockRequest extends FormRequest
                         return;
                     }
 
-                    [$adres, $maske] = array_pad(explode('/', trim($value), 2), 2, '');
+                    [$address, $mask] = array_pad(explode('/', trim($value), 2), 2, '');
 
                     $fail(trim(
                         'Bu alana yalnızca ağ adresi yazılır, maske ayrı seçilir: '
-                        ."\"{$adres}\" yazıp maskeyi yandaki listeden seçin"
-                        .($maske === '' ? '.' : " (/{$maske}).")
+                        ."\"{$address}\" yazıp maskeyi yandaki listeden seçin"
+                        .($mask === '' ? '.' : " (/{$mask}).")
                     ));
                 },
 
@@ -349,10 +349,10 @@ class AddressBlockRequest extends FormRequest
         $once = $this->isMethod('PUT') && $once instanceof AddressBlock ? $once : null;
 
         // Kaydedilmemiş, yeni hâli taşıyan blok: parmak izi servislerden alınır.
-        $sonra = (new AddressBlock)->forceFill($this->blockAttributes());
+        $after = (new AddressBlock)->forceFill($this->blockAttributes());
 
-        foreach (app(AssignmentRights::class)->missing($this->user(), $once, $sonra) as $alan => $ileti) {
-            $validator->errors()->add($alan, $ileti);
+        foreach (app(AssignmentRights::class)->missing($this->user(), $once, $after) as $alan => $message) {
+            $validator->errors()->add($alan, $message);
         }
     }
 

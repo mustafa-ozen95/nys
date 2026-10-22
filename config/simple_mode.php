@@ -21,7 +21,7 @@ declare(strict_types=1);
 | (config/permissions.php), burada ikinci bir kopya tutulmaz.
 */
 
-$bolumler = [
+$sections = [
     'switch_ports', 'switch_aggregation', 'switch_vlans', 'switch_ip_addresses',
     'switch_routes', 'switch_rstp', 'switch_voip', 'switch_mirroring',
     'switch_secure_access', 'switch_forwarding', 'switch_prefix_lists',
@@ -29,7 +29,7 @@ $bolumler = [
 ];
 
 return [
-    'bolumler' => array_fill_keys($bolumler, ['goruntule' => true, 'yonet' => true]),
+    'bolumler' => array_fill_keys($sections, ['goruntule' => true, 'yonet' => true]),
 
     /*
     |--------------------------------------------------------------------------

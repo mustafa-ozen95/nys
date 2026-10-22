@@ -66,27 +66,27 @@ final class SchemaProfileTest extends TestCase
 
     public function test_els_oncesi_cihaza_port_mode_yazilir(): void
     {
-        $belgeler = app(PortConfigurator::class)->documents(
+        $documents = app(PortConfigurator::class)->documents(
             'ge-0/0/5',
             ['mode' => PortMode::Access],
             JunosSchemaProfile::PreEls,
         );
 
-        $this->assertStringContainsString('<port-mode>access</port-mode>', implode('', $belgeler));
+        $this->assertStringContainsString('<port-mode>access</port-mode>', implode('', $documents));
     }
 
     public function test_els_cihaza_interface_mode_yazilir(): void
     {
-        $belgeler = app(PortConfigurator::class)->documents(
+        $documents = app(PortConfigurator::class)->documents(
             'ge-0/0/5',
             ['mode' => PortMode::Access],
             JunosSchemaProfile::Els,
         );
 
-        $metin = implode('', $belgeler);
+        $text = implode('', $documents);
 
-        $this->assertStringContainsString('<interface-mode>access</interface-mode>', $metin);
-        $this->assertStringNotContainsString('<port-mode>', $metin);
+        $this->assertStringContainsString('<interface-mode>access</interface-mode>', $text);
+        $this->assertStringNotContainsString('<port-mode>', $text);
     }
 
     /**

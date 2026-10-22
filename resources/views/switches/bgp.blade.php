@@ -10,10 +10,10 @@
 
                 @can('updateSwitchBgp', $switch)
                     @if ($hasAutonomousSystem)
-                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="grup-ekle">Grup ekle</button>
+                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="group-add">Grup ekle</button>
                     @endif
 
-                    <button type="button" class="btn btn--sm" data-modal-open="as-numarasi">AS numarası</button>
+                    <button type="button" class="btn btn--sm" data-modal-open="as-number-input">AS numarası</button>
                 @endcan
             </div>
 
@@ -109,8 +109,8 @@
                                     <span class="row-actions">
                                         <button type="button" class="btn btn--ghost btn--sm"
                                                 data-modal-open="alinan-{{ $neighbor->uuid }}"
-                                                data-alinan="{{ route('ajax.bgp.received', [$switch, $neighbor]) }}"
-                                                data-alinan-hedef="#alinan-govde-{{ $neighbor->uuid }}">Alınan prefixler</button>
+                                                data-received="{{ route('ajax.bgp.received', [$switch, $neighbor]) }}"
+                                                data-received-target="#received-body-{{ $neighbor->uuid }}">Alınan prefixler</button>
 
                                         <button type="button" class="btn btn--ghost btn--sm"
                                                 data-modal-open="peer-{{ $neighbor->uuid }}">Müşteri configi</button>
@@ -152,7 +152,7 @@
     @foreach ($groups as $group)
         @foreach ($group->neighbors as $neighbor)
             <x-ui.modal :id="'alinan-'.$neighbor->uuid" :title="$neighbor->address.' · alınan prefixler'" wide>
-                <div class="modal__body stack stack--loose" id="alinan-govde-{{ $neighbor->uuid }}">
+                <div class="modal__body stack stack--loose" id="received-body-{{ $neighbor->uuid }}">
                     <p class="text-sm text-muted">Cihazdan okunuyor…</p>
                 </div>
 
@@ -172,7 +172,7 @@
     @endforeach
 
     @can('createSwitchBgp', $switch)
-        <x-ui.modal id="as-numarasi" title="AS numarası">
+        <x-ui.modal id="as-number-input" title="AS numarası">
             <form method="POST" action="{{ route('switches.bgp.autonomous-system', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar."
                   data-confirm-title="Cihaza yaz"
@@ -181,9 +181,9 @@
                 @method('PUT')
 
                 <div class="modal__body">
-                    <x-form.field name="autonomous_system" label="AS numarası" id="as-no"
+                    <x-form.field name="autonomous_system" label="AS numarası" id="as-number"
                                   hint="routing-options autonomous-system. Cihaz bu tanımlı değilken BGP’yi kabul etmiyor.">
-                        <x-form.input name="autonomous_system" id="as-no"
+                        <x-form.input name="autonomous_system" id="as-number"
                                       :value="$switch->autonomous_system" mono required />
                     </x-form.field>
                 </div>
@@ -193,9 +193,9 @@
         </x-ui.modal>
 
         @if ($hasAutonomousSystem)
-            <x-ui.modal id="grup-ekle" title="Yeni BGP grubu" wide>
+            <x-ui.modal id="group-add" title="Yeni BGP grubu" wide>
                 <form method="POST" action="{{ route('switches.bgp.groups.store', $switch) }}"
-                      data-bgp-formu
+                      data-bgp-form
                       data-confirm="Bu işlem cihaza commit atar."
                       data-confirm-title="Cihaza yaz">
                     @csrf
@@ -213,7 +213,7 @@
         @foreach ($groups as $group)
             <x-ui.modal :id="'grup-duzenle-'.$group->uuid" :title="$group->name.' düzenle'" wide>
                 <form method="POST" action="{{ route('switches.bgp.groups.update', [$switch, $group]) }}"
-                      data-bgp-formu
+                      data-bgp-form
                       data-confirm="Bu işlem cihaza commit atar."
                       data-confirm-title="Cihaza yaz"
                       data-confirm-verify="{{ $group->name }}">
@@ -233,7 +233,7 @@
 
             <x-ui.modal :id="'komsu-ekle-'.$group->uuid" :title="$group->name.' · komşu ekle'">
                 <form method="POST" action="{{ route('switches.bgp.neighbors.store', [$switch, $group]) }}"
-                      data-bgp-formu
+                      data-bgp-form
                       data-confirm="Bu işlem cihaza commit atar."
                       data-confirm-title="Cihaza yaz">
                     @csrf
@@ -250,7 +250,7 @@
                 <x-ui.modal :id="'komsu-'.$neighbor->uuid" :title="$neighbor->address.' düzenle'">
                     <form method="POST"
                           action="{{ route('switches.bgp.neighbors.update', [$switch, $group, $neighbor]) }}"
-                          data-bgp-formu
+                          data-bgp-form
                           data-confirm="Bu işlem cihaza commit atar."
                           data-confirm-title="Cihaza yaz"
                           data-confirm-verify="{{ $neighbor->address }}">

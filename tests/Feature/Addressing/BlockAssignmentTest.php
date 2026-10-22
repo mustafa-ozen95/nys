@@ -94,15 +94,15 @@ final class BlockAssignmentTest extends TestCase
      */
     public function test_prefix_list_omurga_switchten_secilir(): void
     {
-        $omurga = $this->coreSwitchThatCanBeConfigured();
-        $liste = SwitchPrefixList::factory()->for($omurga, 'switch')->create(['name' => 'musteri1-PREFIXES']);
-        $cihaz = $this->fakeDevice('musteri1-PREFIXES', ['192.0.2.0/24']);
+        $backbone = $this->coreSwitchThatCanBeConfigured();
+        $liste = SwitchPrefixList::factory()->for($backbone, 'switch')->create(['name' => 'musteri1-PREFIXES']);
+        $device = $this->fakeDevice('musteri1-PREFIXES', ['192.0.2.0/24']);
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '192.0.2.0',
                 'prefix_length' => 24,
-                'core_switch_id' => $omurga->uuid,
+                'core_switch_id' => $backbone->uuid,
                 'connection_type' => AddressConnectionType::PrefixList->value,
                 'prefix_list_id' => $liste->uuid,
             ])
@@ -115,7 +115,7 @@ final class BlockAssignmentTest extends TestCase
             'access_switch_id' => null,
         ]);
 
-        $this->assertStringContainsString('192.0.2.0/24', $cihaz->payload());
+        $this->assertStringContainsString('192.0.2.0/24', $device->payload());
     }
 
     /**
@@ -124,15 +124,15 @@ final class BlockAssignmentTest extends TestCase
      */
     public function test_baska_switchin_prefix_listesi_secilemez(): void
     {
-        $omurga = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
-        $baska = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
-        $liste = SwitchPrefixList::factory()->for($baska, 'switch')->create();
+        $backbone = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
+        $other = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
+        $liste = SwitchPrefixList::factory()->for($other, 'switch')->create();
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '192.0.2.0',
                 'prefix_length' => 24,
-                'core_switch_id' => $omurga->uuid,
+                'core_switch_id' => $backbone->uuid,
                 'connection_type' => AddressConnectionType::PrefixList->value,
                 'prefix_list_id' => $liste->uuid,
             ])
@@ -141,8 +141,8 @@ final class BlockAssignmentTest extends TestCase
 
     public function test_prefix_list_icin_omurga_switch_zorunlu(): void
     {
-        $omurga = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
-        $liste = SwitchPrefixList::factory()->for($omurga, 'switch')->create();
+        $backbone = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
+        $liste = SwitchPrefixList::factory()->for($backbone, 'switch')->create();
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
@@ -160,14 +160,14 @@ final class BlockAssignmentTest extends TestCase
      */
     public function test_vlan_omurga_switchte_de_olabilir(): void
     {
-        $omurga = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
-        $vlan = Vlan::factory()->for($omurga, 'switch')->create(['vlan_tag' => 30]);
+        $backbone = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
+        $vlan = Vlan::factory()->for($backbone, 'switch')->create(['vlan_tag' => 30]);
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '192.168.10.0',
                 'prefix_length' => 24,
-                'core_switch_id' => $omurga->uuid,
+                'core_switch_id' => $backbone->uuid,
                 'connection_type' => AddressConnectionType::Vlan->value,
                 'vlan_id' => $vlan->uuid,
             ])
@@ -176,7 +176,7 @@ final class BlockAssignmentTest extends TestCase
 
         $this->assertDatabaseHas('address_blocks', [
             'network' => '192.168.10.0',
-            'core_switch_id' => $omurga->id,
+            'core_switch_id' => $backbone->id,
             'access_switch_id' => null,
             'vlan_id' => $vlan->id,
         ]);
@@ -203,18 +203,18 @@ final class BlockAssignmentTest extends TestCase
      */
     public function test_erisim_secilirse_hedef_ondan_okunur(): void
     {
-        $omurga = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
-        $erisim = NetworkSwitch::factory()->create(['role' => SwitchRole::Access]);
-        $omurgaVlan = Vlan::factory()->for($omurga, 'switch')->create(['vlan_tag' => 30]);
+        $backbone = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
+        $access = NetworkSwitch::factory()->create(['role' => SwitchRole::Access]);
+        $backboneVlan = Vlan::factory()->for($backbone, 'switch')->create(['vlan_tag' => 30]);
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '192.168.10.0',
                 'prefix_length' => 24,
-                'core_switch_id' => $omurga->uuid,
-                'access_switch_id' => $erisim->uuid,
+                'core_switch_id' => $backbone->uuid,
+                'access_switch_id' => $access->uuid,
                 'connection_type' => AddressConnectionType::Vlan->value,
-                'vlan_id' => $omurgaVlan->uuid,
+                'vlan_id' => $backboneVlan->uuid,
             ])
             ->assertSessionHasErrors('vlan_id');
     }
@@ -224,26 +224,26 @@ final class BlockAssignmentTest extends TestCase
      */
     public function test_omurga_alanina_erisim_switchi_secilemez(): void
     {
-        $erisim = NetworkSwitch::factory()->create(['role' => SwitchRole::Access]);
+        $access = NetworkSwitch::factory()->create(['role' => SwitchRole::Access]);
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '192.168.10.0',
                 'prefix_length' => 24,
-                'core_switch_id' => $erisim->uuid,
+                'core_switch_id' => $access->uuid,
             ])
             ->assertSessionHasErrors('core_switch_id');
     }
 
     public function test_erisim_alanina_omurga_switchi_secilemez(): void
     {
-        $omurga = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
+        $backbone = NetworkSwitch::factory()->create(['role' => SwitchRole::Core]);
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '192.168.10.0',
                 'prefix_length' => 24,
-                'access_switch_id' => $omurga->uuid,
+                'access_switch_id' => $backbone->uuid,
             ])
             ->assertSessionHasErrors('access_switch_id');
     }
@@ -262,7 +262,7 @@ final class BlockAssignmentTest extends TestCase
     public function test_vlan_gecidi_etiketten_degil_l3_arayuzunden_yazilir(): void
     {
         $core = $this->coreSwitchThatCanBeConfigured();
-        $hedef = Vlan::factory()->for($core, 'switch')->create([
+        $target = Vlan::factory()->for($core, 'switch')->create([
             'name' => 'V10', 'vlan_tag' => 10, 'l3_interface' => 'vlan.9',
         ]);
         // Etiketle aynı numarayı taşıyan KOMŞU VLAN; hedef bu olmamalı.
@@ -278,17 +278,17 @@ final class BlockAssignmentTest extends TestCase
                 'prefix_length' => 29,
                 'core_switch_id' => $core->uuid,
                 'connection_type' => AddressConnectionType::Vlan->value,
-                'vlan_id' => $hedef->uuid,
+                'vlan_id' => $target->uuid,
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<name>vlan</name>', $yazilan);
-        $this->assertStringContainsString('<name>9</name>', $yazilan);
-        $this->assertStringNotContainsString('<name>10</name>', $yazilan);
-        $this->assertStringContainsString('198.18.7.73/29', $yazilan);
+        $this->assertStringContainsString('<name>vlan</name>', $written);
+        $this->assertStringContainsString('<name>9</name>', $written);
+        $this->assertStringNotContainsString('<name>10</name>', $written);
+        $this->assertStringContainsString('198.18.7.73/29', $written);
     }
 
     /**
@@ -344,16 +344,16 @@ final class BlockAssignmentTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<name>vlan</name>', $yazilan);
-        $this->assertStringContainsString('<name>28</name>', $yazilan);
-        $this->assertStringContainsString('198.18.7.209/29', $yazilan);
+        $this->assertStringContainsString('<name>vlan</name>', $written);
+        $this->assertStringContainsString('<name>28</name>', $written);
+        $this->assertStringContainsString('198.18.7.209/29', $written);
 
-        $blok = AddressBlock::query()->firstWhere('network', '198.18.7.208');
+        $block = AddressBlock::query()->firstWhere('network', '198.18.7.208');
 
-        $this->assertSame($vlan->id, $blok->vlan_id);
-        $this->assertSame('VLAN V27', $blok->assignment_target);
+        $this->assertSame($vlan->id, $block->vlan_id);
+        $this->assertSame('VLAN V27', $block->assignment_target);
     }
 
     /**

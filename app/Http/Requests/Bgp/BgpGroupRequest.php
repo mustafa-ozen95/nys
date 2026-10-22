@@ -71,14 +71,14 @@ class BgpGroupRequest extends FormRequest
      */
     private function allowPrefixInput(): array
     {
-        $ham = $this->input('allow_prefixes');
+        $raw = $this->input('allow_prefixes');
 
-        if (is_array($ham)) {
-            return array_values(array_filter(array_map('trim', $ham), 'filled'));
+        if (is_array($raw)) {
+            return array_values(array_filter(array_map('trim', $raw), 'filled'));
         }
 
         return array_values(array_filter(
-            array_map('trim', preg_split('/[\r\n,]+/', (string) $ham) ?: []),
+            array_map('trim', preg_split('/[\r\n,]+/', (string) $raw) ?: []),
             'filled',
         ));
     }
@@ -275,11 +275,11 @@ class BgpGroupRequest extends FormRequest
                 continue;
             }
 
-            $sinir = $family['prefix_limit_maximum'] ?? null;
+            $limit = $family['prefix_limit_maximum'] ?? null;
             $teardown = (bool) ($family['teardown'] ?? false);
 
             // Sınır yoksa "sınırda düşür" diye bir şey de olamaz.
-            if ($teardown && ($sinir === null || $sinir === '')) {
+            if ($teardown && ($limit === null || $limit === '')) {
                 $validator->errors()->add(
                     "{$alan}.teardown",
                     'Oturumu düşürmek için önce bir prefix sınırı verilmeli.',
@@ -287,9 +287,9 @@ class BgpGroupRequest extends FormRequest
             }
 
             if (! $teardown) {
-                foreach (['teardown_threshold', 'idle_timeout_forever', 'idle_timeout_minutes'] as $bagli) {
-                    if (filled($family[$bagli] ?? null)) {
-                        $validator->errors()->add("{$alan}.{$bagli}", 'Bu alan yalnızca oturum düşürme açıkken verilebilir.');
+                foreach (['teardown_threshold', 'idle_timeout_forever', 'idle_timeout_minutes'] as $bound) {
+                    if (filled($family[$bound] ?? null)) {
+                        $validator->errors()->add("{$alan}.{$bound}", 'Bu alan yalnızca oturum düşürme açıkken verilebilir.');
                     }
                 }
             }

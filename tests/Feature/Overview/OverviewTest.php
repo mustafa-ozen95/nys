@@ -82,15 +82,15 @@ final class OverviewTest extends TestCase
 
         $this->actingAs($this->reader())->get(route('overview'))->assertOk();
 
-        $itemCagrilari = collect(Http::recorded())
-            ->filter(fn (array $kayit): bool => ($kayit[0]->data()['method'] ?? '') === 'item.get')
+        $itemCalls = collect(Http::recorded())
+            ->filter(fn (array $record): bool => ($record[0]->data()['method'] ?? '') === 'item.get')
             ->count();
 
         /*
          * Tek toplu item.get atılır: switch başına ayrı çağrı, genel bakışta
          * switch sayısı kadar gidiş dönüş demek olurdu.
          */
-        $this->assertSame(1, $itemCagrilari);
+        $this->assertSame(1, $itemCalls);
     }
 
     public function test_the_page_survives_an_unreachable_monitoring_system(): void
@@ -157,13 +157,13 @@ final class OverviewTest extends TestCase
         NetworkSwitch::factory()->create(['status' => SwitchStatus::Offline]);
         NetworkSwitch::factory()->create(['status' => SwitchStatus::Unknown]);
 
-        $sayac = app(NetworkOverviewService::class)
+        $counter = app(NetworkOverviewService::class)
             ->forUser(User::factory()->admin()->create())['counts'];
 
-        $this->assertSame(4, $sayac['total']);
+        $this->assertSame(4, $counter['total']);
         $this->assertSame(
-            $sayac['total'],
-            $sayac['online'] + $sayac['warning'] + $sayac['offline'] + $sayac['unknown'],
+            $counter['total'],
+            $counter['online'] + $counter['warning'] + $counter['offline'] + $counter['unknown'],
             'Her switch bir kutuda sayılmalı.',
         );
     }
@@ -182,10 +182,10 @@ final class OverviewTest extends TestCase
         NetworkSwitch::factory()->create(['status' => SwitchStatus::Online]);
         NetworkSwitch::factory()->create(['status' => SwitchStatus::Unknown]);
 
-        $saglik = app(NetworkOverviewService::class)
+        $health = app(NetworkOverviewService::class)
             ->forUser(User::factory()->admin()->create())['health'];
 
-        $this->assertSame('Ölçülemeyen switch var', $saglik['label']);
-        $this->assertNotSame('green', $saglik['tone']);
+        $this->assertSame('Ölçülemeyen switch var', $health['label']);
+        $this->assertNotSame('green', $health['tone']);
     }
 }

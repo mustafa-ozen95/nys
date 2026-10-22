@@ -191,11 +191,11 @@ final class SshSubsystemTransport implements NetconfTransport
      */
     private function sessionIsGone(Throwable $exception): bool
     {
-        $isaretler = ['request pty', 'channel', 'Connection closed', 'not connected', 'disconnected'];
-        $mesaj = $exception->getMessage();
+        $marks = ['request pty', 'channel', 'Connection closed', 'not connected', 'disconnected'];
+        $message = $exception->getMessage();
 
-        foreach ($isaretler as $isaret) {
-            if (stripos($mesaj, $isaret) !== false) {
+        foreach ($marks as $mark) {
+            if (stripos($message, $mark) !== false) {
                 return true;
             }
         }

@@ -87,7 +87,7 @@ class AnalyzerReader
     {
         $analyzers = [];
 
-        $kok = $reply->xpath(
+        $root = $reply->xpath(
             /*
              * Aynalama ELS'te "forwarding-options" altındadır (test4'te
              * ölçüldü); ELS öncesinde "ethernet-switching-options". Okuyucu
@@ -97,7 +97,7 @@ class AnalyzerReader
             .'/*[local-name()="analyzer"]'
         ) ?: [];
 
-        foreach ($kok as $node) {
+        foreach ($root as $node) {
             $name = $this->text($node, 'name');
 
             if ($name === null) {
@@ -181,9 +181,9 @@ class AnalyzerReader
             }
         }
 
-        $duz = trim((string) $node);
+        $flat = trim((string) $node);
 
-        return $duz === '' ? null : $duz;
+        return $flat === '' ? null : $flat;
     }
 
     private function child(SimpleXMLElement $node, string $element): ?SimpleXMLElement

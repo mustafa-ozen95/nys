@@ -37,7 +37,7 @@ class PolicyStatementSynchronizer
             $this->storeCommunities($switch, $communities);
             $this->storeAsPaths($switch, $asPaths);
 
-            $tutulan = [];
+            $kept = [];
 
             foreach ($statements as $statement) {
                 $model = $switch->policyStatements()->updateOrCreate(
@@ -51,12 +51,12 @@ class PolicyStatementSynchronizer
                     ],
                 );
 
-                $tutulan[] = $model->id;
+                $kept[] = $model->id;
 
                 $this->storeTerms($model, $statement['terms']);
             }
 
-            $switch->policyStatements()->whereNotIn('id', $tutulan)->delete();
+            $switch->policyStatements()->whereNotIn('id', $kept)->delete();
         });
     }
 
@@ -69,10 +69,10 @@ class PolicyStatementSynchronizer
      */
     private function storeCommunities(NetworkSwitch $switch, array $communities): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($communities as $community) {
-            $tutulan[] = $switch->communities()->updateOrCreate(
+            $kept[] = $switch->communities()->updateOrCreate(
                 ['name' => $community['name']],
                 [
                     'members' => $community['members'],
@@ -82,7 +82,7 @@ class PolicyStatementSynchronizer
             )->id;
         }
 
-        $switch->communities()->whereNotIn('id', $tutulan)->delete();
+        $switch->communities()->whereNotIn('id', $kept)->delete();
     }
 
     /**
@@ -93,16 +93,16 @@ class PolicyStatementSynchronizer
      */
     private function storeAsPaths(NetworkSwitch $switch, array $asPaths): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($asPaths as $asPath) {
-            $tutulan[] = $switch->asPaths()->updateOrCreate(
+            $kept[] = $switch->asPaths()->updateOrCreate(
                 ['name' => $asPath['name']],
                 ['path' => $asPath['path'], 'residual_xml' => $asPath['residual_xml']],
             )->id;
         }
 
-        $switch->asPaths()->whereNotIn('id', $tutulan)->delete();
+        $switch->asPaths()->whereNotIn('id', $kept)->delete();
     }
 
     /**
@@ -110,10 +110,10 @@ class PolicyStatementSynchronizer
      */
     private function storeTerms(SwitchPolicyStatement $statement, array $terms): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($terms as $term) {
-            $tutulan[] = $statement->terms()->updateOrCreate(
+            $kept[] = $statement->terms()->updateOrCreate(
                 ['name' => $term['name']],
                 [
                     'position' => $term['position'],
@@ -129,6 +129,6 @@ class PolicyStatementSynchronizer
             )->id;
         }
 
-        $statement->terms()->whereNotIn('id', $tutulan)->delete();
+        $statement->terms()->whereNotIn('id', $kept)->delete();
     }
 }

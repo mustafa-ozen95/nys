@@ -44,13 +44,13 @@ final class PolicyWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<policy-statement><name>prefixes-from-musteri1</name>', $yazilan);
+        $this->assertStringContainsString('<policy-statement><name>prefixes-from-musteri1</name>', $written);
         // Junos bu alanı ALT ÇİZGİYLE yazar.
-        $this->assertStringContainsString('<list_name>MUSTERI</list_name>', $yazilan);
-        $this->assertStringContainsString('<orlonger/>', $yazilan);
-        $this->assertStringContainsString('<then><accept/></then>', $yazilan);
+        $this->assertStringContainsString('<list_name>MUSTERI</list_name>', $written);
+        $this->assertStringContainsString('<orlonger/>', $written);
+        $this->assertStringContainsString('<then><accept/></then>', $written);
     }
 
     /**
@@ -157,13 +157,13 @@ final class PolicyWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<policy-statement delete="delete"><name>zincir</name>', $yazilan);
+        $this->assertStringContainsString('<policy-statement delete="delete"><name>zincir</name>', $written);
         // Eski terim korunur ve yenisi ARKASINA eklenir.
-        $this->assertStringContainsString('<term><name>A</name>', $yazilan);
-        $this->assertStringContainsString('<term><name>B</name>', $yazilan);
-        $this->assertTrue(strpos($yazilan, '<name>A</name>') < strpos($yazilan, '<name>B</name>'));
+        $this->assertStringContainsString('<term><name>A</name>', $written);
+        $this->assertStringContainsString('<term><name>B</name>', $written);
+        $this->assertTrue(strpos($written, '<name>A</name>') < strpos($written, '<name>B</name>'));
     }
 
     /**
@@ -213,10 +213,10 @@ final class PolicyWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<members>65000:100</members>', $yazilan);
-        $this->assertStringContainsString('<members>65000:200</members>', $yazilan);
+        $this->assertStringContainsString('<members>65000:100</members>', $written);
+        $this->assertStringContainsString('<members>65000:200</members>', $written);
     }
 
     public function test_gecersiz_community_uyesi_reddedilir(): void
@@ -270,10 +270,10 @@ final class PolicyWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertSame(1, substr_count($yazilan, '<name>A</name>'));
-        $this->assertTrue(strpos($yazilan, '<name>A</name>') < strpos($yazilan, '<name>B</name>'));
+        $this->assertSame(1, substr_count($written, '<name>A</name>'));
+        $this->assertTrue(strpos($written, '<name>A</name>') < strpos($written, '<name>B</name>'));
     }
 
     /**
@@ -286,53 +286,53 @@ final class PolicyWriteTest extends TestCase
         $policy = SwitchPolicyStatement::factory()->for($switch, 'switch')->create();
         SwitchPolicyTerm::factory()->for($policy, 'statement')
             ->create(['name' => 'reddet', 'position' => 0, 'action' => PolicyAction::Reject]);
-        $kabul = SwitchPolicyTerm::factory()->for($policy, 'statement')
+        $accept = SwitchPolicyTerm::factory()->for($policy, 'statement')
             ->create(['name' => 'kabul', 'position' => 1, 'action' => PolicyAction::Accept]);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.policies.terms.update', [$switch, $policy, $kabul]), [
+            ->put(route('switches.policies.terms.update', [$switch, $policy, $accept]), [
                 'name' => 'kabul', 'action' => 'accept', 'position' => 0,
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertTrue(strpos($yazilan, '<name>kabul</name>') < strpos($yazilan, '<name>reddet</name>'));
+        $this->assertTrue(strpos($written, '<name>kabul</name>') < strpos($written, '<name>reddet</name>'));
     }
 
     public function test_politika_terimleri_verilen_siraya_dizilir(): void
     {
         $switch = $this->switch();
         $policy = SwitchPolicyStatement::factory()->for($switch, 'switch')->create();
-        $ilk = SwitchPolicyTerm::factory()->for($policy, 'statement')
+        $first = SwitchPolicyTerm::factory()->for($policy, 'statement')
             ->create(['name' => 'reddet', 'position' => 0, 'action' => PolicyAction::Reject]);
-        $ikinci = SwitchPolicyTerm::factory()->for($policy, 'statement')
+        $second = SwitchPolicyTerm::factory()->for($policy, 'statement')
             ->create(['name' => 'kabul', 'position' => 1, 'action' => PolicyAction::Accept]);
         $device = $this->device();
 
         $this->actingAs($this->operator())
             ->put(route('switches.policies.terms.order', [$switch, $policy]), [
-                'terms' => [$ikinci->uuid, $ilk->uuid],
+                'terms' => [$second->uuid, $first->uuid],
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertTrue(strpos($yazilan, '<name>kabul</name>') < strpos($yazilan, '<name>reddet</name>'));
+        $this->assertTrue(strpos($written, '<name>kabul</name>') < strpos($written, '<name>reddet</name>'));
     }
 
     public function test_politikada_eksik_siralama_reddedilir(): void
     {
         $switch = $this->switch();
         $policy = SwitchPolicyStatement::factory()->for($switch, 'switch')->create();
-        $ilk = SwitchPolicyTerm::factory()->for($policy, 'statement')->create(['position' => 0]);
+        $first = SwitchPolicyTerm::factory()->for($policy, 'statement')->create(['position' => 0]);
         SwitchPolicyTerm::factory()->for($policy, 'statement')->create(['position' => 1]);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.policies.terms.order', [$switch, $policy]), ['terms' => [$ilk->uuid]])
+            ->put(route('switches.policies.terms.order', [$switch, $policy]), ['terms' => [$first->uuid]])
             ->assertStatus(422);
 
         $this->assertNull($device->connection);

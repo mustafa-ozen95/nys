@@ -74,16 +74,16 @@ class ServerPasswordRotateJob implements ShouldBeEncrypted, ShouldBeUnique, Shou
      * Düğmeye basılan an ile o an arasında veritabanında hiçbir iz yok ve
      * kullanıcı için bu, düğmenin işlemediği anlamına gelir.
      */
-    private const BEKLEYEN = 'nsm:sunucu-parola-bekleyen:';
+    private const PENDING = 'nsm:sunucu-parola-bekleyen:';
 
-    private const BEKLEME_OMRU = 900;
+    private const WAIT_LIFETIME = 900;
 
     /** Kuyruğa alan TEK yol: gönderme ve iz bırakma birlikte yapılır. */
-    public static function kuyrukla(int $serverId, ?int $userId = null, ?string $reason = null): void
+    public static function enqueue(int $serverId, ?int $userId = null, ?string $reason = null): void
     {
         self::dispatch($serverId, $userId, $reason);
 
-        self::izBirak($serverId);
+        self::traceLeave($serverId);
     }
 
     /**
@@ -98,63 +98,63 @@ class ServerPasswordRotateJob implements ShouldBeEncrypted, ShouldBeUnique, Shou
      *
      * @param  iterable<int>  $serverIds
      */
-    public static function sirayaAl(iterable $serverIds, ?int $userId = null, ?string $reason = null): int
+    public static function enqueueChain(iterable $serverIds, ?int $userId = null, ?string $reason = null): int
     {
-        $isler = [];
-        $bekleyenler = [];
+        $jobs = [];
+        $pending = [];
 
         foreach ($serverIds as $serverId) {
-            $isler[] = new self((int) $serverId, $userId, $reason);
-            $bekleyenler[] = (int) $serverId;
+            $jobs[] = new self((int) $serverId, $userId, $reason);
+            $pending[] = (int) $serverId;
         }
 
-        if ($isler === []) {
+        if ($jobs === []) {
             return 0;
         }
 
-        $omur = count($isler) * (int) config('credentials.rotation.job_timeout') + 300;
+        $lifetime = count($jobs) * (int) config('credentials.rotation.job_timeout') + 300;
 
-        foreach ($bekleyenler as $serverId) {
-            self::izBirak($serverId, $omur);
+        foreach ($pending as $serverId) {
+            self::traceLeave($serverId, $lifetime);
         }
 
-        Bus::chain($isler)
+        Bus::chain($jobs)
             ->onQueue((string) config('credentials.rotation.queue'))
             ->dispatch();
 
-        return count($isler);
+        return count($jobs);
     }
 
-    private static function izBirak(int $serverId, ?int $omur = null): void
+    private static function traceLeave(int $serverId, ?int $lifetime = null): void
     {
-        Cache::put(self::BEKLEYEN.$serverId, now()->timestamp, $omur ?? self::BEKLEME_OMRU);
+        Cache::put(self::PENDING.$serverId, now()->timestamp, $lifetime ?? self::WAIT_LIFETIME);
     }
 
     /** Bu sunucu için kuyrukta bekleyen bir tur var mı? */
-    public static function bekleyen(int $serverId): ?int
+    public static function pending(int $serverId): ?int
     {
-        $an = Cache::get(self::BEKLEYEN.$serverId);
+        $moment = Cache::get(self::PENDING.$serverId);
 
-        return $an === null ? null : (int) $an;
+        return $moment === null ? null : (int) $moment;
     }
 
     /** İzi siler — tur kaydı görünür olunca işi biter. */
-    public static function iziSil(int $serverId): void
+    public static function traceDelete(int $serverId): void
     {
-        Cache::forget(self::BEKLEYEN.$serverId);
+        Cache::forget(self::PENDING.$serverId);
     }
 
-    public function handle(ServerPasswordRotator $dondurucu): void
+    public function handle(ServerPasswordRotator $rotator): void
     {
-        $sunucu = Server::query()->find($this->serverId);
+        $server = Server::query()->find($this->serverId);
 
-        if ($sunucu === null) {
+        if ($server === null) {
             return;
         }
 
         // Hata kayda geçer ve ekranda görünür; kuyruk işi başarısız saymaz.
-        $dondurucu->dondur(
-            $sunucu,
+        $rotator->rotate(
+            $server,
             $this->userId === null ? null : User::query()->find($this->userId),
             $this->reason,
         );

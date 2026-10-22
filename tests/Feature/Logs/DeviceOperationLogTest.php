@@ -14,7 +14,6 @@ use App\Services\Netconf\Transport\NetconfTransport;
 use App\Services\Netconf\VlanConfigurator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\FakeJunosDevice;
 use Tests\TestCase;
 
@@ -33,7 +32,7 @@ final class DeviceOperationLogTest extends TestCase
         parent::setUp();
 
         /* Bu sınıf yetki düzeneğini sınıyor; üretimde kapalı (bkz. TestCase). */
-        $this->yetkiDagitimiAc();
+        $this->permissionDistributionOpen();
     }
 
     public function test_cihazin_reddettigi_yazma_kayda_gecer(): void
@@ -51,18 +50,18 @@ final class DeviceOperationLogTest extends TestCase
             // Beklenen: cihaz reddetti.
         }
 
-        $kayit = DeviceOperation::query()->latest('id')->first();
+        $record = DeviceOperation::query()->latest('id')->first();
 
-        $this->assertNotNull($kayit, 'Cihazın reddi hiçbir yere yazılmadı.');
-        $this->assertSame('failed', $kayit->status);
-        $this->assertSame('write', $kayit->operation);
-        $this->assertSame('load', $kayit->stage, 'Hangi adımda düştüğü kaydedilmeli.');
-        $this->assertSame('rpc', $kayit->kind);
-        $this->assertStringContainsString('syntax error', (string) $kayit->device_message);
-        $this->assertSame($switch->id, $kayit->switch_id);
+        $this->assertNotNull($record, 'Cihazın reddi hiçbir yere yazılmadı.');
+        $this->assertSame('failed', $record->status);
+        $this->assertSame('write', $record->operation);
+        $this->assertSame('load', $record->stage, 'Hangi adımda düştüğü kaydedilmeli.');
+        $this->assertSame('rpc', $record->kind);
+        $this->assertStringContainsString('syntax error', (string) $record->device_message);
+        $this->assertSame($switch->id, $record->switch_id);
 
         // Gönderilen belge de saklanır: "ne gönderdik" cevapsız kalmamalı.
-        $this->assertStringContainsString('kamera', (string) $kayit->document);
+        $this->assertStringContainsString('kamera', (string) $record->document);
     }
 
     /**
@@ -114,7 +113,7 @@ final class DeviceOperationLogTest extends TestCase
             'device_message' => 'Access interface has more than one vlan member',
         ]);
 
-        $this->actingAs($this->denetci())
+        $this->actingAs($this->auditor())
             ->get(route('logs.device-operations'))
             ->assertOk()
             ->assertSee('Access interface has more than one vlan member')
@@ -138,41 +137,10 @@ final class DeviceOperationLogTest extends TestCase
         app(VlanConfigurator::class)->create($switch, 'kamera', 30, null, [], null);
     }
 
-    /**
-     * Adres "kayitlar/cihaz-islemleri" idi; ekran, onda ARANAN şeyin adıyla
-     * yeniden adlandırıldı. Eski adres ölü bırakılmadı: yer imleri çalışmaya devam
-     * eder.
-     */
-    /**
-     * @return list<array{0: string, 1: string}>
-     */
-    public static function eskiAdresler(): array
-    {
-        return [
-            'cihaz islemleri' => ['/kayitlar/cihaz-islemleri', 'logs.device-operations'],
-            'kısa hata adresi' => ['/hata-kayitlari', 'logs.device-operations'],
-
-            /*
-             * "/kayitlar" ETKİNLİK kayıtlarıydı ve oraya gider: eski bir yer
-             * imini başka bir ekrana açmak, sessizce yanlış sayfayı
-             * göstermek olurdu.
-             */
-            'eski kayıtlar' => ['/kayitlar', 'logs.index'],
-        ];
-    }
-
-    #[DataProvider('eskiAdresler')]
-    public function test_eski_adres_dogru_ekrana_yonlendirir(string $eski, string $hedef): void
-    {
-        $this->actingAs(User::factory()->admin()->create())
-            ->get($eski)
-            ->assertRedirect(route($hedef));
-    }
-
     public function test_yeni_adres_acilir(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->get('/kayitlar/hata-kayitlari')
+            ->get('/logs/device-operations')
             ->assertOk()
             ->assertSee('Hata kayıtları');
     }
@@ -184,12 +152,12 @@ final class DeviceOperationLogTest extends TestCase
      */
     public function test_ust_menu_kayitlar_adiyla_hata_ekranina_gider(): void
     {
-        $yanit = $this->actingAs(User::factory()->admin()->create())
+        $response = $this->actingAs(User::factory()->admin()->create())
             ->get(route('overview'))
             ->assertOk();
 
-        $yanit->assertSee('Kayıtlar');
-        $yanit->assertSee(route('logs.device-operations'), false);
+        $response->assertSee('Kayıtlar');
+        $response->assertSee(route('logs.device-operations'), false);
     }
 
     /**
@@ -198,14 +166,14 @@ final class DeviceOperationLogTest extends TestCase
      */
     public function test_iki_ekran_birbirine_bagli(): void
     {
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
-        $this->actingAs($yonetici)
+        $this->actingAs($admin)
             ->get(route('logs.device-operations'))
             ->assertOk()
             ->assertSee(route('logs.index'), false);
 
-        $this->actingAs($yonetici)
+        $this->actingAs($admin)
             ->get(route('logs.index'))
             ->assertOk()
             ->assertSee(route('logs.device-operations'), false);
@@ -231,7 +199,7 @@ final class DeviceOperationLogTest extends TestCase
      * Ekranın listeleme davranışı bununla ölçülür; kimin hangi cihazın
      * kaydını görebildiği ayrı bir sorudur ve kendi testi aşağıda.
      */
-    private function denetci(): User
+    private function auditor(): User
     {
         return User::factory()->admin()->create();
     }
@@ -244,25 +212,25 @@ final class DeviceOperationLogTest extends TestCase
      */
     public function test_goremedigi_cihazin_islemi_gorunmez(): void
     {
-        $gorunur = NetworkSwitch::factory()->create(['hostname' => 'GORUNUR-SW']);
-        $gizli = NetworkSwitch::factory()->create(['hostname' => 'GIZLI-SW']);
+        $visible = NetworkSwitch::factory()->create(['hostname' => 'GORUNUR-SW']);
+        $hidden = NetworkSwitch::factory()->create(['hostname' => 'GIZLI-SW']);
 
-        $okuyucu = User::factory()->create();
-        app(UserPermissionResolver::class)->syncResource($okuyucu, 'logs', ['view']);
-        app(UserPermissionResolver::class)->syncResource($okuyucu, 'switches', [], ['view' => [$gorunur->id]]);
+        $reader = User::factory()->create();
+        app(UserPermissionResolver::class)->syncResource($reader, 'logs', ['view']);
+        app(UserPermissionResolver::class)->syncResource($reader, 'switches', [], ['view' => [$visible->id]]);
 
-        foreach ([[$gorunur, 'GORUNUR ISLEM'], [$gizli, 'GIZLI ISLEM']] as [$cihaz, $ozet]) {
+        foreach ([[$visible, 'GORUNUR ISLEM'], [$hidden, 'GIZLI ISLEM']] as [$device, $summary]) {
             DeviceOperation::query()->create([
-                'switch_id' => $cihaz->id,
-                'target' => $cihaz->hostname,
+                'switch_id' => $device->id,
+                'target' => $device->hostname,
                 'operation' => 'write',
                 'stage' => 'commit',
                 'status' => 'ok',
-                'summary' => $ozet,
+                'summary' => $summary,
             ]);
         }
 
-        $this->actingAs($okuyucu->fresh())
+        $this->actingAs($reader->fresh())
             ->get(route('logs.device-operations'))
             ->assertOk()
             ->assertSee('GORUNUR ISLEM')

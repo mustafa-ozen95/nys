@@ -13,9 +13,9 @@
     'communityOperationOptions' => [],
 ])
 
-<x-form.field name="name" label="Terim adı" :id="$prefix.'-terim'"
+<x-form.field name="name" label="Terim adı" :id="$prefix.'-term'"
               hint="Politika içinde terimin kimliğidir.">
-    <x-form.input name="name" :id="$prefix.'-terim'" :value="$term?->name" mono required placeholder="A" />
+    <x-form.input name="name" :id="$prefix.'-term'" :value="$term?->name" mono required placeholder="A" />
 </x-form.field>
 
 {{--
@@ -23,9 +23,9 @@
     kendinden sonrakiler hiç çalışmaz.
 --}}
 @if ($positionOptions !== [])
-    <x-form.field kural="switch_policies.terim:position" name="position" label="Sıra" :id="$prefix.'-sira'"
+    <x-form.field rule="switch_policies.terim:position" name="position" label="Sıra" :id="$prefix.'-order'"
                   hint="Bu terim kaçıncı sırada değerlendirilsin? İlk eşleşen kazanır.">
-        <x-form.select name="position" :id="$prefix.'-sira'" :options="$positionOptions"
+        <x-form.select name="position" :id="$prefix.'-order'" :options="$positionOptions"
                        :selected="$term?->position" />
     </x-form.field>
 @endif
@@ -36,7 +36,7 @@
         her şeye uyar ve genellikle zinciri kapatan son terimdir.
     </x-ui.alert>
 @else
-    <x-form.field kural="switch_policies.terim:match_prefix_lists" name="match_prefix_lists" label="Eşleşecek prefix listeler (filtre)"
+    <x-form.field rule="switch_policies.terim:match_prefix_lists" name="match_prefix_lists" label="Eşleşecek prefix listeler (filtre)"
                   hint="from prefix-list-filter. Hiçbiri seçilmezse bu koşul yazılmaz.">
         @foreach ($prefixListOptions as $list)
             <label class="checkbox">
@@ -51,9 +51,9 @@
         Eşleşme türü Junos'ta ZORUNLUDUR: türsüz filtre "syntax error,
         expecting <flag-value>" ile reddedilir.
     --}}
-    <x-form.field kural="switch_policies.terim:match_type" name="match_type" label="Eşleşme türü" :id="$prefix.'-tur'"
+    <x-form.field rule="switch_policies.terim:match_type" name="match_type" label="Eşleşme türü" :id="$prefix.'-type'"
                   hint="Prefix list seçildiyse zorunludur.">
-        <x-form.select name="match_type" :id="$prefix.'-tur'" :options="$matchTypeOptions"
+        <x-form.select name="match_type" :id="$prefix.'-type'" :options="$matchTypeOptions"
                        :selected="$term?->match_type?->value ?? 'orlonger'" />
     </x-form.field>
 @endif
@@ -65,7 +65,7 @@
                        :community-choices="$communityChoices"
                        :route-filter-type-options="$routeFilterTypeOptions" />
 
-<x-form.field kural="switch_policies.terim:community_delete" name="community_delete" label="Silinecek community" :id="$prefix.'-community'"
+<x-form.field rule="switch_policies.terim:community_delete" name="community_delete" label="Silinecek community" :id="$prefix.'-community'"
               hint="Kısayol: “then community delete”. Aynısı aşağıdaki community işlemlerinden de yapılabilir.">
     <x-form.select name="community_delete" :id="$prefix.'-community'" :options="$communityOptions"
                    :selected="$term?->community_delete" />

@@ -19,40 +19,40 @@
 
             <div class="column__body">
                 <div class="grid-row__head port-row port-row__head">
-                    <span class="port-row__durum"></span>
-                    <span class="port-row__ad">Port</span>
-                    <span class="port-row__aciklama">Açıklama</span>
-                    <span class="port-row__mod">Mod</span>
-                    <span class="port-row__hiz">Hız</span>
-                    <span class="port-row__gelen">Gelen</span>
-                    <span class="port-row__giden">Giden</span>
-                    <span class="port-row__doluluk">Doluluk</span>
+                    <span class="port-row__status"></span>
+                    <span class="port-row__name">Port</span>
+                    <span class="port-row__description">Açıklama</span>
+                    <span class="port-row__mode">Mod</span>
+                    <span class="port-row__speed">Hız</span>
+                    <span class="port-row__incoming">Gelen</span>
+                    <span class="port-row__outgoing">Giden</span>
+                    <span class="port-row__fill">Doluluk</span>
                 </div>
 
                 @forelse ($ports as $port)
                     <button type="button" class="grid-row port-row"
-                            data-port-trafik="{{ route('ajax.port.traffic', [$switch, $port['model']]) }}"
-                            data-port-adi="{{ $port['model']->name }}"
-                            data-port-kimlik="{{ $port['model']->uuid }}"
-                            @if ($port['selected']) aria-selected="true" data-port-otomatik @endif>
+                            data-port-traffic="{{ route('ajax.port.traffic', [$switch, $port['model']]) }}"
+                            data-port-name="{{ $port['model']->name }}"
+                            data-port-id="{{ $port['model']->uuid }}"
+                            @if ($port['selected']) aria-selected="true" data-port-auto @endif>
                         <x-ui.status-dot :status="$port['model']->oper_status" :show-label="false"
-                                         class="port-row__durum" />
-                        <span class="mono port-row__ad">{{ $port['model']->name }}</span>
+                                         class="port-row__status" />
+                        <span class="mono port-row__name">{{ $port['model']->name }}</span>
                         {{--
                             Açıklama yoksa masaüstünde tire ile boş olduğu
                             belirtilir; telefonda o tire her portta bir satır
                             kaplar, orada gizlenir.
                         --}}
-                        <span class="truncate text-muted port-row__aciklama"
-                              @if (! $port['model']->description) data-bos @endif>{{ $port['model']->description ?: '—' }}</span>
-                        <span class="port-row__mod">
+                        <span class="truncate text-muted port-row__description"
+                              @if (! $port['model']->description) data-empty @endif>{{ $port['model']->description ?: '—' }}</span>
+                        <span class="port-row__mode">
                             <x-ui.badge :variant="$port['model']->port_mode->badge()">{{ $port['model']->port_mode->label() }}</x-ui.badge>
                         </span>
-                        <span class="mono text-muted port-row__hiz">{{ $port['link_speed_display'] }}</span>
-                        <span class="mono port-row__gelen" data-label="Gelen">{{ $port['in_display'] }}</span>
-                        <span class="mono port-row__giden" data-label="Giden">{{ $port['out_display'] }}</span>
+                        <span class="mono text-muted port-row__speed">{{ $port['link_speed_display'] }}</span>
+                        <span class="mono port-row__incoming" data-label="Gelen">{{ $port['in_display'] }}</span>
+                        <span class="mono port-row__outgoing" data-label="Giden">{{ $port['out_display'] }}</span>
                         <x-ui.meter :value="$port['utilisation']" metric="bandwidth"
-                                    class="port-row__doluluk" data-label="Doluluk" />
+                                    class="port-row__fill" data-label="Doluluk" />
                     </button>
                 @empty
                     <x-ui.empty title="Port bulunamadı"
@@ -61,9 +61,9 @@
             </div>
         </div>
 
-        <aside class="detail" data-trafik-paneli hidden>
+        <aside class="detail" data-traffic-panel hidden>
             <div class="detail__head">
-                <div class="detail__title mono" data-trafik-baslik></div>
+                <div class="detail__title mono" data-traffic-header></div>
                 <p class="detail__subtitle">Trafik geçmişi</p>
             </div>
 
@@ -71,7 +71,7 @@
                 <div class="detail__section">
                     <div class="chart__ranges" role="group" aria-label="Zaman aralığı">
                         @foreach ($ranges as $key => $label)
-                            <button type="button" class="btn btn--sm" data-trafik-araligi="{{ $key }}"
+                            <button type="button" class="btn btn--sm" data-traffic-range="{{ $key }}"
                                     aria-pressed="{{ $loop->first ? 'true' : 'false' }}">{{ $label }}</button>
                         @endforeach
                     </div>
@@ -80,20 +80,20 @@
                         Gelen ve giden ayrı grafiklerde: tek eksende küçük olan
                         büyüğün altında ezilir.
                     --}}
-                    <p class="chart__state" data-trafik-durumu hidden></p>
+                    <p class="chart__state" data-traffic-status hidden></p>
 
-                    <div class="chart-pair" data-trafik-alani>
+                    <div class="chart-pair" data-traffic-field>
                         <figure class="chart-pair__item">
-                            <figcaption class="chart-pair__label" data-trafik-basligi="0"></figcaption>
-                            <div class="chart chart--kisa">
-                                <canvas class="chart__canvas" data-trafik-tuvali="0"></canvas>
+                            <figcaption class="chart-pair__label" data-traffic-title="0"></figcaption>
+                            <div class="chart chart--short">
+                                <canvas class="chart__canvas" data-traffic-canvas="0"></canvas>
                             </div>
                         </figure>
 
                         <figure class="chart-pair__item">
-                            <figcaption class="chart-pair__label" data-trafik-basligi="1"></figcaption>
-                            <div class="chart chart--kisa">
-                                <canvas class="chart__canvas" data-trafik-tuvali="1"></canvas>
+                            <figcaption class="chart-pair__label" data-traffic-title="1"></figcaption>
+                            <div class="chart chart--short">
+                                <canvas class="chart__canvas" data-traffic-canvas="1"></canvas>
                             </div>
                         </figure>
                     </div>
@@ -103,7 +103,7 @@
             @can('updateSwitchPorts', $switch)
                 <div class="detail__foot">
                     <button type="button" class="btn btn--primary btn--block"
-                            data-port-duzenle>Portu düzenle</button>
+                            data-port-edit>Portu düzenle</button>
                 </div>
             @endcan
         </aside>
@@ -138,11 +138,11 @@
                             Bu ayarlar cihaza yazılır ve sonuç cihazdan geri okunur.
                         </p>
 
-                        <x-form.field kural="switch_ports.port:enabled" name="enabled" label="Port durumu" :id="'durum-'.$port['model']->uuid"
+                        <x-form.field rule="switch_ports.port:enabled" name="enabled" label="Port durumu" :id="'status-'.$port['model']->uuid"
                                       hint="Kapatılan port trafiği keser; cihazda “disable” satırı yazılır.">
                             <label class="checkbox">
                                 <input type="hidden" name="enabled" value="0">
-                                <input type="checkbox" name="enabled" id="durum-{{ $port['model']->uuid }}"
+                                <input type="checkbox" name="enabled" id="status-{{ $port['model']->uuid }}"
                                        value="1" @checked($port['model']->is_enabled)>
                                 <span>Port açık</span>
                             </label>
@@ -175,7 +175,7 @@
                                 </x-ui.alert>
                             @endif
 
-                            <x-form.field kural="switch_ports.port:port_mode" name="port_mode" label="Port modu" :id="'mod-'.$port['model']->uuid"
+                            <x-form.field rule="switch_ports.port:port_mode" name="port_mode" label="Port modu" :id="'mod-'.$port['model']->uuid"
                                           hint="Access portta tek VLAN olabilir; birden fazlası için Trunk. Yönlendirilmiş portta VLAN olmaz, IP adresi olur.">
                                 {{-- Seçili mod yoksa listenin başına boş bir satır konur. --}}
                                 <x-form.select name="port_mode" :id="'mod-'.$port['model']->uuid"
@@ -188,7 +188,7 @@
 
                         {{-- Hız ile auto-negotiation cihazda aynı ayardır
                              (ether-options speed); iki alan olarak sorulamaz. --}}
-                        <x-form.field kural="switch_ports.port:speed_config" advanced name="speed_config" label="Hız" :id="'hiz-'.$port['model']->uuid"
+                        <x-form.field rule="switch_ports.port:speed_config" advanced name="speed_config" label="Hız" :id="'hiz-'.$port['model']->uuid"
                                       :hint="$port['speed_hint']" :current="$port['speed_current']">
                             <x-form.select name="speed_config" :id="'hiz-'.$port['model']->uuid"
                                            :options="$port['speed_options']"
@@ -201,7 +201,7 @@
                             Mbps ile geçerlidir; cihaz aksini reddediyor, o
                             yüzden seçenek diğer hızlarda kapatılır.
                         --}}
-                        <x-form.field kural="switch_ports.port:duplex_config" advanced name="duplex_config" label="Duplex" :id="'duplex-'.$port['model']->uuid"
+                        <x-form.field rule="switch_ports.port:duplex_config" advanced name="duplex_config" label="Duplex" :id="'duplex-'.$port['model']->uuid"
                                       hint="Otomatik bırakılırsa cihaz kendi seçer. Half yalnızca 10/100 Mbps ile."
                                       :current="$port['duplex_current']">
                             <x-form.select name="duplex_config" :id="'duplex-'.$port['model']->uuid"
@@ -217,7 +217,7 @@
                             arayüzünün kendisine verilir.
                         --}}
                         @if ($port['model']->aggregate_port_id === null)
-                            <x-form.field kural="switch_ports.port:mtu" advanced name="mtu" label="MTU" :id="'mtu-'.$port['model']->uuid"
+                            <x-form.field rule="switch_ports.port:mtu" advanced name="mtu" label="MTU" :id="'mtu-'.$port['model']->uuid"
                                           hint="Boş bırakılırsa cihazın varsayılanı kullanılır. Aralık: 256–9216."
                                           :current="$port['mtu_current']">
                                 <x-form.input name="mtu" :id="'mtu-'.$port['model']->uuid" type="number"
@@ -227,7 +227,7 @@
 
                         {{-- PoE yalnızca donanımı olan portlarda sorulur. --}}
                         @unless ($port['model']->is_poe_enabled === null)
-                            <x-form.field kural="switch_ports.port:is_poe_enabled" name="is_poe_enabled" label="PoE" :id="'poe-'.$port['model']->uuid">
+                            <x-form.field rule="switch_ports.port:is_poe_enabled" name="is_poe_enabled" label="PoE" :id="'poe-'.$port['model']->uuid">
                                 <label class="checkbox">
                                     <input type="hidden" name="is_poe_enabled" value="0">
                                     <input type="checkbox" name="is_poe_enabled" id="poe-{{ $port['model']->uuid }}"
@@ -238,7 +238,7 @@
                         @endunless
 
                         @if ($vlans->isEmpty())
-                            <x-form.field kural="switch_ports.port:vlans" name="vlans" label="VLAN üyeliği" :id="'vlan-'.$port['model']->uuid">
+                            <x-form.field rule="switch_ports.port:vlans" name="vlans" label="VLAN üyeliği" :id="'vlan-'.$port['model']->uuid">
                                 <p class="text-sm text-muted">
                                     Bu switchte VLAN tanımlı değil. Önce VLAN’lar sekmesinden ekleyin.
                                 </p>
@@ -272,7 +272,7 @@
                                     gelir — IP adresleri ekranıyla aynı kural,
                                     aynı kaynak.
                                 --}}
-                                <x-form.field kural="switch_ports.port:ip_address" name="ip_address" label="IP adresi"
+                                <x-form.field rule="switch_ports.port:ip_address" name="ip_address" label="IP adresi"
                                               :id="'ip-'.$port['model']->uuid"
                                               hint="Boş bırakılırsa portun adresleri olduğu gibi kalır. Maske, adresin ait olduğu bloktan gelir.">
                                     <x-form.ip-picker name="ip_address" :id="'ip-'.$port['model']->uuid"
@@ -282,7 +282,7 @@
                                                       empty-text="Adresleme’de bu switche atanmış blok yok; adresi elle yazın." />
                                 </x-form.field>
 
-                                <x-form.field kural="switch_ports.port:input_filter" name="input_filter" label="Giriş filtresi"
+                                <x-form.field rule="switch_ports.port:input_filter" name="input_filter" label="Giriş filtresi"
                                               :id="'gfiltre-'.$port['model']->uuid"
                                               hint="Porta GELEN trafiğe uygulanır. Yalnızca inet ailesindeki filtreler bağlanabilir.">
                                     <x-form.select name="input_filter" :id="'gfiltre-'.$port['model']->uuid"
@@ -290,7 +290,7 @@
                                                    :selected="$port['input_filter'] ?? null" />
                                 </x-form.field>
 
-                                <x-form.field kural="switch_ports.port:output_filter" name="output_filter" label="Çıkış filtresi"
+                                <x-form.field rule="switch_ports.port:output_filter" name="output_filter" label="Çıkış filtresi"
                                               :id="'cfiltre-'.$port['model']->uuid"
                                               hint="Porttan ÇIKAN trafiğe uygulanır.">
                                     <x-form.select name="output_filter" :id="'cfiltre-'.$port['model']->uuid"
@@ -300,7 +300,7 @@
                             </div>
 
                             <div data-port-vlan="access" @unless ($port['model']->is_access) hidden @endunless>
-                                <x-form.field kural="switch_ports.port:vlans" name="vlans" label="VLAN" :id="'vlan-tek-'.$port['model']->uuid"
+                                <x-form.field rule="switch_ports.port:vlans" name="vlans" label="VLAN" :id="'vlan-tek-'.$port['model']->uuid"
                                               hint="Boş bırakılırsa port hiçbir VLAN’a ait olmaz.">
                                     <x-form.select name="vlans[]" :id="'vlan-tek-'.$port['model']->uuid"
                                                    :options="$vlanOptions"
@@ -309,7 +309,7 @@
                             </div>
 
                             <div data-port-vlan="trunk" @if ($port['model']->is_access) hidden @endif>
-                                <x-form.field kural="switch_ports.port:vlans" name="vlans" label="VLAN üyeliği" :id="'vlan-'.$port['model']->uuid"
+                                <x-form.field rule="switch_ports.port:vlans" name="vlans" label="VLAN üyeliği" :id="'vlan-'.$port['model']->uuid"
                                               hint="Hiçbiri seçilmezse port VLAN’sız kalır.">
                                     @foreach ($vlans as $vlan)
                                         <label class="checkbox">
@@ -321,7 +321,7 @@
                                     @endforeach
                                 </x-form.field>
 
-                                <x-form.field kural="switch_ports.port:untagged_vlan" name="untagged_vlan" label="Etiketsiz VLAN"
+                                <x-form.field rule="switch_ports.port:untagged_vlan" name="untagged_vlan" label="Etiketsiz VLAN"
                                               :id="'untagged-'.$port['model']->uuid"
                                               hint="Seçilen VLAN’lardan biri olmalı; zorunlu değil.">
                                     <x-form.select name="untagged_vlan" :id="'untagged-'.$port['model']->uuid"
@@ -332,7 +332,7 @@
                         @endif
 
 
-                        <x-form.field kural="switch_ports.port:description" name="description" label="Açıklama" :id="'aciklama-'.$port['model']->uuid"
+                        <x-form.field rule="switch_ports.port:description" name="description" label="Açıklama" :id="'aciklama-'.$port['model']->uuid"
                                       hint="Cihazdaki interface description alanı.">
                             <x-form.input name="description" :id="'aciklama-'.$port['model']->uuid"
                                           :value="$port['model']->description" />

@@ -17,11 +17,11 @@ import { emit } from './toast.js';
  * Üçü de aynı ucu çağırır; sunucu ikinci çağrıda kayıt açmaz.
  */
 
-const CANLI_TUTMA_ARALIGI = 4 * 60 * 1000;
-const PENCERE_KONTROL_ARALIGI = 2000;
-const KAPATMA_UCU = '/ajax/uzak-oturum/kapat';
+const KEEPALIVE_INTERVAL = 4 * 60 * 1000;
+const WINDOW_CHECK_INTERVAL = 2000;
+const CLOSE_END = '/ajax/remote-session/disconnect';
 
-const acikOturumlar = new Map();
+const openSessions = new Map();
 
 function csrf() {
     return $('meta[name="csrf-token"]')?.content ?? '';
@@ -30,72 +30,72 @@ function csrf() {
 /**
  * Sayfa kapanırken çalışır: fetch iptal edilir, sendBeacon edilmez.
  */
-function kapatBeacon(token) {
-    navigator.sendBeacon?.(KAPATMA_UCU, new Blob(
+function closeBeacon(token) {
+    navigator.sendBeacon?.(CLOSE_END, new Blob(
         [JSON.stringify({ token, _token: csrf() })],
         { type: 'application/json' },
     ));
 }
 
-function canliTut(token, pencere) {
-    const zamanlayici = setInterval(async () => {
+function keepAlive(token, popup) {
+    const timer = setInterval(async () => {
         // Oturum penceresi kapandıysa canlı tutmanın anlamı yok.
-        if (pencere?.closed) {
-            durdur(token);
+        if (popup?.closed) {
+            stop(token);
 
             return;
         }
 
         try {
-            const cevap = await http.post('/ajax/uzak-oturum/canli-tut', { token }, { silent: true });
+            const answer = await http.post('/ajax/remote-session/keep-alive', { token }, { silent: true });
 
-            if (!cevap.alive) {
-                durdur(token);
+            if (!answer.alive) {
+                stop(token);
             }
         } catch {
-            durdur(token);
+            stop(token);
         }
-    }, CANLI_TUTMA_ARALIGI);
+    }, KEEPALIVE_INTERVAL);
 
-    acikOturumlar.set(token, zamanlayici);
+    openSessions.set(token, timer);
 
-    izle(token, pencere);
+    watch(token, popup);
 }
 
 /**
  * Pencerenin kapandığını yalnızca yoklayarak anlayabiliyoruz; kapanınca
  * kaydın da kapanması için sunucuya haber verilir.
  */
-function izle(token, pencere) {
-    if (!pencere) {
+function watch(token, popup) {
+    if (!popup) {
         return;
     }
 
-    const kontrol = setInterval(() => {
-        if (!pencere.closed) {
+    const check = setInterval(() => {
+        if (!popup.closed) {
             return;
         }
 
-        clearInterval(kontrol);
-        durdur(token);
-        http.post(KAPATMA_UCU, { token }, { silent: true }).catch(() => {});
-    }, PENCERE_KONTROL_ARALIGI);
+        clearInterval(check);
+        stop(token);
+        http.post(CLOSE_END, { token }, { silent: true }).catch(() => {});
+    }, WINDOW_CHECK_INTERVAL);
 }
 
-function durdur(token) {
-    clearInterval(acikOturumlar.get(token));
-    acikOturumlar.delete(token);
+function stop(token) {
+    clearInterval(openSessions.get(token));
+    openSessions.delete(token);
 }
 
-let pagehideBagli = false;
+let pagehideBound = false;
 
 export function init() {
-    const jeton = $('[data-oturum-jetonu]')?.dataset.oturumJetonu;
+    const sessionToken = $('[data-session-token]')?.dataset.sessionToken;
 
     // Oturum sayfasındaki kapatma düğmesi.
-    on('click', '[data-oturum-kapat]', async () => {
-        if (jeton) {
-            await http.post(KAPATMA_UCU, { token: jeton }, { silent: true }).catch(() => {});
+    on('click', '[data-session-close]', async () => {
+        if (sessionToken) {
+            await http.post(CLOSE_END, { token: sessionToken }, { silent: true }).catch(() => {});
         }
 
         window.close();
@@ -103,34 +103,34 @@ export function init() {
 
     // Oturum penceresi kapanırsa (çarpı, sekme kapatma, başka adrese gitme).
     // window dinleyicisi bir kez kurulur; init her sayfa geçişinde koşuyor.
-    if (jeton && ! pagehideBagli) {
-        pagehideBagli = true;
-        window.addEventListener('pagehide', () => kapatBeacon(jeton));
+    if (sessionToken && ! pagehideBound) {
+        pagehideBound = true;
+        window.addEventListener('pagehide', () => closeBeacon(sessionToken));
     }
 
-    on('click', '[data-uzak-baglan]', async (event, dugme) => {
-        dugme.disabled = true;
+    on('click', '[data-remote-connect]', async (event, button) => {
+        button.disabled = true;
 
         try {
-            const oturum = await http.post(dugme.dataset.uzakBaglan, {
-                type: dugme.dataset.uzakTur,
-                id: dugme.dataset.uzakKimlik,
+            const session = await http.post(button.dataset.remoteConnect, {
+                type: button.dataset.remoteType,
+                id: button.dataset.remoteId,
             });
 
-            const pencere = window.open(oturum.url, `oturum-${oturum.token}`, 'width=1200,height=800');
+            const popup = window.open(session.url, `oturum-${session.token}`, 'width=1200,height=800');
 
-            canliTut(oturum.token, pencere);
-            emit(`${oturum.label} oturumu açıldı.`, 'success');
+            keepAlive(session.token, popup);
+            emit(`${session.label} oturumu açıldı.`, 'success');
         } finally {
-            dugme.disabled = false;
+            button.disabled = false;
         }
     });
 
     // Paneli açan sekme kapanırsa açık oturumlar sunucuda da kapatılır.
     window.addEventListener('pagehide', () => {
-        acikOturumlar.forEach((zamanlayici, token) => {
-            clearInterval(zamanlayici);
-            kapatBeacon(token);
+        openSessions.forEach((timer, token) => {
+            clearInterval(timer);
+            closeBeacon(token);
         });
     });
 }

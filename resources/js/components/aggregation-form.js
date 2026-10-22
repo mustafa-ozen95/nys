@@ -13,27 +13,27 @@ import { $$, on } from '../lib/dom.js';
  * reddedilir (LinkAggregationRequest aynı kuralları uygular).
  */
 
-function deger(form, ad) {
-    return form.querySelector(`[name="${ad}"]`)?.value ?? '';
+function value(form, name) {
+    return form.querySelector(`[name="${name}"]`)?.value ?? '';
 }
 
-function uygula(form) {
-    const lacpAcik = deger(form, 'lacp_mode') !== '';
-    const trunk = deger(form, 'port_mode') === 'trunk';
+function apply(form) {
+    const lacpOpen = value(form, 'lacp_mode') !== '';
+    const trunk = value(form, 'port_mode') === 'trunk';
 
-    $$('[data-ae-lacp], [data-ae-trunk]', form).forEach((eleman) => {
-        const acik = eleman.hasAttribute('data-ae-lacp') ? lacpAcik : trunk;
+    $$('[data-ae-lacp], [data-ae-trunk]', form).forEach((element) => {
+        const open = element.hasAttribute('data-ae-lacp') ? lacpOpen : trunk;
 
-        eleman.hidden = !acik;
+        element.hidden = !open;
 
-        $$('input, select, textarea', eleman).forEach((girdi) => {
-            girdi.disabled = !acik;
+        $$('input, select, textarea', element).forEach((input) => {
+            input.disabled = !open;
         });
     });
 }
 
 export function init() {
-    $$('[data-ae-formu]').forEach(uygula);
+    $$('[data-ae-form]').forEach(apply);
 
-    on('change', '[data-ae-formu]', (event, form) => uygula(form));
+    on('change', '[data-ae-form]', (event, form) => apply(form));
 }

@@ -54,7 +54,7 @@ class SwitchDeviceSettingsController extends Controller implements HasMiddleware
      */
     public function clock(NetworkSwitch $switch): RedirectResponse
     {
-        $sonuc = $this->clocks->synchronize($switch);
+        $result = $this->clocks->synchronize($switch);
 
         $this->activity->record(
             $switch,

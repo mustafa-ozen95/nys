@@ -183,20 +183,20 @@ class FirewallTermRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $temiz = [];
+        $clean = [];
 
         foreach (self::LIST_FIELDS as $alan) {
             // Formdan boş satır ve boş seçenek gelir; exists/ip kurallarına takılırdı.
-            $deger = $this->input($alan, []);
-            $deger = is_string($deger) ? preg_split('/[\r\n,]+/', $deger) ?: [] : (array) $deger;
+            $value = $this->input($alan, []);
+            $value = is_string($value) ? preg_split('/[\r\n,]+/', $value) ?: [] : (array) $value;
 
-            $temiz[$alan] = array_values(array_filter(
-                array_map(static fn (mixed $v): string => is_scalar($v) ? trim((string) $v) : '', $deger),
+            $clean[$alan] = array_values(array_filter(
+                array_map(static fn (mixed $v): string => is_scalar($v) ? trim((string) $v) : '', $value),
                 static fn (string $v): bool => $v !== '',
             ));
         }
 
-        $this->merge($temiz);
+        $this->merge($clean);
     }
 
     /**
@@ -401,22 +401,22 @@ class FirewallTermRequest extends FormRequest
      */
     private function guardFamily(Validator $validator): void
     {
-        $kapilar = [
+        $gates = [
             [self::INET6_ONLY, FirewallFamily::Inet6],
             [self::ETHERNET_ONLY, FirewallFamily::EthernetSwitching],
             [self::INET_ONLY, FirewallFamily::Inet],
         ];
 
-        foreach ($kapilar as [$alanlar, $aile]) {
-            if ($this->family() === $aile) {
+        foreach ($gates as [$fields, $family]) {
+            if ($this->family() === $family) {
                 continue;
             }
 
-            foreach ($alanlar as $alan) {
+            foreach ($fields as $alan) {
                 if ($this->hasValue($alan)) {
                     $validator->errors()->add(
                         $alan,
-                        "Bu koşul yalnızca {$aile->label()} filtresinde kullanılabilir; "
+                        "Bu koşul yalnızca {$family->label()} filtresinde kullanılabilir; "
                             ."bu filtre {$this->family()->label()}.",
                     );
                 }

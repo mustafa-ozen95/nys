@@ -25,7 +25,7 @@
             @endif
 
             <form method="POST" action="{{ route('provisioning.store') }}"
-                  data-config-formu
+                  data-config-form
                   data-confirm="Cihazın yapılandırması değiştirilecek. Geri alınabilir commit kullanılır."
                   data-confirm-title="Config yükle"
                   data-confirm-verify="YUKLE">
@@ -33,43 +33,43 @@
 
                 <x-ui.panel title="Hedef" subtitle="Envanterdeki bir cihaz ya da yalnızca erişim bilgisine sahip olduğumuz bir cihaz.">
                     <div class="form-grid">
-                        <x-form.field name="target" label="Hedef türü" id="hedef-tur">
-                            <x-form.select name="target" id="hedef-tur" :selected="old('target', 'switch')"
+                        <x-form.field name="target" label="Hedef türü" id="target-type">
+                            <x-form.select name="target" id="target-type" :selected="old('target', 'switch')"
                                            :options="$canUseExternal
                                                ? ['switch' => 'Envanterdeki cihaz', 'external' => 'Dış cihaz']
                                                : ['switch' => 'Envanterdeki cihaz']" />
                         </x-form.field>
 
-                        <x-form.field name="switch" label="Cihaz" id="hedef-switch" data-hedef="switch"
+                        <x-form.field name="switch" label="Cihaz" id="target-switch" data-target="switch"
                                       hint="Yalnızca config yükleme yetkiniz olan cihazlar listelenir.">
-                            <x-form.select name="switch" id="hedef-switch" :options="$switches" :selected="old('switch')" />
+                            <x-form.select name="switch" id="target-switch" :options="$switches" :selected="old('switch')" />
                         </x-form.field>
 
                         @if ($canUseExternal)
-                            <x-form.field name="host" label="Dış cihaz adresi" data-hedef="external" id="hedef-ip"
+                            <x-form.field name="host" label="Dış cihaz adresi" data-target="external" id="target-ip"
                                           hint="Envanterde olmayan cihaz için. Yalnızca yönetici kullanabilir.">
-                                <x-form.input name="host" id="hedef-ip" :value="old('host')" mono placeholder="10.9.9.1" />
+                                <x-form.input name="host" id="target-ip" :value="old('host')" mono placeholder="10.9.9.1" />
                             </x-form.field>
 
-                            <x-form.field name="port" label="NETCONF portu" data-hedef="external" id="hedef-port">
-                                <x-form.input name="port" id="hedef-port" type="number"
+                            <x-form.field name="port" label="NETCONF portu" data-target="external" id="target-port">
+                                <x-form.input name="port" id="target-port" type="number"
                                               :value="old('port', config('netconf.port'))" mono />
                             </x-form.field>
 
-                            <x-form.field name="username" label="Kullanıcı" data-hedef="external" id="hedef-kullanici">
-                                <x-form.input name="username" id="hedef-kullanici" :value="old('username')" mono />
+                            <x-form.field name="username" label="Kullanıcı" data-target="external" id="target-user">
+                                <x-form.input name="username" id="target-user" :value="old('username')" mono />
                             </x-form.field>
 
-                            <x-form.field name="password" label="Parola" data-hedef="external" id="hedef-parola"
+                            <x-form.field name="password" label="Parola" data-target="external" id="target-password"
                                           hint="Hiçbir yere yazılmaz; yalnızca bu istek boyunca kullanılır.">
-                                <x-form.input name="password" id="hedef-parola" type="password"
+                                <x-form.input name="password" id="target-password" type="password"
                                               autocomplete="new-password" mono />
                             </x-form.field>
 
-                            <x-form.field name="save_to_inventory" label="Envantere al" data-hedef="external" id="hedef-kaydet">
+                            <x-form.field name="save_to_inventory" label="Envantere al" data-target="external" id="target-save">
                                 <label class="checkbox">
                                     <input type="hidden" name="save_to_inventory" value="0">
-                                    <input type="checkbox" name="save_to_inventory" id="hedef-kaydet" value="1"
+                                    <input type="checkbox" name="save_to_inventory" id="target-save" value="1"
                                            @checked(old('save_to_inventory'))>
                                     <span>Bu cihazı envantere ekle ve kimliğini şifreli sakla</span>
                                 </label>
@@ -80,8 +80,8 @@
 
                 <x-ui.panel title="Kaynak">
                     <div class="form-grid">
-                        <x-form.field name="source" label="Config nereden gelsin" id="kaynak">
-                            <x-form.select name="source" id="kaynak" :selected="old('source', 'manual')"
+                        <x-form.field name="source" label="Config nereden gelsin" id="source">
+                            <x-form.select name="source" id="source" :selected="old('source', 'manual')"
                                            :options="['manual' => 'Elle yapıştır', 'template' => 'Şablondan üret']" />
                         </x-form.field>
 
@@ -90,27 +90,27 @@
                             kutuya sığmayıp kırpılır. Ne anlama geldikleri
                             ipuçta yazar.
                         --}}
-                        <x-form.field name="mode" label="Uygulama biçimi" id="bicim"
+                        <x-form.field name="mode" label="Uygulama biçimi" id="format"
                                       hint="Ekle: mevcut yapılandırma korunur. Tamamen değiştir: cihazdaki yapılandırma silinir. Set satırları yapıştırılırsa bu seçim yok sayılır.">
-                            <x-form.select name="mode" id="bicim" :selected="old('mode', 'merge')"
+                            <x-form.select name="mode" id="format" :selected="old('mode', 'merge')"
                                            :options="[
                                                'merge' => 'Ekle / güncelle',
                                                'override' => 'TAMAMEN DEĞİŞTİR',
                                            ]" />
                         </x-form.field>
 
-                        <x-form.field name="body" label="Config metni" id="metin" class="field--wide" data-kaynak="manual"
+                        <x-form.field name="body" label="Config metni" id="body" class="field--wide" data-source="manual"
                                       hint="Terminale yapıştırdığınızın aynısı: set satırları ya da hiyerarşik metin.">
-                            <x-form.textarea name="body" id="metin" rows="12" class="input--mono" />
+                            <x-form.textarea name="body" id="body" rows="12" class="input--mono" />
                         </x-form.field>
                     </div>
                 </x-ui.panel>
 
-                <x-ui.panel title="Şablon girdileri" data-kaynak="template"
+                <x-ui.panel title="Şablon girdileri" data-source="template"
                             subtitle="Yalnızca “Şablondan üret” seçildiğinde kullanılır. Yönetim arayüzünün adı cihazdan okunur; modele göre me0 ya da vme olur.">
                     <div class="form-grid">
-                        <x-form.field name="hostname" label="Cihaz adı" id="s-ad">
-                            <x-form.input name="hostname" id="s-ad" :value="old('hostname')" mono />
+                        <x-form.field name="hostname" label="Cihaz adı" id="s-name">
+                            <x-form.input name="hostname" id="s-name" :value="old('hostname')" mono />
                         </x-form.field>
 
                         {{--
@@ -123,8 +123,8 @@
                                               manual placeholder="198.18.20.195" />
                         </x-form.field>
 
-                        <x-form.field name="management_prefix" label="Maske uzunluğu" id="s-maske">
-                            <x-form.input name="management_prefix" id="s-maske" type="number"
+                        <x-form.field name="management_prefix" label="Maske uzunluğu" id="s-mask">
+                            <x-form.input name="management_prefix" id="s-mask" type="number"
                                           :value="old('management_prefix', 24)" mono />
                         </x-form.field>
 
@@ -150,8 +150,8 @@
                             <x-form.input name="admin_username" id="s-admin" :value="old('admin_username')" mono />
                         </x-form.field>
 
-                        <x-form.field name="admin_password" label="Yönetici parolası" id="s-admin-parola">
-                            <x-form.input name="admin_password" id="s-admin-parola" type="password"
+                        <x-form.field name="admin_password" label="Yönetici parolası" id="s-admin-password">
+                            <x-form.input name="admin_password" id="s-admin-password" type="password"
                                           autocomplete="new-password" mono />
                         </x-form.field>
 

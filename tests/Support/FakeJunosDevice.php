@@ -147,8 +147,8 @@ final class FakeJunosDevice implements NetconfTransport
         }
 
         if (str_contains($request, '<load-configuration')) {
-            foreach ($this->loadRejects as $parca) {
-                if (str_contains($request, $parca)) {
+            foreach ($this->loadRejects as $fragment) {
+                if (str_contains($request, $fragment)) {
                     return $this->error('invalid value');
                 }
             }
@@ -306,11 +306,11 @@ final class FakeJunosDevice implements NetconfTransport
         }
 
         $set = str_contains($request, 'action="set"');
-        $beklenen = $set ? '<configuration-set>' : '<configuration-text>';
+        $expected = $set ? '<configuration-set>' : '<configuration-text>';
 
-        if (! str_contains($request, $beklenen)) {
+        if (! str_contains($request, $expected)) {
             throw new \RuntimeException(
-                "Metin yüklemesi {$beklenen} bekliyor; eylem ile sarmalayıcı ayrışmış."
+                "Metin yüklemesi {$expected} bekliyor; eylem ile sarmalayıcı ayrışmış."
             );
         }
     }

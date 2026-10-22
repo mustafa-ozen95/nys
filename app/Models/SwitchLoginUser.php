@@ -92,13 +92,13 @@ class SwitchLoginUser extends Model
     protected function summary(): Attribute
     {
         return Attribute::get(function (): string {
-            $parcalar = array_filter([
+            $fragments = array_filter([
                 $this->full_name,
                 $this->uid === null ? null : "uid {$this->uid}",
                 $this->has_password ? 'parolalı' : 'parolasız',
             ]);
 
-            return implode(' · ', $parcalar);
+            return implode(' · ', $fragments);
         });
     }
 

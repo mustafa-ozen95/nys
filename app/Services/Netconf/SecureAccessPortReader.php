@@ -106,19 +106,19 @@ class SecureAccessPortReader
 
         foreach ($reply->xpath('//*[local-name()="vlans"]/*[local-name()="vlan"]') ?: [] as $node) {
             $name = $this->name($node);
-            $guvenlik = $node->xpath('./*[local-name()="forwarding-options"]/*[local-name()="dhcp-security"]')[0] ?? null;
-            $anahtar = $node->xpath('./*[local-name()="switch-options"]')[0] ?? null;
+            $security = $node->xpath('./*[local-name()="forwarding-options"]/*[local-name()="dhcp-security"]')[0] ?? null;
+            $key = $node->xpath('./*[local-name()="switch-options"]')[0] ?? null;
 
-            if ($name === null || ($guvenlik === null && $anahtar === null)) {
+            if ($name === null || ($security === null && $key === null)) {
                 continue;
             }
 
             $rows[] = [
                 'vlan_name' => $name,
-                'examine_dhcp' => $guvenlik !== null && ! $this->has($guvenlik, 'no-dhcp-snooping'),
-                'arp_inspection' => $guvenlik !== null && $this->has($guvenlik, 'arp-inspection'),
-                'ip_source_guard' => $guvenlik !== null && $this->has($guvenlik, 'ip-source-guard'),
-                'mac_move_limit' => $anahtar === null ? null : $this->digits($anahtar, 'mac-move-limit'),
+                'examine_dhcp' => $security !== null && ! $this->has($security, 'no-dhcp-snooping'),
+                'arp_inspection' => $security !== null && $this->has($security, 'arp-inspection'),
+                'ip_source_guard' => $security !== null && $this->has($security, 'ip-source-guard'),
+                'mac_move_limit' => $key === null ? null : $this->digits($key, 'mac-move-limit'),
 
                 // ELS'te mac-move-limit'in eylem siblingi yoktur.
                 'mac_move_action' => null,
@@ -189,47 +189,47 @@ class SecureAccessPortReader
     private function elsVlanScoped(SimpleXMLElement $reply, array $rows): array
     {
         foreach ($reply->xpath('//*[local-name()="vlans"]/*[local-name()="vlan"]') ?: [] as $vlan) {
-            $vlanAdi = $this->name($vlan);
+            $vlanName = $this->name($vlan);
 
-            if ($vlanAdi === null) {
+            if ($vlanName === null) {
                 continue;
             }
 
-            $yol = './*[local-name()="forwarding-options"]/*[local-name()="dhcp-security"]/*[local-name()="group"]';
+            $path = './*[local-name()="forwarding-options"]/*[local-name()="dhcp-security"]/*[local-name()="group"]';
 
-            foreach ($vlan->xpath($yol) ?: [] as $grup) {
-                $guvenli = ($grup->xpath('./*[local-name()="overrides"]/*[local-name()="trusted"]') ?: []) !== [];
+            foreach ($vlan->xpath($path) ?: [] as $group) {
+                $safe = ($group->xpath('./*[local-name()="overrides"]/*[local-name()="trusted"]') ?: []) !== [];
 
-                foreach ($grup->xpath('./*[local-name()="interface"]') ?: [] as $arayuz) {
-                    $ad = $this->name($arayuz);
+                foreach ($group->xpath('./*[local-name()="interface"]') ?: [] as $interface) {
+                    $name = $this->name($interface);
 
-                    if ($ad === null) {
+                    if ($name === null) {
                         continue;
                     }
 
-                    $rows[$ad] ??= $this->elsBosSatir($ad);
-                    $rows[$ad]['vlan_name'] = $vlanAdi;
-                    $rows[$ad]['dhcp_trusted'] = $guvenli ? true : $rows[$ad]['dhcp_trusted'];
+                    $rows[$name] ??= $this->elsEmptyRow($name);
+                    $rows[$name]['vlan_name'] = $vlanName;
+                    $rows[$name]['dhcp_trusted'] = $safe ? true : $rows[$name]['dhcp_trusted'];
                 }
             }
 
-            $macYolu = './*[local-name()="switch-options"]/*[local-name()="interface"]';
+            $macPath = './*[local-name()="switch-options"]/*[local-name()="interface"]';
 
-            foreach ($vlan->xpath($macYolu) ?: [] as $arayuz) {
-                $ad = $this->name($arayuz);
-                $macler = [];
+            foreach ($vlan->xpath($macPath) ?: [] as $interface) {
+                $name = $this->name($interface);
+                $macs = [];
 
-                foreach ($arayuz->xpath('./*[local-name()="static-mac"]/*[local-name()="name"]') ?: [] as $mac) {
-                    $macler[] = trim((string) $mac);
+                foreach ($interface->xpath('./*[local-name()="static-mac"]/*[local-name()="name"]') ?: [] as $mac) {
+                    $macs[] = trim((string) $mac);
                 }
 
-                if ($ad === null || $macler === []) {
+                if ($name === null || $macs === []) {
                     continue;
                 }
 
-                $rows[$ad] ??= $this->elsBosSatir($ad);
-                $rows[$ad]['vlan_name'] = $vlanAdi;
-                $rows[$ad]['allowed_macs'] = $macler;
+                $rows[$name] ??= $this->elsEmptyRow($name);
+                $rows[$name]['vlan_name'] = $vlanName;
+                $rows[$name]['allowed_macs'] = $macs;
             }
         }
 
@@ -239,7 +239,7 @@ class SecureAccessPortReader
     /**
      * @return array<string, mixed>
      */
-    private function elsBosSatir(string $interfaceName): array
+    private function elsEmptyRow(string $interfaceName): array
     {
         return [
             'interface_name' => $interfaceName,

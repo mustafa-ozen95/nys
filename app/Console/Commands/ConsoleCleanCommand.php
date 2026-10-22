@@ -25,7 +25,7 @@ use Illuminate\Console\Command;
  */
 class ConsoleCleanCommand extends Command
 {
-    protected $signature = 'ag:konsol-temizle';
+    protected $signature = 'console:prune';
 
     protected $description = 'Sesi kesilen uzak oturumları kapatır ve kayda geçirir';
 
@@ -36,33 +36,33 @@ class ConsoleCleanCommand extends Command
          * bir ses veriyor; iki tur kaçırmak ağ kesintisi olabilir, üç tur
          * kaçırmak gitmiş olmaktır.
          */
-        $sinir = (int) config('remote.session.ttl') + 120;
+        $limit = (int) config('remote.session.ttl') + 120;
 
-        $oturumlar = ConsoleSession::query()->sessizKalan($sinir)->with('subject')->get();
+        $sessions = ConsoleSession::query()->silentRemaining($limit)->with('subject')->get();
 
-        foreach ($oturumlar as $oturum) {
-            if ($oturum->port !== null) {
-                $ttyd->stop($oturum->port);
+        foreach ($sessions as $session) {
+            if ($session->port !== null) {
+                $ttyd->stop($session->port);
             }
 
-            $oturum->update(['closed_at' => now(), 'closed_reason' => 'dustu']);
+            $session->update(['closed_at' => now(), 'closed_reason' => 'dustu']);
 
             /*
              * Kayıt DÜŞEN KİŞİNİN adına yazılır: isteği yapan yok, sahibi
              * var. recordAs bunun için duruyor.
              */
             $recorder->recordAs(
-                $oturum->user_id,
+                $session->user_id,
                 null,
                 null,
-                $oturum->subject,
+                $session->subject,
                 'session_closed',
-                "Uzak oturum kapandı (bağlantı düştü): {$oturum->label}",
-                $oturum->protocol === ConnectionProtocol::Ssh ? ActivityChannel::Ssh : ActivityChannel::Rdp,
+                "Uzak oturum kapandı (bağlantı düştü): {$session->label}",
+                $session->protocol === ConnectionProtocol::Ssh ? ActivityChannel::Ssh : ActivityChannel::Rdp,
             );
         }
 
-        $this->info($oturumlar->count().' düşen oturum kapatıldı.');
+        $this->info($sessions->count().' düşen oturum kapatıldı.');
 
         return self::SUCCESS;
     }

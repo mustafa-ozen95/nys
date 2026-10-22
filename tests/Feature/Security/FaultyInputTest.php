@@ -36,7 +36,7 @@ final class FaultyInputTest extends TestCase
     /**
      * @return array<string, array{0: array<string, mixed>, 1: string}>
      */
-    public static function portGirdileri(): array
+    public static function portInputs(): array
     {
         return [
             'olmayan mod' => [['port_mode' => 'kirlangic'], 'port_mode'],
@@ -53,13 +53,13 @@ final class FaultyInputTest extends TestCase
         ];
     }
 
-    #[DataProvider('portGirdileri')]
-    public function test_port_ekrani_hatali_girdiyi_cihaza_gondermez(array $girdi, string $alan): void
+    #[DataProvider('portInputs')]
+    public function test_port_ekrani_hatali_girdiyi_cihaza_gondermez(array $input, string $alan): void
     {
-        [$switch, $port, $device] = $this->hazirla();
+        [$switch, $port, $device] = $this->prepare();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.ports.update', [$switch, $port]), $girdi)
+            ->put(route('switches.ports.update', [$switch, $port]), $input)
             ->assertSessionHasErrors($alan);
 
         $this->assertNull($device->connection, 'Doğrulama düşmesine rağmen cihaza bağlanıldı.');
@@ -68,7 +68,7 @@ final class FaultyInputTest extends TestCase
     /**
      * @return array<string, array{0: array<string, mixed>, 1: string}>
      */
-    public static function vlanGirdileri(): array
+    public static function vlanInputs(): array
     {
         return [
             'ad yok' => [['vlan_tag' => 30], 'name'],
@@ -81,13 +81,13 @@ final class FaultyInputTest extends TestCase
         ];
     }
 
-    #[DataProvider('vlanGirdileri')]
-    public function test_vlan_ekrani_hatali_girdiyi_cihaza_gondermez(array $girdi, string $alan): void
+    #[DataProvider('vlanInputs')]
+    public function test_vlan_ekrani_hatali_girdiyi_cihaza_gondermez(array $input, string $alan): void
     {
-        [$switch, , $device] = $this->hazirla();
+        [$switch, , $device] = $this->prepare();
 
         $this->actingAs($this->operator())
-            ->post(route('switches.vlans.store', $switch), $girdi)
+            ->post(route('switches.vlans.store', $switch), $input)
             ->assertSessionHasErrors($alan);
 
         $this->assertNull($device->connection, 'Doğrulama düşmesine rağmen cihaza bağlanıldı.');
@@ -102,13 +102,13 @@ final class FaultyInputTest extends TestCase
      */
     public function test_baska_switchin_vlani_kabul_edilmez(): void
     {
-        [$switch, $port, $device] = $this->hazirla();
-        $yabanci = Vlan::factory()->for(NetworkSwitch::factory()->create(), 'switch')->create();
+        [$switch, $port, $device] = $this->prepare();
+        $foreign = Vlan::factory()->for(NetworkSwitch::factory()->create(), 'switch')->create();
 
         $this->actingAs($this->operator())
             ->put(route('switches.ports.update', [$switch, $port]), [
                 'port_mode' => 'access',
-                'vlans' => [$yabanci->uuid],
+                'vlans' => [$foreign->uuid],
             ])
             ->assertSessionHasErrors();
 
@@ -118,7 +118,7 @@ final class FaultyInputTest extends TestCase
     /**
      * @return array<string, array{0: array<string, mixed>, 1: string}>
      */
-    public static function routeGirdileri(): array
+    public static function routeInputs(): array
     {
         return [
             'hedef IP değil' => [['cidr' => 'burasi-bir-ip-degil', 'action' => 'next-hop', 'next_hops' => ['10.0.0.1']], 'cidr'],
@@ -131,13 +131,13 @@ final class FaultyInputTest extends TestCase
         ];
     }
 
-    #[DataProvider('routeGirdileri')]
-    public function test_route_ekrani_hatali_girdiyi_cihaza_gondermez(array $girdi, string $alan): void
+    #[DataProvider('routeInputs')]
+    public function test_route_ekrani_hatali_girdiyi_cihaza_gondermez(array $input, string $alan): void
     {
-        [$switch, , $device] = $this->hazirla();
+        [$switch, , $device] = $this->prepare();
 
         $this->actingAs($this->operator())
-            ->post(route('switches.routes.store', $switch), $girdi)
+            ->post(route('switches.routes.store', $switch), $input)
             ->assertSessionHasErrors($alan);
 
         $this->assertNull($device->connection, 'Doğrulama düşmesine rağmen cihaza bağlanıldı.');
@@ -146,7 +146,7 @@ final class FaultyInputTest extends TestCase
     /**
      * @return array<string, array{0: array<string, mixed>, 1: string}>
      */
-    public static function prefixListGirdileri(): array
+    public static function prefixListInputs(): array
     {
         return [
             'ad boş' => [[], 'name'],
@@ -154,13 +154,13 @@ final class FaultyInputTest extends TestCase
         ];
     }
 
-    #[DataProvider('prefixListGirdileri')]
-    public function test_prefix_list_hatali_girdiyi_cihaza_gondermez(array $girdi, string $alan): void
+    #[DataProvider('prefixListInputs')]
+    public function test_prefix_list_hatali_girdiyi_cihaza_gondermez(array $input, string $alan): void
     {
-        [$switch, , $device] = $this->hazirla();
+        [$switch, , $device] = $this->prepare();
 
         $this->actingAs($this->operator())
-            ->post(route('switches.prefix-lists.store', $switch), $girdi)
+            ->post(route('switches.prefix-lists.store', $switch), $input)
             ->assertSessionHasErrors($alan);
 
         $this->assertNull($device->connection, 'Doğrulama düşmesine rağmen cihaza bağlanıldı.');
@@ -169,7 +169,7 @@ final class FaultyInputTest extends TestCase
     /**
      * @return array{0: NetworkSwitch, 1: SwitchPort, 2: FakeJunosDevice}
      */
-    private function hazirla(): array
+    private function prepare(): array
     {
         $switch = NetworkSwitch::factory()->create(['management_ip' => '198.18.20.195']);
 

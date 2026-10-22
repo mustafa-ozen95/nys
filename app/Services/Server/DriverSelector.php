@@ -21,9 +21,9 @@ use App\Services\Server\Driver\WindowsDriver;
  */
 class DriverSelector
 {
-    public function icin(Server $sunucu): ServerDriver
+    public function for(Server $server): ServerDriver
     {
-        return match ($sunucu->os_type) {
+        return match ($server->os_type) {
             ServerOs::Windows => app(WindowsDriver::class),
             default => app(LinuxDriver::class),
         };
@@ -35,8 +35,8 @@ class DriverSelector
      * Neden ekranda yazar: "düğme yok" demek, kullanıcının eksik olanı
      * bulmak için kaydı tek tek açması demekti.
      */
-    public function engel(Server $sunucu): ?string
+    public function engel(Server $server): ?string
     {
-        return $this->icin($sunucu)->engel($sunucu);
+        return $this->for($server)->engel($server);
     }
 }

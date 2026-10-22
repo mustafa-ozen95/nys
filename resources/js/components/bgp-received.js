@@ -9,54 +9,54 @@ import { http } from '../lib/http.js';
  * açtığında çağrılır. Ayrım sunucuda yapılır; burada yalnızca basma işi var.
  */
 
-function satirlar(yollar) {
-    if (yollar.length === 0) {
+function rows(paths) {
+    if (paths.length === 0) {
         return '<p class="text-sm text-muted">Yok.</p>';
     }
 
-    return yollar
-        .map((yol) => `<div class="row row--between bgp-row">
-            <span class="mono">${escapeHtml(yol.prefix)}</span>
-            <span class="text-sm text-muted">${escapeHtml(yol.as_path ?? '—')}</span>
-            <span class="text-sm text-muted mono">${escapeHtml(yol.next_hop ?? '—')}</span>
+    return paths
+        .map((path) => `<div class="row row--between bgp-row">
+            <span class="mono">${escapeHtml(path.prefix)}</span>
+            <span class="text-sm text-muted">${escapeHtml(path.as_path ?? '—')}</span>
+            <span class="text-sm text-muted mono">${escapeHtml(path.next_hop ?? '—')}</span>
         </div>`)
         .join('');
 }
 
-function bas(hedef, yanit) {
-    hedef.innerHTML = `
+function head(target, response) {
+    target.innerHTML = `
         <div class="stack stack--tight">
-            <span class="eyebrow">Kabul edilen (${yanit.accepted.length})</span>
-            ${satirlar(yanit.accepted)}
+            <span class="eyebrow">Kabul edilen (${response.accepted.length})</span>
+            ${rows(response.accepted)}
         </div>
         <div class="stack stack--tight">
-            <span class="eyebrow">Reddedilen (${yanit.rejected.length})</span>
+            <span class="eyebrow">Reddedilen (${response.rejected.length})</span>
             <p class="text-sm text-muted">
                 Bu prefixler komşu tarafından duyuruluyor ama içeri alma
                 politikası kabul etmiyor.
             </p>
-            ${satirlar(yanit.rejected)}
+            ${rows(response.rejected)}
         </div>`;
 }
 
-async function yukle(dugme) {
-    const hedef = $(dugme.dataset.alinanHedef);
+async function load(button) {
+    const target = $(button.dataset.receivedTarget);
 
-    if (!hedef) {
+    if (!target) {
         return;
     }
 
-    hedef.innerHTML = '<p class="text-sm text-muted">Cihazdan okunuyor…</p>';
+    target.innerHTML = '<p class="text-sm text-muted">Cihazdan okunuyor…</p>';
 
     try {
-        bas(hedef, await http.get(dugme.dataset.alinan));
+        head(target, await http.get(button.dataset.received));
     } catch {
-        hedef.innerHTML = '<p class="text-sm text-muted">Cihazdan okunamadı.</p>';
+        target.innerHTML = '<p class="text-sm text-muted">Cihazdan okunamadı.</p>';
     }
 }
 
 export function init() {
-    on('click', '[data-alinan]', (event, dugme) => {
-        yukle(dugme).catch(() => {});
+    on('click', '[data-received]', (event, button) => {
+        load(button).catch(() => {});
     });
 }

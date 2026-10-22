@@ -26,6 +26,6 @@
  * style violates ... style-src" der). Satır içi stil sessizce düşer; sınıf
  * düşmez.
  */
-.alert--aralikli {
+.alert--spaced {
     margin-block: 1rem;
 }

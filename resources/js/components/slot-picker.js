@@ -8,46 +8,46 @@ import { http } from '../lib/http.js';
  * birini seçer. Bölme ve doluluk hesabı sunucudadır.
  */
 
-function doldur(select, yuvalar) {
-    const bos = document.createElement('option');
-    bos.value = '';
-    bos.textContent = yuvalar.length ? 'Seçiniz' : 'Boş yuva kalmadı';
+function fill(select, slots) {
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = slots.length ? 'Seçiniz' : 'Boş yuva kalmadı';
 
-    const secenekler = yuvalar.map((yuva) => {
+    const options = slots.map((slot) => {
         const option = document.createElement('option');
-        option.value = yuva.network;
-        option.textContent = `${yuva.cidr} · ${yuva.usable} adres`;
+        option.value = slot.network;
+        option.textContent = `${slot.cidr} · ${slot.usable} adres`;
 
         return option;
     });
 
-    select.replaceChildren(bos, ...secenekler);
-    select.disabled = yuvalar.length === 0;
+    select.replaceChildren(empty, ...options);
+    select.disabled = slots.length === 0;
 }
 
-async function yukle(maske) {
-    const form = maske.closest('form');
-    const select = form?.querySelector('[data-yuva-secim]');
+async function load(mask) {
+    const form = mask.closest('form');
+    const select = form?.querySelector('[data-slot-selection]');
 
     if (!select) {
         return;
     }
 
-    if (!maske.value) {
-        doldur(select, []);
+    if (!mask.value) {
+        fill(select, []);
 
         return;
     }
 
-    const yanit = await http.get(`${maske.dataset.yuvaUcu}?prefix=${maske.value}`);
+    const response = await http.get(`${mask.dataset.slotEnd}?prefix=${mask.value}`);
 
-    doldur(select, yanit.slots.filter((yuva) => yuva.available));
+    fill(select, response.slots.filter((slot) => slot.available));
 }
 
 export function init() {
-    $$('[data-yuva-maske]').forEach((maske) => yukle(maske).catch(() => {}));
+    $$('[data-slot-mask]').forEach((mask) => load(mask).catch(() => {}));
 
-    on('change', '[data-yuva-maske]', (event, maske) => {
-        yukle(maske).catch(() => {});
+    on('change', '[data-slot-mask]', (event, mask) => {
+        load(mask).catch(() => {});
     });
 }

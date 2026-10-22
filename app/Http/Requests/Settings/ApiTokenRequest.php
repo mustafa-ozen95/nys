@@ -37,15 +37,15 @@ class ApiTokenRequest extends FormRequest
      */
     public function rules(): array
     {
-        $yeni = $this->route('apiToken') === null;
+        $new = $this->route('apiToken') === null;
 
         return [
             'name' => ['required', 'string', 'max:80'],
 
             // Sahibi sonradan değişmez: aynı sır başka bir yetkiye açılırdı.
             'user' => [
-                Rule::requiredIf($yeni),
-                Rule::prohibitedIf(! $yeni),
+                Rule::requiredIf($new),
+                Rule::prohibitedIf(! $new),
                 Rule::exists('users', 'uuid'),
             ],
 
@@ -72,14 +72,14 @@ class ApiTokenRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            foreach ($this->ipList() as $index => $kural) {
-                if ($this->validRule($kural)) {
+            foreach ($this->ipList() as $index => $rule) {
+                if ($this->validRule($rule)) {
                     continue;
                 }
 
                 $validator->errors()->add(
                     "allowed_ips.{$index}",
-                    "Geçersiz adres ya da ağ: {$kural}",
+                    "Geçersiz adres ya da ağ: {$rule}",
                 );
             }
         });
@@ -99,13 +99,13 @@ class ApiTokenRequest extends FormRequest
                 continue;
             }
 
-            $kabul = array_values(array_filter(
+            $accept = array_values(array_filter(
                 (array) $actions,
                 fn (mixed $action): bool => is_string($action) && $registry->supports($resource, $action),
             ));
 
-            if ($kabul !== []) {
-                $abilities[$resource] = $kabul;
+            if ($accept !== []) {
+                $abilities[$resource] = $accept;
             }
         }
 
@@ -117,14 +117,14 @@ class ApiTokenRequest extends FormRequest
      */
     public function ipList(): array
     {
-        $ham = $this->input('allowed_ips');
+        $raw = $this->input('allowed_ips');
 
-        if (is_array($ham)) {
-            return array_values(array_filter(array_map('trim', $ham), 'filled'));
+        if (is_array($raw)) {
+            return array_values(array_filter(array_map('trim', $raw), 'filled'));
         }
 
         return array_values(array_filter(
-            array_map('trim', preg_split('/[\r\n,]+/', (string) $ham) ?: []),
+            array_map('trim', preg_split('/[\r\n,]+/', (string) $raw) ?: []),
             'filled',
         ));
     }
@@ -138,13 +138,13 @@ class ApiTokenRequest extends FormRequest
      */
     public function expiresAt(): ?string
     {
-        $gun = $this->input('lifetime_days');
+        $day = $this->input('lifetime_days');
 
-        if (blank($gun) || (int) $gun === 0) {
+        if (blank($day) || (int) $day === 0) {
             return null;
         }
 
-        return now()->addDays((int) $gun)->toDateTimeString();
+        return now()->addDays((int) $day)->toDateTimeString();
     }
 
     private function validRule(string $rule): bool

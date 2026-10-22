@@ -10,7 +10,7 @@ export const $$ = (selector, scope = document) => Array.from(scope.querySelector
  * Halihazırda kurulmuş delegasyonlar. Anahtar: olay + seçici + işleyicinin
  * KAYNAK METNİ.
  */
-const kurulanlar = new WeakMap();
+const installed = new WeakMap();
 
 /**
  * Olay delegasyonu: sonradan eklenen düğümler için de çalışır.
@@ -24,18 +24,18 @@ const kurulanlar = new WeakMap();
  * kullanan FARKLI bir işleyici birbirini ezmez.
  */
 export function on(eventName, selector, handler, scope = document) {
-    if (! kurulanlar.has(scope)) {
-        kurulanlar.set(scope, new Set());
+    if (! installed.has(scope)) {
+        installed.set(scope, new Set());
     }
 
-    const kayit = kurulanlar.get(scope);
-    const anahtar = `${eventName}|${selector}|${handler.toString()}`;
+    const record = installed.get(scope);
+    const key = `${eventName}|${selector}|${handler.toString()}`;
 
-    if (kayit.has(anahtar)) {
+    if (record.has(key)) {
         return;
     }
 
-    kayit.add(anahtar);
+    record.add(key);
 
     scope.addEventListener(eventName, (event) => {
         const target = event.target.closest(selector);

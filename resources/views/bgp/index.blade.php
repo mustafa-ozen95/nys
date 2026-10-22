@@ -11,26 +11,26 @@
 
             <div class="column__body">
                 <div class="grid-row__head bgp-row bgp-row__head">
-                    <span class="bgp-row__durum"></span>
-                    <span class="bgp-row__komsu">Komşu</span>
+                    <span class="bgp-row__status"></span>
+                    <span class="bgp-row__neighbor">Komşu</span>
                     <span class="bgp-row__asn">Komşu ASN</span>
                     <span class="bgp-row__switch">Switch</span>
-                    <span class="bgp-row__grup">Grup</span>
-                    <span class="bgp-row__aciklama">Açıklama</span>
+                    <span class="bgp-row__group">Grup</span>
+                    <span class="bgp-row__description">Açıklama</span>
                 </div>
 
                 @forelse ($neighbors as $neighbor)
                     <a href="{{ route('bgp.index', ['q' => $query ?: null, 'neighbor' => $neighbor->uuid]) }}"
                        class="grid-row bgp-row"
                        @if ($selected?->is($neighbor)) aria-selected="true" @endif>
-                        <span class="bgp-row__durum">
+                        <span class="bgp-row__status">
                             <x-ui.badge :variant="$neighbor->state->badge()">{{ $neighbor->state->label() }}</x-ui.badge>
                         </span>
-                        <span class="mono bgp-row__komsu">{{ $neighbor->address }}</span>
+                        <span class="mono bgp-row__neighbor">{{ $neighbor->address }}</span>
                         <span class="mono bgp-row__asn">{{ $neighbor->effective_peer_asn }}</span>
                         <span class="mono text-muted bgp-row__switch">{{ $neighbor->switch->hostname }}</span>
-                        <span class="mono text-muted bgp-row__grup">{{ $neighbor->group->name }}</span>
-                        <span class="text-muted truncate bgp-row__aciklama">{{ $neighbor->description }}</span>
+                        <span class="mono text-muted bgp-row__group">{{ $neighbor->group->name }}</span>
+                        <span class="text-muted truncate bgp-row__description">{{ $neighbor->description }}</span>
                     </a>
                 @empty
                     <x-ui.empty title="BGP komşusu yok"

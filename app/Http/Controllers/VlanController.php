@@ -96,10 +96,10 @@ class VlanController extends Controller implements HasMiddleware
          * üstündeki adresler onunla birlikte silinir. Adres silmek ayrı bir
          * karardır; sessizce yapılmaz.
          */
-        if ($request->l3Interface() !== $vlan->l3_interface && ($bagli = $this->dependencies->forVlan($vlan)) !== []) {
+        if ($request->l3Interface() !== $vlan->l3_interface && ($bound = $this->dependencies->forVlan($vlan)) !== []) {
             return back()->with('error', $this->dependencies->message(
                 "VLAN {$vlan->name} L3 arayüzü değiştirilemez",
-                $bagli,
+                $bound,
             ))->withInput();
         }
 
@@ -125,13 +125,13 @@ class VlanController extends Controller implements HasMiddleware
          * Adres bloğu ataması da VLAN'ı kayıtla işaret ediyor: VLAN silinirse
          * blok sessizce "atanmamış"a dönerdi.
          */
-        $bagli = [
+        $bound = [
             ...$this->dependencies->forVlan($vlan),
             ...$this->dependencies->blocksForVlan($vlan),
         ];
 
-        if ($bagli !== []) {
-            return back()->with('error', $this->dependencies->message("VLAN {$vlan->name}", $bagli));
+        if ($bound !== []) {
+            return back()->with('error', $this->dependencies->message("VLAN {$vlan->name}", $bound));
         }
 
         /*

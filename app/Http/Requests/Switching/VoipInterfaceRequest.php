@@ -68,15 +68,15 @@ class VoipInterfaceRequest extends FormRequest
     public function rules(): array
     {
         $switchId = $this->route('switch')->id;
-        $mevcut = $this->route('voipInterface');
+        $current = $this->route('voipInterface');
 
         return [
             'interface_name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:64',
                 Rule::unique(SwitchVoipInterface::class, 'interface_name')
                     ->where('switch_id', $switchId)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             /*
@@ -115,13 +115,13 @@ class VoipInterfaceRequest extends FormRequest
      */
     private function guardImmutableName(Validator $validator): void
     {
-        $mevcut = $this->route('voipInterface');
+        $current = $this->route('voipInterface');
 
-        if (! $mevcut instanceof SwitchVoipInterface || ! $this->filled('interface_name')) {
+        if (! $current instanceof SwitchVoipInterface || ! $this->filled('interface_name')) {
             return;
         }
 
-        if ($this->string('interface_name')->toString() !== $mevcut->interface_name) {
+        if ($this->string('interface_name')->toString() !== $current->interface_name) {
             $validator->errors()->add(
                 'interface_name',
                 'Arayüz adı cihazda kimliktir ve değiştirilemez; kayıt silinip yeniden eklenir.',
@@ -169,19 +169,19 @@ class VoipInterfaceRequest extends FormRequest
     {
         $port = $this->port();
         $vlan = $this->string('vlan_name')->toString();
-        $mevcut = $this->route('voipInterface');
+        $current = $this->route('voipInterface');
 
         if (! $port instanceof SwitchPort || $vlan === '') {
             return;
         }
 
-        if ($mevcut instanceof SwitchVoipInterface && $mevcut->vlan_name === $vlan) {
+        if ($current instanceof SwitchVoipInterface && $current->vlan_name === $vlan) {
             return;
         }
 
-        $etiketsiz = $port->vlans->firstWhere('pivot.is_untagged', true);
+        $untagged = $port->vlans->firstWhere('pivot.is_untagged', true);
 
-        if ($etiketsiz !== null && $etiketsiz->name === $vlan) {
+        if ($untagged !== null && $untagged->name === $vlan) {
             $validator->errors()->add(
                 'vlan_name',
                 "{$vlan} bu portun etiketsiz VLAN'ı; ses VLAN'ı ondan farklı olmalıdır "
@@ -219,16 +219,16 @@ class VoipInterfaceRequest extends FormRequest
         }
 
         $this->portResolved = true;
-        $ad = $this->interfaceName();
+        $name = $this->interfaceName();
 
-        if ($ad === '' || in_array($ad, SwitchVoipInterface::VIRTUAL_INTERFACES, true)) {
+        if ($name === '' || in_array($name, SwitchVoipInterface::VIRTUAL_INTERFACES, true)) {
             return $this->cachedPort = false;
         }
 
         return $this->cachedPort = SwitchPort::query()
             ->with('vlans')
             ->where('switch_id', $this->route('switch')->id)
-            ->firstWhere('name', (string) preg_replace('/\.\d+$/', '', $ad));
+            ->firstWhere('name', (string) preg_replace('/\.\d+$/', '', $name));
     }
 
     /**
@@ -239,14 +239,14 @@ class VoipInterfaceRequest extends FormRequest
      */
     public function settings(): array
     {
-        $mevcut = $this->route('voipInterface');
+        $current = $this->route('voipInterface');
 
         return [
             'vlan_name' => $this->filled('vlan_name') ? $this->string('vlan_name')->toString() : null,
             'forwarding_class' => $this->filled('forwarding_class')
                 ? $this->string('forwarding_class')->toString()
                 : null,
-            'residual_xml' => $mevcut instanceof SwitchVoipInterface ? $mevcut->residual_xml : null,
+            'residual_xml' => $current instanceof SwitchVoipInterface ? $current->residual_xml : null,
         ];
     }
 
@@ -256,10 +256,10 @@ class VoipInterfaceRequest extends FormRequest
      */
     public function interfaceName(): string
     {
-        $mevcut = $this->route('voipInterface');
+        $current = $this->route('voipInterface');
 
-        return $mevcut instanceof SwitchVoipInterface
-            ? (string) $mevcut->interface_name
+        return $current instanceof SwitchVoipInterface
+            ? (string) $current->interface_name
             : self::canonical($this->string('interface_name')->toString());
     }
 

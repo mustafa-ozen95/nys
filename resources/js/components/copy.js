@@ -9,31 +9,31 @@ import { on } from '../lib/dom.js';
  * Pano API'si güvenli olmayan bağlamda ya da izin verilmediğinde çalışmaz;
  * o durumda metin seçilir ve kullanıcı kendi kopyalar.
  */
-async function kopyala(dugme) {
-    const kaynak = document.querySelector(dugme.dataset.kopyala);
+async function copy(button) {
+    const source = document.querySelector(button.dataset.copy);
 
-    if (!kaynak) {
+    if (!source) {
         return;
     }
 
-    const eskiMetin = dugme.textContent;
+    const oldText = button.textContent;
 
     try {
-        await navigator.clipboard.writeText(kaynak.value);
-        dugme.textContent = 'Kopyalandı';
+        await navigator.clipboard.writeText(source.value);
+        button.textContent = 'Kopyalandı';
     } catch {
-        kaynak.focus();
-        kaynak.select();
-        dugme.textContent = 'Seçildi, kopyalayın';
+        source.focus();
+        source.select();
+        button.textContent = 'Seçildi, kopyalayın';
     }
 
     setTimeout(() => {
-        dugme.textContent = eskiMetin;
+        button.textContent = oldText;
     }, 2000);
 }
 
 export function init() {
-    on('click', '[data-kopyala]', (event, dugme) => {
-        kopyala(dugme).catch(() => {});
+    on('click', '[data-copy]', (event, button) => {
+        copy(button).catch(() => {});
     });
 }

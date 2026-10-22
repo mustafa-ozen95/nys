@@ -131,11 +131,11 @@ class FirewallConfigurator
         array $terms,
         array $settings = [],
     ): array {
-        $aile = FirewallFamily::coerce($family);
+        $family = FirewallFamily::coerce($family);
 
         return $this->apply(
             $switch,
-            [$this->wrap($aile, $this->filterElement($name, $terms, $settings))],
+            [$this->wrap($family, $this->filterElement($name, $terms, $settings))],
             "firewall filtresi eklendi: {$name}",
         );
     }
@@ -157,14 +157,14 @@ class FirewallConfigurator
         array $terms,
         ?array $settings = null,
     ): array {
-        $ayarlar = $settings ?? [
+        $settings = $settings ?? [
             'interface_specific' => $filter->interface_specific,
             'residual_xml' => $filter->residual_xml,
         ];
 
         $documents = [
             $this->wrap($filter->family, $this->deleteElement($filter->name)),
-            $this->wrap($filter->family, $this->filterElement($filter->name, $terms, $ayarlar)),
+            $this->wrap($filter->family, $this->filterElement($filter->name, $terms, $settings)),
         ];
 
         return $this->apply($switch, $documents, "firewall filtresi degistirildi: {$filter->name}");
@@ -319,13 +319,13 @@ class FirewallConfigurator
         $body = '';
 
         foreach ($term[$field] ?? [] as $value) {
-            $ic = '<name>'.$this->escape((string) $value).'</name>';
+            $inner = '<name>'.$this->escape((string) $value).'</name>';
 
             if (in_array((string) $value, array_map('strval', $excepts), true)) {
-                $ic .= '<except/>';
+                $inner .= '<except/>';
             }
 
-            $body .= "<{$element}>{$ic}</{$element}>";
+            $body .= "<{$element}>{$inner}</{$element}>";
         }
 
         return $body;

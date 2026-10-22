@@ -40,13 +40,13 @@ class DeviceCountRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $count = (int) $this->input('device_count');
-            $kullanilan = $this->highestConfiguredIndex();
+            $used = $this->highestConfiguredIndex();
 
-            if ($kullanilan !== null && $count <= $kullanilan) {
+            if ($used !== null && $count <= $used) {
                 $validator->errors()->add('device_count', sprintf(
                     'ae%d yapılandırılmış durumda; limit en az %d olmalı. Daha küçük bir sayı o arayüzü cihazdan sessizce siler.',
-                    $kullanilan,
-                    $kullanilan + 1,
+                    $used,
+                    $used + 1,
                 ));
             }
         });

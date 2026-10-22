@@ -17,17 +17,17 @@ use Tests\TestCase;
 /**
  * Sınama için cihaz yazıcısı: aldığı argümanı kaydeder.
  */
-final class SirTasiyanYazici
+final class SecretCarryingWriter
 {
     /** @var list<mixed>|null */
-    public static ?array $gelen = null;
+    public static ?array $incoming = null;
 
     /**
      * @return array{diff: string, committed: bool}
      */
-    public function yaz(NetworkSwitch $switch, mixed ...$argumanlar): array
+    public function write(NetworkSwitch $switch, mixed ...$arguments): array
     {
-        self::$gelen = array_values($argumanlar);
+        self::$incoming = array_values($arguments);
 
         return ['diff' => '', 'committed' => false];
     }
@@ -42,27 +42,27 @@ final class QueuePayloadEncryptedTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SIR = 'COK-GIZLI-KUYRUK-PAROLASI';
+    private const SECRET = 'COK-GIZLI-KUYRUK-PAROLASI';
 
     protected function setUp(): void
     {
         parent::setUp();
 
         config(['queue.default' => 'database', 'queue.connections.database.after_commit' => false]);
-        SirTasiyanYazici::$gelen = null;
+        SecretCarryingWriter::$incoming = null;
     }
 
     public function test_kuyruk_yuku_sifrelidir_ve_calisir(): void
     {
-        $this->isiKuyrugaAt();
+        $this->pushJobToQueue();
 
-        $yuk = (string) DB::table('jobs')->value('payload');
-        $this->assertStringNotContainsString(self::SIR, $yuk);
-        $this->assertStringNotContainsString(self::SIR, (string) json_decode($yuk, true)['data']['command']);
+        $load = (string) DB::table('jobs')->value('payload');
+        $this->assertStringNotContainsString(self::SECRET, $load);
+        $this->assertStringNotContainsString(self::SECRET, (string) json_decode($load, true)['data']['command']);
 
-        $this->calistir();
+        $this->execute();
 
-        $this->assertSame([self::SIR], SirTasiyanYazici::$gelen);
+        $this->assertSame([self::SECRET], SecretCarryingWriter::$incoming);
     }
 
     /**
@@ -70,34 +70,34 @@ final class QueuePayloadEncryptedTest extends TestCase
      */
     public function test_duz_yuklu_eski_is_calismaya_devam_eder(): void
     {
-        $this->isiKuyrugaAt();
+        $this->pushJobToQueue();
 
-        $satir = DB::table('jobs')->first();
-        $yuk = json_decode($satir->payload, true);
-        $yuk['data']['command'] = app(Encrypter::class)->decrypt($yuk['data']['command']);
-        $this->assertStringStartsWith('O:', $yuk['data']['command']);
-        DB::table('jobs')->where('id', $satir->id)->update(['payload' => json_encode($yuk)]);
+        $row = DB::table('jobs')->first();
+        $load = json_decode($row->payload, true);
+        $load['data']['command'] = app(Encrypter::class)->decrypt($load['data']['command']);
+        $this->assertStringStartsWith('O:', $load['data']['command']);
+        DB::table('jobs')->where('id', $row->id)->update(['payload' => json_encode($load)]);
 
-        $this->calistir();
+        $this->execute();
 
-        $this->assertSame([self::SIR], SirTasiyanYazici::$gelen);
+        $this->assertSame([self::SECRET], SecretCarryingWriter::$incoming);
     }
 
-    private function isiKuyrugaAt(): void
+    private function pushJobToQueue(): void
     {
         $switch = NetworkSwitch::factory()->create();
-        $kayit = SwitchWriteJob::create([
+        $record = SwitchWriteJob::create([
             'switch_id' => $switch->id,
             'summary' => 'sınama',
             'status' => SwitchWriteStatus::Queued,
         ]);
 
-        ApplySwitchWriteJob::dispatch($kayit, $switch, SirTasiyanYazici::class, 'yaz', [self::SIR]);
+        ApplySwitchWriteJob::dispatch($record, $switch, SecretCarryingWriter::class, 'write', [self::SECRET]);
 
         $this->assertSame(1, DB::table('jobs')->count());
     }
 
-    private function calistir(): void
+    private function execute(): void
     {
         Artisan::call('queue:work', [
             '--once' => true,

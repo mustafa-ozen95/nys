@@ -24,32 +24,32 @@ final class NetworkSeederTest extends TestCase
      * salınırdı — kimsenin makinesinde aynı sonucu vermezdi. Burada kaynak
      * geçici bir dizine bağlanır ve içeriği testin kendisi yazar.
      */
-    private string $dizin;
+    private string $directory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->dizin = sys_get_temp_dir().'/nys-envanter-'.bin2hex(random_bytes(6));
-        mkdir($this->dizin);
+        $this->directory = sys_get_temp_dir().'/nys-envanter-'.bin2hex(random_bytes(6));
+        mkdir($this->directory);
 
-        LocalInventory::dizinAyarla($this->dizin);
+        LocalInventory::directoryConfigure($this->directory);
     }
 
     protected function tearDown(): void
     {
-        LocalInventory::dizinAyarla(null);
+        LocalInventory::directoryConfigure(null);
 
-        array_map(unlink(...), glob($this->dizin.'/*') ?: []);
-        @rmdir($this->dizin);
+        array_map(unlink(...), glob($this->directory.'/*') ?: []);
+        @rmdir($this->directory);
 
         parent::tearDown();
     }
 
     /** Testin kullanacağı envanteri yazar. */
-    private function envanter(): void
+    private function inventory(): void
     {
-        file_put_contents($this->dizin.'/inventory.php', <<<'PHP'
+        file_put_contents($this->directory.'/inventory.php', <<<'PHP'
             <?php
 
             use App\Enums\SwitchLocation;
@@ -99,7 +99,7 @@ final class NetworkSeederTest extends TestCase
     /** Dosya varsa envanter ONDAN kurulur. */
     public function test_envanteri_yerel_dosyadan_kurar(): void
     {
-        $this->envanter();
+        $this->inventory();
 
         $this->seed(NetworkSeeder::class);
 
@@ -121,7 +121,7 @@ final class NetworkSeederTest extends TestCase
      */
     public function test_verilmeyen_cihaz_envantere_girmez(): void
     {
-        $this->envanter();
+        $this->inventory();
 
         $this->seed(NetworkSeeder::class);
 
@@ -131,7 +131,7 @@ final class NetworkSeederTest extends TestCase
 
     public function test_her_switch_ssh_snmp_ve_netconf_kimligi_alir(): void
     {
-        $this->envanter();
+        $this->inventory();
 
         $this->seed(NetworkSeeder::class);
 
@@ -150,7 +150,7 @@ final class NetworkSeederTest extends TestCase
 
     public function test_olcum_alanlari_bos_birakilir(): void
     {
-        $this->envanter();
+        $this->inventory();
 
         $this->seed(NetworkSeeder::class);
 
@@ -166,7 +166,7 @@ final class NetworkSeederTest extends TestCase
 
     public function test_tekrar_calistirildiginda_kayit_cogaltmaz(): void
     {
-        $this->envanter();
+        $this->inventory();
 
         $this->seed(NetworkSeeder::class);
         $this->seed(NetworkSeeder::class);

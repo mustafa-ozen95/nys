@@ -59,12 +59,12 @@ final class PasswordVisibilityTest extends TestCase
     public function test_yetki_switch_basinadir(): void
     {
         $bir = $this->switch();
-        $iki = $this->switch('test2', '198.18.20.196');
+        $two = $this->switch('test2', '198.18.20.196');
 
         $user = $this->withSecret([$bir->id]);
 
         $this->actingAs($user)->post(route('switches.password', $bir))->assertOk();
-        $this->actingAs($user)->post(route('switches.password', $iki))->assertForbidden();
+        $this->actingAs($user)->post(route('switches.password', $two))->assertForbidden();
     }
 
     /**
@@ -140,14 +140,14 @@ final class PasswordVisibilityTest extends TestCase
         Queue::fake();
 
         $bir = $this->switch();
-        $iki = $this->switch('test2', '198.18.20.196');
+        $two = $this->switch('test2', '198.18.20.196');
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource(
             $user,
             'switches',
             [],
-            ['view' => [$bir->id, $iki->id], 'rotate' => [$bir->id]],
+            ['view' => [$bir->id, $two->id], 'rotate' => [$bir->id]],
         );
 
         $this->actingAs($user->fresh())

@@ -51,7 +51,7 @@ final class PanelModeTest extends TestCase
 
     public function test_kullanici_kendi_modunu_degistirir(): void
     {
-        $user = $this->gelismisYetkili(User::factory()->create(['panel_mode' => PanelMode::Simple]));
+        $user = $this->advancedAuthorized(User::factory()->create(['panel_mode' => PanelMode::Simple]));
 
         $this->actingAs($user)
             ->post(route('panel-mode.toggle'))
@@ -80,15 +80,15 @@ final class PanelModeTest extends TestCase
      */
     public function test_mod_dugmesi_hesap_menusunun_icinde(): void
     {
-        $govde = $this->actingAs($this->gelismisYetkili(User::factory()->create()))
-            ->get(route('hesap.profil'))
+        $body = $this->actingAs($this->advancedAuthorized(User::factory()->create()))
+            ->get(route('account.profile'))
             ->assertOk()
             ->getContent();
 
-        $menu = substr($govde, (int) strpos($govde, 'data-menu-liste'));
+        $menu = substr($body, (int) strpos($body, 'data-menu-list'));
 
         $this->assertStringContainsString(route('panel-mode.toggle'), $menu);
-        $this->assertSame(1, substr_count($govde, route('panel-mode.toggle')));
+        $this->assertSame(1, substr_count($body, route('panel-mode.toggle')));
     }
 
     /**
@@ -101,7 +101,7 @@ final class PanelModeTest extends TestCase
      */
     public function test_basit_modda_gizli_alanlar_cihaza_yazilmaz(): void
     {
-        [$switch, $port, $device] = $this->hazirla();
+        [$switch, $port, $device] = $this->prepare();
 
         $this->actingAs($this->operator(PanelMode::Simple))
             ->put(route('switches.ports.update', [$switch, $port]), [
@@ -111,12 +111,12 @@ final class PanelModeTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode("\n", $device->written);
+        $written = implode("\n", $device->written);
 
-        $this->assertStringNotContainsString('<speed', $yazilan);
-        $this->assertStringNotContainsString('<mtu', $yazilan);
-        $this->assertStringNotContainsString('<link-mode', $yazilan);
-        $this->assertStringNotContainsString('<description', $yazilan);
+        $this->assertStringNotContainsString('<speed', $written);
+        $this->assertStringNotContainsString('<mtu', $written);
+        $this->assertStringNotContainsString('<link-mode', $written);
+        $this->assertStringNotContainsString('<description', $written);
     }
 
     /**
@@ -127,7 +127,7 @@ final class PanelModeTest extends TestCase
      */
     public function test_gelismis_modda_bos_alan_cihazdan_silinir(): void
     {
-        [$switch, $port, $device] = $this->hazirla();
+        [$switch, $port, $device] = $this->prepare();
 
         $this->actingAs($this->operator(PanelMode::Advanced))
             ->put(route('switches.ports.update', [$switch, $port]), [
@@ -141,10 +141,10 @@ final class PanelModeTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode("\n", $device->written);
+        $written = implode("\n", $device->written);
 
-        $this->assertStringContainsString('<description delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<mtu delete="delete"/>', $yazilan);
+        $this->assertStringContainsString('<description delete="delete"/>', $written);
+        $this->assertStringContainsString('<mtu delete="delete"/>', $written);
     }
 
     /**
@@ -158,20 +158,20 @@ final class PanelModeTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['panel_mode' => PanelMode::Simple]));
 
-        $cikti = $this->alaniIsle();
+        $output = $this->fieldIsle();
 
-        $this->assertStringNotContainsString('name="mtu"', $cikti);
-        $this->assertStringNotContainsString('MTU', $cikti);
+        $this->assertStringNotContainsString('name="mtu"', $output);
+        $this->assertStringNotContainsString('MTU', $output);
     }
 
     public function test_gelismis_alan_gelismis_modda_cizilir(): void
     {
-        $this->actingAs($this->gelismisYetkili(User::factory()->create(['panel_mode' => PanelMode::Advanced])));
+        $this->actingAs($this->advancedAuthorized(User::factory()->create(['panel_mode' => PanelMode::Advanced])));
 
-        $cikti = $this->alaniIsle();
+        $output = $this->fieldIsle();
 
-        $this->assertStringContainsString('name="mtu"', $cikti);
-        $this->assertStringContainsString('MTU', $cikti);
+        $this->assertStringContainsString('name="mtu"', $output);
+        $this->assertStringContainsString('MTU', $output);
     }
 
     /**
@@ -181,14 +181,14 @@ final class PanelModeTest extends TestCase
     public function test_isaretsiz_alan_her_iki_modda_da_cizilir(): void
     {
         foreach (PanelMode::cases() as $mode) {
-            $this->actingAs($this->gelismisYetkili(User::factory()->create(['panel_mode' => $mode])));
+            $this->actingAs($this->advancedAuthorized(User::factory()->create(['panel_mode' => $mode])));
 
-            $cikti = Blade::render(
+            $output = Blade::render(
                 '<x-form.field name="description" label="Açıklama">'
                 .'<input name="description" /></x-form.field>',
             );
 
-            $this->assertStringContainsString('name="description"', $cikti);
+            $this->assertStringContainsString('name="description"', $output);
         }
     }
 
@@ -205,12 +205,12 @@ final class PanelModeTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['panel_mode' => PanelMode::Simple]));
 
-        $cikti = $this->alaniIsle('9216 bayt');
+        $output = $this->fieldIsle('9216 bayt');
 
-        $this->assertStringContainsString('MTU', $cikti);
-        $this->assertStringContainsString('9216 bayt', $cikti);
-        $this->assertStringNotContainsString('name="mtu"', $cikti);
-        $this->assertStringNotContainsString('<input', $cikti);
+        $this->assertStringContainsString('MTU', $output);
+        $this->assertStringContainsString('9216 bayt', $output);
+        $this->assertStringNotContainsString('name="mtu"', $output);
+        $this->assertStringNotContainsString('<input', $output);
     }
 
     /** Varsayılandaki alan basit modda hiç anılmaz: sadeliğin bedeli yok. */
@@ -218,18 +218,18 @@ final class PanelModeTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['panel_mode' => PanelMode::Simple]));
 
-        $this->assertStringNotContainsString('MTU', $this->alaniIsle(null));
+        $this->assertStringNotContainsString('MTU', $this->fieldIsle(null));
     }
 
     /** Gelişmiş modda değer varken de DÜZENLENİR; salt okunur satır çıkmaz. */
     public function test_gelismis_modda_tanimli_alan_duzenlenebilir(): void
     {
-        $this->actingAs($this->gelismisYetkili(User::factory()->create(['panel_mode' => PanelMode::Advanced])));
+        $this->actingAs($this->advancedAuthorized(User::factory()->create(['panel_mode' => PanelMode::Advanced])));
 
-        $cikti = $this->alaniIsle('9216 bayt');
+        $output = $this->fieldIsle('9216 bayt');
 
-        $this->assertStringContainsString('name="mtu"', $cikti);
-        $this->assertStringNotContainsString('gelişmiş moda geçin', $cikti);
+        $this->assertStringContainsString('name="mtu"', $output);
+        $this->assertStringNotContainsString('gelişmiş moda geçin', $output);
     }
 
     /**
@@ -240,21 +240,21 @@ final class PanelModeTest extends TestCase
      */
     public function test_port_ekrani_zorlanmis_hizi_basit_modda_gosterir(): void
     {
-        [$switch, $port] = $this->hazirla();
+        [$switch, $port] = $this->prepare();
         $port->update(['speed_config' => '100', 'mtu' => 9216]);
 
-        $cikti = $this->actingAs($this->operator(PanelMode::Simple))
+        $output = $this->actingAs($this->operator(PanelMode::Simple))
             ->get(route('switches.ports', $switch))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('100 Mbps', $cikti);
-        $this->assertStringContainsString('9216 bayt', $cikti);
-        $this->assertStringNotContainsString('name="speed_config"', $cikti);
-        $this->assertStringNotContainsString('name="mtu"', $cikti);
+        $this->assertStringContainsString('100 Mbps', $output);
+        $this->assertStringContainsString('9216 bayt', $output);
+        $this->assertStringNotContainsString('name="speed_config"', $output);
+        $this->assertStringNotContainsString('name="mtu"', $output);
     }
 
-    private function alaniIsle(?string $current = null): string
+    private function fieldIsle(?string $current = null): string
     {
         return Blade::render(
             '<x-form.field advanced name="mtu" label="MTU" :current="$current">'
@@ -266,7 +266,7 @@ final class PanelModeTest extends TestCase
     /**
      * @return array{0: NetworkSwitch, 1: SwitchPort, 2: FakeJunosDevice}
      */
-    private function hazirla(): array
+    private function prepare(): array
     {
         $switch = NetworkSwitch::factory()->create(['management_ip' => '198.18.20.195']);
 
@@ -288,7 +288,7 @@ final class PanelModeTest extends TestCase
 
     private function operator(PanelMode $mode): User
     {
-        $user = $this->gelismisYetkili(User::factory()->create(['panel_mode' => $mode]));
+        $user = $this->advancedAuthorized(User::factory()->create(['panel_mode' => $mode]));
 
         app(UserPermissionResolver::class)->syncResource($user, 'switches', ['view', 'configure']);
         app(UserPermissionResolver::class)->syncResource($user, 'switch_ports', ['view', 'update']);
@@ -298,7 +298,7 @@ final class PanelModeTest extends TestCase
     }
 
     /** "Gelişmiş mod" yetkisi (gelişmiş mod yetkiye bağlı). */
-    private function gelismisYetkili(User $user): User
+    private function advancedAuthorized(User $user): User
     {
         app(UserPermissionResolver::class)->syncResource($user, 'gorunum_modu', ['view']);
 
@@ -317,16 +317,16 @@ final class PanelModeTest extends TestCase
         $this->actingAs($user)->get(route('overview'))->assertDontSee('moda geç', false);
 
         /* Kaydı "gelişmiş" kalmış ama yetkisi alınmış kişi basit sayılır. */
-        $eski = User::factory()->create(['panel_mode' => PanelMode::Advanced]);
-        $this->assertSame(PanelMode::Simple, $eski->etkinPanelModu());
+        $old = User::factory()->create(['panel_mode' => PanelMode::Advanced]);
+        $this->assertSame(PanelMode::Simple, $old->activePanelMode());
     }
 
     public function test_yonetici_her_zaman_gelismis_moda_gecebilir(): void
     {
-        $yonetici = User::factory()->admin()->create(['panel_mode' => PanelMode::Simple]);
+        $admin = User::factory()->admin()->create(['panel_mode' => PanelMode::Simple]);
 
-        $this->assertTrue($yonetici->gelismisModaGecebilir());
-        $this->actingAs($yonetici)->post(route('panel-mode.toggle'))->assertRedirect();
-        $this->assertSame(PanelMode::Advanced, $yonetici->fresh()->etkinPanelModu());
+        $this->assertTrue($admin->advancedModeCanPass());
+        $this->actingAs($admin)->post(route('panel-mode.toggle'))->assertRedirect();
+        $this->assertSame(PanelMode::Advanced, $admin->fresh()->activePanelMode());
     }
 }

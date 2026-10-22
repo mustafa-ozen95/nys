@@ -40,11 +40,11 @@ final class PrefixListAssignmentTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<policy-options>', $yazilan);
-        $this->assertStringContainsString('<name>musteri1-PREFIXES</name>', $yazilan);
-        $this->assertStringContainsString('<name>192.0.2.0/24</name>', $yazilan);
+        $this->assertStringContainsString('<policy-options>', $written);
+        $this->assertStringContainsString('<name>musteri1-PREFIXES</name>', $written);
+        $this->assertStringContainsString('<name>192.0.2.0/24</name>', $written);
     }
 
     /**
@@ -150,12 +150,12 @@ final class PrefixListAssignmentTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<name>musteri1-PREFIXES</name>', $yazilan);
-        $this->assertStringContainsString('<name>koru</name>', $yazilan);
+        $this->assertStringContainsString('<name>musteri1-PREFIXES</name>', $written);
+        $this->assertStringContainsString('<name>koru</name>', $written);
         // Aynı prefix iki listeye de yazılır.
-        $this->assertSame(2, substr_count($yazilan, '<name>192.0.2.0/24</name>'));
+        $this->assertSame(2, substr_count($written, '<name>192.0.2.0/24</name>'));
     }
 
     /**

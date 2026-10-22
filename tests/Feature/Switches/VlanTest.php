@@ -157,8 +157,8 @@ final class VlanTest extends TestCase
     {
         $switch = $this->switch();
         $port = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ge-0/0/5']);
-        $eski = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 7, 'name' => 'V07']);
-        $port->vlans()->attach($eski, ['is_untagged' => true]);
+        $old = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 7, 'name' => 'V07']);
+        $port->vlans()->attach($old, ['is_untagged' => true]);
 
         $device = $this->fakeDevice();
 
@@ -558,7 +558,7 @@ final class VlanTest extends TestCase
     {
         $switch = $this->switch();
         $ae = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ae0']);
-        $uye = SwitchPort::factory()->for($switch, 'switch')->create([
+        $member = SwitchPort::factory()->for($switch, 'switch')->create([
             'name' => 'ge-0/0/5',
             'aggregate_port_id' => $ae->id,
         ]);
@@ -569,7 +569,7 @@ final class VlanTest extends TestCase
             ->post(route('switches.vlans.store', $switch), [
                 'name' => 'kamera',
                 'vlan_tag' => 30,
-                'ports' => [$uye->uuid],
+                'ports' => [$member->uuid],
             ])
             ->assertSessionHasErrors('ports');
 
@@ -720,10 +720,10 @@ final class VlanTest extends TestCase
     public function test_baska_switchte_ayni_ad_serbest(): void
     {
         $switch = $this->switch();
-        $baska = NetworkSwitch::factory()->create();
+        $other = NetworkSwitch::factory()->create();
         $this->fakeDevice();
 
-        Vlan::factory()->for($baska, 'switch')->create(['name' => 'ofis', 'vlan_tag' => 100]);
+        Vlan::factory()->for($other, 'switch')->create(['name' => 'ofis', 'vlan_tag' => 100]);
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->post(route('switches.vlans.store', $switch), [

@@ -96,7 +96,7 @@ class RemoteSessionOpener
         }
 
         $this->sessions->forget($token);
-        $this->iziKapat($token, 'kullanici');
+        $this->traceClose($token, 'kullanici');
 
         return [
             'label' => $session['label'],
@@ -109,16 +109,16 @@ class RemoteSessionOpener
     }
 
     /** Denetim izini kapatır. İz yoksa (eski oturum) sessizce geçilir. */
-    public function iziKapat(string $token, string $sebep): void
+    public function traceClose(string $token, string $reason): void
     {
         ConsoleSession::query()
             ->where('token', $token)
             ->whereNull('closed_at')
-            ->update(['closed_at' => now(), 'closed_reason' => $sebep]);
+            ->update(['closed_at' => now(), 'closed_reason' => $reason]);
     }
 
     /** Canlı tutma: oturum hâlâ ayakta. */
-    public function izeDokun(string $token): void
+    public function touchTrace(string $token): void
     {
         ConsoleSession::query()
             ->where('token', $token)

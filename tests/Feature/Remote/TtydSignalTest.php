@@ -26,20 +26,20 @@ final class TtydSignalTest extends TestCase
 {
     public function test_uygulama_kodu_pcntl_sabitine_dayanmaz(): void
     {
-        $bulunan = [];
+        $found = [];
 
-        foreach ($this->kaynakDosyalari() as $dosya) {
+        foreach ($this->sourceFiles() as $file) {
             /* Yorumlar ayıklanır: kuralı ANLATAN satır kuralı çiğnemiş sayılmasın. */
-            $govde = php_strip_whitespace($dosya);
+            $body = php_strip_whitespace($file);
 
             /* Sınıf sabiti (self::SIGTERM) serbest; çıplak sabit değil. */
-            if (preg_match('/(?<![\w:$\'"])(SIGTERM|SIGKILL|SIGINT|SIGHUP)(?![\w\'"])\s*[,)]/', $govde)
-                || preg_match('/\bpcntl_[a-z_]+\s*\(/', $govde)) {
-                $bulunan[] = str_replace(base_path().'/', '', $dosya);
+            if (preg_match('/(?<![\w:$\'"])(SIGTERM|SIGKILL|SIGINT|SIGHUP)(?![\w\'"])\s*[,)]/', $body)
+                || preg_match('/\bpcntl_[a-z_]+\s*\(/', $body)) {
+                $found[] = str_replace(base_path().'/', '', $file);
             }
         }
 
-        $this->assertSame([], $bulunan, 'FPM\'de pcntl yok: bu dosyalar web isteğinde düşer.');
+        $this->assertSame([], $found, 'FPM\'de pcntl yok: bu dosyalar web isteğinde düşer.');
     }
 
     /** Kapatma portu her hâlükârda serbest bırakır: süreç yoksa da. */
@@ -57,20 +57,20 @@ final class TtydSignalTest extends TestCase
     }
 
     /** @return array<int, string> */
-    private function kaynakDosyalari(): array
+    private function sourceFiles(): array
     {
-        $dosyalar = [];
+        $files = [];
 
-        $gezgin = new \RecursiveIteratorIterator(
+        $browser = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator(app_path(), \FilesystemIterator::SKIP_DOTS),
         );
 
-        foreach ($gezgin as $dosya) {
-            if ($dosya->getExtension() === 'php') {
-                $dosyalar[] = $dosya->getPathname();
+        foreach ($browser as $file) {
+            if ($file->getExtension() === 'php') {
+                $files[] = $file->getPathname();
             }
         }
 
-        return $dosyalar;
+        return $files;
     }
 }

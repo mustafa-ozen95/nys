@@ -41,33 +41,33 @@ class DependencyGuard
     public function forPrefixList(SwitchPrefixList $list): array
     {
         $switch = $list->switch;
-        $bagli = [];
+        $bound = [];
 
         foreach ($switch->policyStatements()->with('terms')->get() as $statement) {
             foreach ($statement->terms as $term) {
                 if (in_array($list->name, $term->match_prefix_lists ?? [], true)) {
-                    $bagli[] = "politika: {$statement->name} ({$term->name})";
+                    $bound[] = "politika: {$statement->name} ({$term->name})";
                 }
             }
         }
 
         foreach ($switch->firewallFilters()->with('terms')->get() as $filter) {
             foreach ($filter->terms as $term) {
-                $listeler = [...($term->source_prefix_lists ?? []), ...($term->destination_prefix_lists ?? [])];
+                $lists = [...($term->source_prefix_lists ?? []), ...($term->destination_prefix_lists ?? [])];
 
-                if (in_array($list->name, $listeler, true)) {
-                    $bagli[] = "firewall: {$filter->name} ({$term->name})";
+                if (in_array($list->name, $lists, true)) {
+                    $bound[] = "firewall: {$filter->name} ({$term->name})";
                 }
             }
         }
 
-        $blok = $list->addressBlocks()->count();
+        $block = $list->addressBlocks()->count();
 
-        if ($blok > 0) {
-            $bagli[] = "adresleme: {$blok} blok bu listeye anons ediliyor";
+        if ($block > 0) {
+            $bound[] = "adresleme: {$block} blok bu listeye anons ediliyor";
         }
 
-        return array_values(array_unique($bagli));
+        return array_values(array_unique($bound));
     }
 
     /**
@@ -80,17 +80,17 @@ class DependencyGuard
      */
     public function forPolicer(SwitchFirewallPolicer $policer): array
     {
-        $bagli = [];
+        $bound = [];
 
         foreach ($policer->switch->firewallFilters()->with('terms')->get() as $filter) {
             foreach ($filter->terms as $term) {
                 if ($term->policer === $policer->name) {
-                    $bagli[] = "firewall: {$filter->name} ({$term->name})";
+                    $bound[] = "firewall: {$filter->name} ({$term->name})";
                 }
             }
         }
 
-        return array_values(array_unique($bagli));
+        return array_values(array_unique($bound));
     }
 
     /**
@@ -109,19 +109,19 @@ class DependencyGuard
      */
     public function prefixListFamilies(SwitchPrefixList $list): array
     {
-        $aileler = [];
+        $families = [];
 
         foreach ($list->switch->firewallFilters()->with('terms')->get() as $filter) {
             foreach ($filter->terms as $term) {
-                $listeler = [...($term->source_prefix_lists ?? []), ...($term->destination_prefix_lists ?? [])];
+                $lists = [...($term->source_prefix_lists ?? []), ...($term->destination_prefix_lists ?? [])];
 
-                if (in_array($list->name, $listeler, true)) {
-                    $aileler[] = is_string($filter->family) ? $filter->family : $filter->family->value;
+                if (in_array($list->name, $lists, true)) {
+                    $families[] = is_string($filter->family) ? $filter->family : $filter->family->value;
                 }
             }
         }
 
-        return array_values(array_unique($aileler));
+        return array_values(array_unique($families));
     }
 
     /**
@@ -133,21 +133,21 @@ class DependencyGuard
     public function forPolicy(SwitchPolicyStatement $statement): array
     {
         $switch = $statement->switch;
-        $bagli = [];
+        $bound = [];
 
         foreach ($switch->bgpGroups()->with('neighbors')->get() as $group) {
             if ($this->uses($group->import_policies, $group->export_policies, $statement->name)) {
-                $bagli[] = "bgp grubu: {$group->name}";
+                $bound[] = "bgp grubu: {$group->name}";
             }
 
             foreach ($group->neighbors as $neighbor) {
                 if ($this->uses($neighbor->import_policies, $neighbor->export_policies, $statement->name)) {
-                    $bagli[] = "bgp komşusu: {$neighbor->address}";
+                    $bound[] = "bgp komşusu: {$neighbor->address}";
                 }
             }
         }
 
-        return array_values(array_unique($bagli));
+        return array_values(array_unique($bound));
     }
 
     /**
@@ -186,17 +186,17 @@ class DependencyGuard
      */
     private function referencingTerms(NetworkSwitch $switch, callable $uses): array
     {
-        $bagli = [];
+        $bound = [];
 
         foreach ($switch->policyStatements()->with('terms')->get() as $statement) {
             foreach ($statement->terms as $term) {
                 if ($uses($term)) {
-                    $bagli[] = "politika: {$statement->name} ({$term->name})";
+                    $bound[] = "politika: {$statement->name} ({$term->name})";
                 }
             }
         }
 
-        return array_values(array_unique($bagli));
+        return array_values(array_unique($bound));
     }
 
     /**

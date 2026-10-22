@@ -45,7 +45,7 @@ class PrefixListSynchronizer
         $guards = $this->guards->guards($session);
 
         DB::transaction(function () use ($switch, $lists, $guards): void {
-            $tutulan = [];
+            $kept = [];
 
             foreach ($lists as $list) {
                 $model = $switch->prefixLists()->updateOrCreate(
@@ -66,12 +66,12 @@ class PrefixListSynchronizer
                         'is_manageable' => true,
                     ],
                 );
-                $tutulan[] = $model->id;
+                $kept[] = $model->id;
 
                 $this->storeEntries($model, $list['entries']);
             }
 
-            $switch->prefixLists()->whereNotIn('id', $tutulan)->delete();
+            $switch->prefixLists()->whereNotIn('id', $kept)->delete();
         });
     }
 
@@ -80,15 +80,15 @@ class PrefixListSynchronizer
      */
     private function storeEntries(SwitchPrefixList $list, array $entries): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($entries as $entry) {
-            $tutulan[] = $list->entries()->updateOrCreate(
+            $kept[] = $list->entries()->updateOrCreate(
                 ['address' => $entry['address'], 'prefix_length' => $entry['prefix_length']],
                 ['family' => $entry['family']],
             )->id;
         }
 
-        $list->entries()->whereNotIn('id', $tutulan)->delete();
+        $list->entries()->whereNotIn('id', $kept)->delete();
     }
 }

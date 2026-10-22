@@ -50,11 +50,11 @@ final class PasswordGeneratorTest extends TestCase
     {
         // 11: üç sınıfın 64 bit tabanı geçtiği en kısa uzunluk.
         for ($i = 0; $i < 100; $i++) {
-            $parola = $this->generate(11);
+            $password = $this->generate(11);
 
-            $this->assertMatchesRegularExpression('/[a-z]/', $parola);
-            $this->assertMatchesRegularExpression('/[A-Z]/', $parola);
-            $this->assertMatchesRegularExpression('/[0-9]/', $parola);
+            $this->assertMatchesRegularExpression('/[a-z]/', $password);
+            $this->assertMatchesRegularExpression('/[A-Z]/', $password);
+            $this->assertMatchesRegularExpression('/[0-9]/', $password);
         }
     }
 
@@ -62,32 +62,32 @@ final class PasswordGeneratorTest extends TestCase
     {
         $this->classes(uppercase: false, symbols: false);
 
-        $hepsi = '';
+        $all = '';
 
         for ($i = 0; $i < 50; $i++) {
-            $hepsi .= $this->generate(24);
+            $all .= $this->generate(24);
         }
 
-        $this->assertDoesNotMatchRegularExpression('/[A-Z]/', $hepsi);
-        $this->assertMatchesRegularExpression('/[a-z]/', $hepsi);
-        $this->assertMatchesRegularExpression('/[0-9]/', $hepsi);
+        $this->assertDoesNotMatchRegularExpression('/[A-Z]/', $all);
+        $this->assertMatchesRegularExpression('/[a-z]/', $all);
+        $this->assertMatchesRegularExpression('/[0-9]/', $all);
     }
 
     public function test_noktalama_acilabilir(): void
     {
         $this->classes(symbols: true);
 
-        $hepsi = '';
+        $all = '';
 
         for ($i = 0; $i < 50; $i++) {
-            $hepsi .= $this->generate(24);
+            $all .= $this->generate(24);
         }
 
-        $this->assertMatchesRegularExpression('/[!#%+,\-.:=?@^_~]/', $hepsi);
+        $this->assertMatchesRegularExpression('/[!#%+,\-.:=?@^_~]/', $all);
 
         // Kabuk ve URL'de sorun çıkaranlar havuzda YOK.
-        foreach (['"', "'", '\\', '$', '`', ' '] as $karakter) {
-            $this->assertStringNotContainsString($karakter, $hepsi);
+        foreach (['"', "'", '\\', '$', '`', ' '] as $character) {
+            $this->assertStringNotContainsString($character, $all);
         }
     }
 
@@ -154,37 +154,37 @@ final class PasswordGeneratorTest extends TestCase
      */
     public function test_karisan_karakterler_ayardan_yonetilir(): void
     {
-        $hepsi = '';
+        $all = '';
 
         for ($i = 0; $i < 200; $i++) {
-            $hepsi .= $this->generate(24);
+            $all .= $this->generate(24);
         }
 
-        foreach (['0', 'O', '1', 'l', 'I'] as $karakter) {
-            $this->assertStringNotContainsString($karakter, $hepsi);
+        foreach (['0', 'O', '1', 'l', 'I'] as $character) {
+            $this->assertStringNotContainsString($character, $all);
         }
 
         // Kapatılınca havuz genişler.
         $this->classes(avoidAmbiguous: false);
 
-        $genis = '';
+        $wide = '';
 
         for ($i = 0; $i < 200; $i++) {
-            $genis .= $this->generate(24);
+            $wide .= $this->generate(24);
         }
 
-        $this->assertMatchesRegularExpression('/[01OlI]/', $genis);
+        $this->assertMatchesRegularExpression('/[01OlI]/', $wide);
     }
 
     public function test_ayni_parolayi_iki_kez_uretmez(): void
     {
-        $parolalar = [];
+        $passwords = [];
 
         for ($i = 0; $i < 200; $i++) {
-            $parolalar[] = $this->generate(24);
+            $passwords[] = $this->generate(24);
         }
 
-        $this->assertCount(200, array_unique($parolalar));
+        $this->assertCount(200, array_unique($passwords));
     }
 
     public function test_cok_kisa_uzunluk_reddedilir(): void
@@ -213,7 +213,7 @@ final class PasswordGeneratorTest extends TestCase
      */
     public function test_iki_sinifin_her_birlesimi_kabul_edilir(): void
     {
-        $birlesimler = [
+        $unions = [
             [true, true, false, false],
             [true, false, true, false],
             [false, true, true, false],
@@ -221,7 +221,7 @@ final class PasswordGeneratorTest extends TestCase
             [false, false, true, true],
         ];
 
-        foreach ($birlesimler as [$l, $u, $d, $s]) {
+        foreach ($unions as [$l, $u, $d, $s]) {
             $this->assertTrue(
                 PasswordGenerator::satisfiesDevice($l, $u, $d, $s),
                 'İki sınıflı birleşim reddedildi: '.json_encode([$l, $u, $d, $s]),

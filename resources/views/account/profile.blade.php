@@ -6,7 +6,7 @@
             <x-ui.flash />
 
             <x-ui.panel title="Bilgiler">
-                <form method="POST" action="{{ route('hesap.profil.kaydet') }}" class="form-dar">
+                <form method="POST" action="{{ route('account.profile.update') }}" class="form-narrow">
                     @csrf
                     @method('PUT')
 
@@ -23,7 +23,7 @@
             </x-ui.panel>
 
             <x-ui.panel title="Parola" subtitle="Değiştirdiğinizde diğer cihazlardaki oturumlarınız kapanır.">
-                <form method="POST" action="{{ route('hesap.parola') }}" class="form-dar">
+                <form method="POST" action="{{ route('account.password') }}" class="form-narrow">
                     @csrf
                     @method('PUT')
 

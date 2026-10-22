@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
  * (bkz. VerifyIdentityStatus). Anı üç yol getirir:
  *
  *   - merkezin imzalı çıkış bildirimi (IdentityLogoutController),
- *   - kimlik-durumu yanıtındaki `son_cikis` (bildirim kaybolursa),
+ *   - identity-status yanıtındaki `last_logout` (bildirim kaybolursa),
  *   - bu panelden çıkış (LoginController · destroy; merkeze de bildirilir).
  *
  * An yalnızca İLERİ gider: geç gelen eski bir bildirim yeni girişi kapatmaz.
@@ -26,38 +26,38 @@ use Illuminate\Http\Request;
 final class SharedLogout
 {
     /** Oturumun açıldığı an (ms); Login olayında yazılır (bkz. WriteLogin). */
-    public const OTURUM_ANAHTARI = 'oturum_acilis_ms';
+    public const SESSION_KEY = 'oturum_acilis_ms';
 
-    public static function simdiMs(): int
+    public static function nowMs(): int
     {
         return (int) floor(microtime(true) * 1000);
     }
 
     /** Çıkış ekran kilidinden mi (süre doldu)? O çıkış ortak değildir (bkz. session-lock.js). */
-    public static function zamanAsimiMi(Request $istek): bool
+    public static function isTimedOut(Request $request): bool
     {
-        return $istek->header('X-Oturum-Zaman-Asimi') === '1';
+        return $request->header('X-Oturum-Zaman-Asimi') === '1';
     }
 
-    public static function bag(User $kullanici): ?UserIdentity
+    public static function bag(User $user): ?UserIdentity
     {
         return UserIdentity::query()
-            ->where('user_id', $kullanici->getKey())
-            ->where('provider', AccountMatcher::SAGLAYICI)
+            ->where('user_id', $user->getKey())
+            ->where('provider', AccountMatcher::PROVIDER)
             ->first();
     }
 
-    public static function isle(UserIdentity $bag, int $an): void
+    public static function isle(UserIdentity $bag, int $moment): void
     {
-        if ($an > (int) $bag->merkez_cikis_ms) {
-            $bag->forceFill(['merkez_cikis_ms' => $an])->save();
+        if ($moment > (int) $bag->merkez_cikis_ms) {
+            $bag->forceFill(['merkez_cikis_ms' => $moment])->save();
         }
     }
 
-    public static function oturumEskiMi(UserIdentity $bag, Session $oturum): bool
+    public static function isSessionStale(UserIdentity $bag, Session $session): bool
     {
-        $cikis = (int) $bag->merkez_cikis_ms;
+        $exit = (int) $bag->merkez_cikis_ms;
 
-        return $cikis > 0 && (int) $oturum->get(self::OTURUM_ANAHTARI, 0) < $cikis;
+        return $exit > 0 && (int) $session->get(self::SESSION_KEY, 0) < $exit;
     }
 }

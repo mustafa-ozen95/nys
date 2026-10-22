@@ -220,19 +220,19 @@ abstract class JunosDialect
      */
     public static function make(string $key): self
     {
-        if (isset(self::$kurulanlar[$key])) {
-            return self::$kurulanlar[$key];
+        if (isset(self::$installed[$key])) {
+            return self::$installed[$key];
         }
 
-        $sinif = config('junos.dialects')[$key] ?? null;
+        $class = config('junos.dialects')[$key] ?? null;
 
-        if ($sinif === null) {
+        if ($class === null) {
             throw new InvalidArgumentException("Tanımlı olmayan Junos lehçesi: {$key}");
         }
 
-        return self::$kurulanlar[$key] = new $sinif;
+        return self::$installed[$key] = new $class;
     }
 
     /** @var array<string, self> */
-    private static array $kurulanlar = [];
+    private static array $installed = [];
 }

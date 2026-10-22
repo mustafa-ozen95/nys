@@ -9,7 +9,7 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchRstp', $switch)
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="rstp-ekle">Arayüz ekle</button>
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="rstp-add">Arayüz ekle</button>
                 @endcan
             </div>
 
@@ -39,24 +39,24 @@
                             @method('PUT')
 
                             <div class="form-grid">
-                                <x-form.field kural="switch_rstp.genel:enabled" name="enabled" label="Spanning tree" id="rstp-acik"
+                                <x-form.field rule="switch_rstp.genel:enabled" name="enabled" label="Spanning tree" id="rstp-open"
                                               hint="Kapatmak döngü korumasını KALDIRIR; yedekli bağlantı varsa ağ döngüye girer.">
                                     <label class="checkbox">
                                         <input type="hidden" name="enabled" value="0">
-                                        <input type="checkbox" name="enabled" id="rstp-acik"
+                                        <input type="checkbox" name="enabled" id="rstp-open"
                                                value="1" @checked($switch->rstp_enabled)>
                                         <span>Açık</span>
                                     </label>
                                 </x-form.field>
 
-                                <x-form.field kural="switch_rstp.genel:bridge_priority" name="bridge_priority" label="Köprü önceliği" id="rstp-oncelik"
+                                <x-form.field rule="switch_rstp.genel:bridge_priority" name="bridge_priority" label="Köprü önceliği" id="rstp-priority"
                                               hint="Düşük değer kök köprü olma şansını artırır. Junos yalnızca 4096’nın katlarını kabul eder.">
-                                    <x-form.select name="bridge_priority" id="rstp-oncelik"
+                                    <x-form.select name="bridge_priority" id="rstp-priority"
                                                    :options="$priorityOptions"
                                                    :selected="$switch->rstp_bridge_priority" />
                                 </x-form.field>
 
-                                <x-form.field kural="switch_rstp.genel:bpdu_block_on_edge" name="bpdu_block_on_edge" label="BPDU koruması" id="rstp-bpdu"
+                                <x-form.field rule="switch_rstp.genel:bpdu_block_on_edge" name="bpdu_block_on_edge" label="BPDU koruması" id="rstp-bpdu"
                                               class="field--wide"
                                               hint="Uç nokta portuna BPDU gelirse port kapatılır: yanlışlıkla takılan switch ağı bozamaz.">
                                     <label class="checkbox">
@@ -95,8 +95,8 @@
                             @csrf
                             @method('PUT')
 
-                            <x-form.field kural="switch_rstp.genel:storm_control_shutdown" name="storm_control_shutdown" label="Eşik aşılınca portu kapat"
-                                          id="firtina-kapat"
+                            <x-form.field rule="switch_rstp.genel:storm_control_shutdown" name="storm_control_shutdown" label="Eşik aşılınca portu kapat"
+                                          id="storm-close"
                                           hint="Kapalıyken cihaz yalnızca fazla trafiği düşürür; açıkken portu hizmet dışı bırakır.">
                                 <label class="checkbox">
                                     <input type="checkbox" name="storm_control_shutdown" value="1"
@@ -138,11 +138,11 @@
                     @endforelse
 
                     @can('createSwitchRstp', $switch)
-                        <button type="button" class="btn btn--sm" data-modal-open="firtina-ekle">Fırtına denetimi ekle</button>
+                        <button type="button" class="btn btn--sm" data-modal-open="storm-add">Fırtına denetimi ekle</button>
                     @endcan
                 </x-ui.panel>
 
-                <div class="grid-row__head ayar-row">
+                <div class="grid-row__head setting-row">
                     <span>Arayüz</span>
                     <span>Uç nokta</span>
                     <span>Maliyet / öncelik</span>
@@ -150,7 +150,7 @@
                 </div>
 
                 @forelse ($interfaces as $interface)
-                    <div class="grid-row grid-row--static ayar-row">
+                    <div class="grid-row grid-row--static setting-row">
                         <span class="mono">{{ $interface->interface_name }}</span>
                         <span>
                             @if ($interface->edge)
@@ -182,7 +182,7 @@
     </div>
 
     @can('createSwitchRstp', $switch)
-        <x-ui.modal id="rstp-ekle" title="Spanning tree arayüzü">
+        <x-ui.modal id="rstp-add" title="Spanning tree arayüzü">
             <form method="POST" action="{{ route('switches.rstp.store', $switch) }}"
                   data-confirm="Arayüzün spanning tree ayarı cihaza yazılacak. “Uç nokta” switch bağlı bir porta verilirse o portta döngü oluşur."
                   data-confirm-title="Cihaza yaz"
@@ -212,7 +212,7 @@
                     </div>
                     <x-ui.modal-actions submit="Cihaza yaz">
                         @can('deleteSwitchRstp', $switch)
-                            <button type="submit" form="rstp-sil-{{ $interface->uuid }}"
+                            <button type="submit" form="rstp-delete-{{ $interface->uuid }}"
                                     class="btn btn--danger btn--sm">Sil</button>
                             <span class="spacer"></span>
                         @endcan
@@ -220,7 +220,7 @@
                 </form>
 
                 @can('deleteSwitchRstp', $switch)
-                    <form method="POST" id="rstp-sil-{{ $interface->uuid }}" hidden
+                    <form method="POST" id="rstp-delete-{{ $interface->uuid }}" hidden
                           action="{{ route('switches.rstp.destroy', [$switch, $interface]) }}"
                           data-confirm="{{ $interface->interface_name }} arayüzünün spanning tree ayarı CİHAZDAN silinecek."
                           data-confirm-title="Ayarı sil" data-confirm-variant="danger"
@@ -233,17 +233,17 @@
         @endforeach
     @endcan
     @can('createSwitchRstp', $switch)
-        <x-ui.modal id="firtina-ekle" title="Fırtına denetimi ekle">
+        <x-ui.modal id="storm-add" title="Fırtına denetimi ekle">
             <form method="POST" action="{{ route('switches.rstp.storm.store', $switch) }}"
                   data-confirm="Fırtına denetimi cihaza yazılacak. Eşik çok düşükse normal trafik de düşürülür."
                   data-confirm-title="Cihaza yaz" data-confirm-verify="{{ $switch->hostname }}">
                 @csrf
                 <div class="modal__body stack">
-                    <x-form.field kural="switch_rstp.genel:interface_name" name="interface_name" label="Arayüz" id="firtina-arayuz"
+                    <x-form.field rule="switch_rstp.genel:interface_name" name="interface_name" label="Arayüz" id="storm-interface"
                                   :hint="$allKeyword
                                       ? '“all” bütün anahtarlama portlarını kapsar.'
                                       : 'Bu Junos ailesi “all” kısayolunu kabul etmez; port tek tek seçilir.'">
-                        <x-form.select name="interface_name" id="firtina-arayuz" :options="$stormInterfaceOptions" />
+                        <x-form.select name="interface_name" id="storm-interface" :options="$stormInterfaceOptions" />
                     </x-form.field>
 
                     <x-switching.storm-fields prefix="firtina-yeni" />
@@ -266,7 +266,7 @@
                     </div>
                     <x-ui.modal-actions submit="Cihaza yaz">
                         @can('deleteSwitchRstp', $switch)
-                            <button type="submit" form="firtina-sil-{{ $storm->uuid }}"
+                            <button type="submit" form="storm-delete-{{ $storm->uuid }}"
                                     class="btn btn--danger btn--sm">Sil</button>
                             <span class="spacer"></span>
                         @endcan
@@ -274,7 +274,7 @@
                 </form>
 
                 @can('deleteSwitchRstp', $switch)
-                    <form method="POST" id="firtina-sil-{{ $storm->uuid }}" hidden
+                    <form method="POST" id="storm-delete-{{ $storm->uuid }}" hidden
                           action="{{ route('switches.rstp.storm.destroy', [$switch, $storm]) }}"
                           data-confirm="{{ $storm->interface_name }} fırtına denetimi CİHAZDAN kaldırılacak; yayın trafiği sınırsız kalır."
                           data-confirm-title="Ayarı sil" data-confirm-variant="danger"

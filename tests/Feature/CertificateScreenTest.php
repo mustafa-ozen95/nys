@@ -22,44 +22,44 @@ class CertificateScreenTest extends TestCase
     use RefreshDatabase;
 
     /** Dosya sistemine ve DNS'e çıkmayan sahte durum. */
-    private function sahte(array $yayilma, bool $birakildi = true): CertificateType
+    private function fake(array $propagation, bool $left = true): CertificateType
     {
-        return new class($yayilma, $birakildi) extends CertificateType
+        return new class($propagation, $left) extends CertificateType
         {
-            public ?string $sonEylem = null;
+            public ?string $lastAction = null;
 
-            public function __construct(private array $yayilmaListesi, private bool $birakildi) {}
+            public function __construct(private array $propagationList, private bool $left) {}
 
-            public function durum(): ?array
+            public function status(): ?array
             {
                 return ['veren' => "Let's Encrypt", 'bitis' => 'Jan  1 00:00:00 2030 GMT', 'kalan_gun' => 89];
             }
 
-            public function kayitlar(): ?array
+            public function records(): ?array
             {
-                return array_map(fn (array $k): array => ['ad' => $k['ad'], 'deger' => $k['deger']], $this->yayilmaListesi);
+                return array_map(fn (array $k): array => ['ad' => $k['ad'], 'deger' => $k['deger']], $this->propagationList);
             }
 
-            public function sonIslem(): ?array
+            public function lastOperation(): ?array
             {
                 return null;
             }
 
-            public function istekBekliyorMu(): bool
+            public function isRequestPending(): bool
             {
                 return false;
             }
 
-            public function yayilmaDurumu(): array
+            public function propagationStatus(): array
             {
-                return $this->yayilmaListesi;
+                return $this->propagationList;
             }
 
-            public function istekBirak(string $eylem): bool
+            public function requestLeave(string $action): bool
             {
-                $this->sonEylem = $eylem;
+                $this->lastAction = $action;
 
-                return $this->birakildi;
+                return $this->left;
             }
         };
     }
@@ -68,11 +68,11 @@ class CertificateScreenTest extends TestCase
     public function ekran_yalnizca_ayar_yetkisi_olana_acilir(): void
     {
         $this->actingAs(User::factory()->create())
-            ->get(route('settings.sertifika'))
+            ->get(route('settings.certificate'))
             ->assertForbidden();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.sertifika'))
+            ->get(route('settings.certificate'))
             ->assertOk()
             ->assertSee('Şu anki sertifika');
     }
@@ -80,13 +80,13 @@ class CertificateScreenTest extends TestCase
     #[Test]
     public function kayitlar_ve_yayilma_durumu_gosterilir(): void
     {
-        $this->instance(CertificateType::class, $this->sahte([
+        $this->instance(CertificateType::class, $this->fake([
             ['ad' => '_acme-challenge.panel-b.ornek.test', 'deger' => 'abc123', 'yayildi' => true],
             ['ad' => '_acme-challenge.merkez.ornek.test', 'deger' => 'def456', 'yayildi' => false],
         ]));
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.sertifika'))
+            ->get(route('settings.certificate'))
             ->assertOk()
             ->assertSee('_acme-challenge.panel-b.ornek.test')
             ->assertSee('abc123')
@@ -104,49 +104,49 @@ class CertificateScreenTest extends TestCase
     #[Test]
     public function yayilmamis_kayit_varken_onay_reddedilir(): void
     {
-        $sahte = $this->sahte([
+        $fake = $this->fake([
             ['ad' => '_acme-challenge.panel-b.ornek.test', 'deger' => 'abc123', 'yayildi' => false],
         ]);
 
-        $this->instance(CertificateType::class, $sahte);
+        $this->instance(CertificateType::class, $fake);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->from(route('settings.sertifika'))
-            ->post(route('settings.sertifika.tamamla'))
-            ->assertRedirect(route('settings.sertifika'))
+            ->from(route('settings.certificate'))
+            ->post(route('settings.certificate.confirm'))
+            ->assertRedirect(route('settings.certificate'))
             ->assertSessionHasErrors('sertifika');
 
-        $this->assertNull($sahte->sonEylem, 'Sunucuya istek gitmemeliydi.');
+        $this->assertNull($fake->lastAction, 'Sunucuya istek gitmemeliydi.');
     }
 
     #[Test]
     public function kayitlar_yayildiysa_istek_birakilir(): void
     {
-        $sahte = $this->sahte([
+        $fake = $this->fake([
             ['ad' => '_acme-challenge.panel-b.ornek.test', 'deger' => 'abc123', 'yayildi' => true],
         ]);
 
-        $this->instance(CertificateType::class, $sahte);
+        $this->instance(CertificateType::class, $fake);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->post(route('settings.sertifika.tamamla'))
+            ->post(route('settings.certificate.confirm'))
             ->assertRedirect();
 
-        $this->assertSame('tamamla', $sahte->sonEylem);
+        $this->assertSame('tamamla', $fake->lastAction);
     }
 
     #[Test]
     public function tur_baslatmak_istek_birakir(): void
     {
-        $sahte = $this->sahte([]);
+        $fake = $this->fake([]);
 
-        $this->instance(CertificateType::class, $sahte);
+        $this->instance(CertificateType::class, $fake);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->post(route('settings.sertifika.baslat'))
+            ->post(route('settings.certificate.start'))
             ->assertRedirect();
 
-        $this->assertSame('baslat', $sahte->sonEylem);
+        $this->assertSame('baslat', $fake->lastAction);
     }
 
     /**
@@ -159,49 +159,49 @@ class CertificateScreenTest extends TestCase
     #[Test]
     public function istek_birakilamazsa_tur_baslatildi_denmez(): void
     {
-        $sahte = $this->sahte([], birakildi: false);
-        $this->instance(CertificateType::class, $sahte);
+        $fake = $this->fake([], left: false);
+        $this->instance(CertificateType::class, $fake);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->from(route('settings.sertifika'))
-            ->post(route('settings.sertifika.baslat'))
-            ->assertRedirect(route('settings.sertifika'))
+            ->from(route('settings.certificate'))
+            ->post(route('settings.certificate.start'))
+            ->assertRedirect(route('settings.certificate'))
             ->assertSessionHasErrors('sertifika')
             ->assertSessionMissing('status');
 
-        $this->assertSame('baslat', $sahte->sonEylem);
+        $this->assertSame('baslat', $fake->lastAction);
     }
 
     #[Test]
     public function istek_birakilamazsa_sertifika_aliniyor_denmez(): void
     {
-        $sahte = $this->sahte([
+        $fake = $this->fake([
             ['ad' => '_acme-challenge.panel-b.ornek.test', 'deger' => 'abc123', 'yayildi' => true],
-        ], birakildi: false);
-        $this->instance(CertificateType::class, $sahte);
+        ], left: false);
+        $this->instance(CertificateType::class, $fake);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->from(route('settings.sertifika'))
-            ->post(route('settings.sertifika.tamamla'))
-            ->assertRedirect(route('settings.sertifika'))
+            ->from(route('settings.certificate'))
+            ->post(route('settings.certificate.confirm'))
+            ->assertRedirect(route('settings.certificate'))
             ->assertSessionHasErrors('sertifika')
             ->assertSessionMissing('status');
 
-        $this->assertSame('tamamla', $sahte->sonEylem);
+        $this->assertSame('tamamla', $fake->lastAction);
     }
 
     /** Hata ekranda bir kez görünür: bildirim bloğu doğrulama hatalarını zaten basıyor. */
     #[Test]
     public function iletilemedi_hatasi_ekranda_bir_kez_gorunur(): void
     {
-        $this->instance(CertificateType::class, $this->sahte([], birakildi: false));
+        $this->instance(CertificateType::class, $this->fake([], left: false));
 
-        $yanit = $this->actingAs(User::factory()->admin()->create())
-            ->from(route('settings.sertifika'))
+        $response = $this->actingAs(User::factory()->admin()->create())
+            ->from(route('settings.certificate'))
             ->followingRedirects()
-            ->post(route('settings.sertifika.baslat'))
+            ->post(route('settings.certificate.start'))
             ->assertOk();
 
-        $this->assertSame(1, substr_count($yanit->getContent(), 'İstek sunucuya iletilemedi'));
+        $this->assertSame(1, substr_count($response->getContent(), 'İstek sunucuya iletilemedi'));
     }
 }

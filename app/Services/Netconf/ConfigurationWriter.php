@@ -120,7 +120,7 @@ class ConfigurationWriter
         string|array $configuration,
         string $summary,
         ?Closure $afterConfirm = null,
-        bool $geriAlinabilir = true,
+        bool $revertible = true,
     ): array {
         return $this->send(
             $target,
@@ -129,7 +129,7 @@ class ConfigurationWriter
             'xml',
             $summary,
             $afterConfirm,
-            geriAlinabilir: $geriAlinabilir,
+            revertible: $revertible,
         );
     }
 
@@ -277,11 +277,11 @@ class ConfigurationWriter
         string $summary,
         ?Closure $afterConfirm,
         int|Closure|null $rollback = null,
-        bool $geriAlinabilir = true,
+        bool $revertible = true,
     ): array {
         $confirm = (int) config('netconf.confirm_minutes');
         $log = htmlspecialchars($this->log->message($summary), ENT_XML1 | ENT_QUOTES);
-        $baslangic = microtime(true);
+        $start = microtime(true);
 
         /*
          * Yazmanın TAMAMI kayda sarılır: kilit çakışması da, cihaz reddi de,
@@ -289,10 +289,10 @@ class ConfigurationWriter
          * görür, sayfayı kapatınca hiçbir iz kalmaz.
          */
         try {
-            $sonuc = $this->lock->runFor(
+            $result = $this->lock->runFor(
                 $target->lockKey(),
                 $target->label,
-                fn (): array => $this->write($target, $documents, $mode, $format, $confirm, $log, $afterConfirm, $rollback, $geriAlinabilir),
+                fn (): array => $this->write($target, $documents, $mode, $format, $confirm, $log, $afterConfirm, $rollback, $revertible),
             );
         } catch (Throwable $exception) {
             throw $this->operations->failure(
@@ -303,36 +303,36 @@ class ConfigurationWriter
                 [
                     'summary' => $summary,
                     'document' => $this->documentPreview($documents),
-                    'duration_ms' => $this->elapsed($baslangic),
+                    'duration_ms' => $this->elapsed($start),
                 ],
             );
         }
 
-        $bilgi = [
+        $info = [
             'summary' => $summary,
-            'diff' => $sonuc['diff'],
-            'duration_ms' => $this->elapsed($baslangic),
-            'warnings' => $sonuc['warnings'],
+            'diff' => $result['diff'],
+            'duration_ms' => $this->elapsed($start),
+            'warnings' => $result['warnings'],
         ];
 
         // Uyarı "işi durdurmadı" demektir, "önemsiz" demek değil; kayda
         // geçmeli.
         $this->operations->warnings(
-            $sonuc['warnings'],
+            $result['warnings'],
             $rollback === null ? 'write' : 'rollback',
             $target->label,
             $this->switchOf($target),
-            $bilgi,
+            $info,
         );
 
         $this->operations->success(
             $rollback === null ? 'write' : 'rollback',
             $target->label,
             $this->switchOf($target),
-            $bilgi,
+            $info,
         );
 
-        return $sonuc;
+        return $result;
     }
 
     private function switchOf(NetconfTarget $target): ?NetworkSwitch
@@ -342,9 +342,9 @@ class ConfigurationWriter
             : NetworkSwitch::query()->find($target->switchId);
     }
 
-    private function elapsed(float $baslangic): int
+    private function elapsed(float $start): int
     {
-        return (int) round((microtime(true) - $baslangic) * 1000);
+        return (int) round((microtime(true) - $start) * 1000);
     }
 
     /**
@@ -380,9 +380,9 @@ class ConfigurationWriter
         string $log,
         ?Closure $afterConfirm,
         int|Closure|null $rollback = null,
-        bool $geriAlinabilir = true,
+        bool $revertible = true,
     ): array {
-        $sonuc = $this->client->runOn($target, function (NetconfSession $session) use ($documents, $mode, $format, $confirm, $log, $rollback, $geriAlinabilir, $afterConfirm): array {
+        $result = $this->client->runOn($target, function (NetconfSession $session) use ($documents, $mode, $format, $confirm, $log, $rollback, $revertible, $afterConfirm): array {
             $session->rpc('<lock-configuration/>');
 
             try {
@@ -411,9 +411,9 @@ class ConfigurationWriter
                  * cihaz elimizde. "Bu arayüzün son adresi mi" gibi kararlar
                  * envanterden değil cihazdan okunabilsin diye.
                  */
-                $belgeler = $documents instanceof Closure ? $documents($session) : $documents;
+                $documents = $documents instanceof Closure ? $documents($session) : $documents;
 
-                foreach ($belgeler as $document) {
+                foreach ($documents as $document) {
                     /*
                      * Metin yükü CDATA içinde gider: Junos yapılandırma
                      * metni "<", "&" gibi karakterler taşıyabilir ve XML
@@ -456,7 +456,7 @@ class ConfigurationWriter
                  * cihazdan geldiği için içeriği aynıdır.
                  */
                 try {
-                    $session->rpc($geriAlinabilir
+                    $session->rpc($revertible
                         ? sprintf(
                             '<commit-configuration><confirmed/><confirm-timeout>%d</confirm-timeout><log>%s</log></commit-configuration>',
                             $confirm,
@@ -472,31 +472,31 @@ class ConfigurationWriter
                  * kapanış okuması AYNI oturumda yapılır. Yeni oturum cihazda
                  * bir mgd fork'u ve ~2 saniye demektir.
                  */
-                $okumaHatasi = null;
+                $readError = null;
 
-                if (! $geriAlinabilir && $afterConfirm !== null) {
-                    $okumaHatasi = $this->readBack($afterConfirm, $session);
+                if (! $revertible && $afterConfirm !== null) {
+                    $readError = $this->readBack($afterConfirm, $session);
                 }
 
                 return [
                     'diff' => $diff,
                     'committed' => true,
-                    'warnings' => [...$session->warnings(), ...($okumaHatasi === null ? [] : [$okumaHatasi])],
+                    'warnings' => [...$session->warnings(), ...($readError === null ? [] : [$readError])],
                 ];
             } finally {
                 $session->rpc('<unlock-configuration/>');
             }
         });
 
-        if ($sonuc['committed'] && $geriAlinabilir) {
-            $okumaHatasi = $this->confirm($target, $log, $afterConfirm);
+        if ($result['committed'] && $revertible) {
+            $readError = $this->confirm($target, $log, $afterConfirm);
 
-            if ($okumaHatasi !== null) {
-                $sonuc['warnings'][] = $okumaHatasi;
+            if ($readError !== null) {
+                $result['warnings'][] = $readError;
             }
         }
 
-        return $sonuc;
+        return $result;
     }
 
     /**

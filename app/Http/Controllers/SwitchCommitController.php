@@ -105,7 +105,7 @@ class SwitchCommitController extends Controller implements HasMiddleware
     public function preview(NetworkSwitch $switch, SwitchCommit $commit): RedirectResponse
     {
         try {
-            $sonuc = $this->rollback->preview($switch, $commit);
+            $result = $this->rollback->preview($switch, $commit);
         } catch (NetconfException $exception) {
             /*
              * Cihaza ulaşılamaması ya da commit'in geçmişte kalmamış olması
@@ -115,7 +115,7 @@ class SwitchCommitController extends Controller implements HasMiddleware
             return back()->with('error', $exception->getMessage());
         }
 
-        if ($sonuc['index'] === 0) {
+        if ($result['index'] === 0) {
             return back()->with('status', 'Cihaz zaten bu commit’in yapılandırmasında.');
         }
 
@@ -135,8 +135,8 @@ class SwitchCommitController extends Controller implements HasMiddleware
          */
         return back()->with('rollbackPreview', [
             'commit' => $commit->uuid,
-            'diff' => ConfigurationRedactor::apply($sonuc['diff']),
-            'warnings' => $sonuc['warnings'],
+            'diff' => ConfigurationRedactor::apply($result['diff']),
+            'warnings' => $result['warnings'],
         ]);
     }
 
@@ -150,25 +150,25 @@ class SwitchCommitController extends Controller implements HasMiddleware
     public function rollback(NetworkSwitch $switch, SwitchCommit $commit): RedirectResponse
     {
         try {
-            $sonuc = $this->rollback->apply($switch, $commit);
+            $result = $this->rollback->apply($switch, $commit);
         } catch (NetconfException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
-        if (! $sonuc['committed']) {
+        if (! $result['committed']) {
             return back()->with('status', 'Cihaz zaten bu commit’in yapılandırmasında; değişiklik yapılmadı.');
         }
 
-        $zaman = $commit->committed_at?->timezone(config('app.display_timezone'))->format('d.m.Y H:i') ?? '—';
+        $time = $commit->committed_at?->timezone(config('app.display_timezone'))->format('d.m.Y H:i') ?? '—';
 
         $this->activity->record(
             $switch,
             'configured',
-            "{$switch->hostname} · {$zaman} commit’ine geri alındı: "
-                .str_replace("\n", ' ', ConfigurationRedactor::apply($sonuc['diff'])),
+            "{$switch->hostname} · {$time} commit’ine geri alındı: "
+                .str_replace("\n", ' ', ConfigurationRedactor::apply($result['diff'])),
             ActivityChannel::Config,
         );
 
-        return back()->with('status', "{$switch->hostname} cihazı {$zaman} commit’ine döndürüldü.");
+        return back()->with('status', "{$switch->hostname} cihazı {$time} commit’ine döndürüldü.");
     }
 }

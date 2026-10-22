@@ -33,35 +33,35 @@ use Throwable;
  */
 class CenterLoginController extends Controller
 {
-    private const DURUM = 'kimlik_durum';
+    private const STATUS = 'kimlik_durum';
 
-    private const DOGRULAYICI = 'kimlik_dogrulayici';
+    private const VERIFIER = 'kimlik_dogrulayici';
 
-    public function baslat(Request $request, CenterClient $merkez): RedirectResponse
+    public function start(Request $request, CenterClient $center): RedirectResponse
     {
-        abort_unless($merkez->acikMi(), 404);
+        abort_unless($center->isOpen(), 404);
 
-        $dogrulayici = $merkez->dogrulayici();
-        $durum = Str::random(40);
+        $verifier = $center->verifier();
+        $status = Str::random(40);
 
         /* İkisi de OTURUMDA kalır: geri dönen isteğin bizim başlattığımız akış olduğunu böyle biliriz. */
-        $request->session()->put(self::DOGRULAYICI, $dogrulayici);
-        $request->session()->put(self::DURUM, $durum);
+        $request->session()->put(self::VERIFIER, $verifier);
+        $request->session()->put(self::STATUS, $status);
 
-        return redirect()->away($merkez->girisAdresi($durum, $merkez->meydanOkuma($dogrulayici)));
+        return redirect()->away($center->loginAddress($status, $center->challengeRead($verifier)));
     }
 
-    public function geri(
+    public function back(
         Request $request,
-        CenterClient $merkez,
-        AccountMatcher $eslestirici,
-        AccountOpener $acici,
+        CenterClient $center,
+        AccountMatcher $matcher,
+        AccountOpener $opener,
         ActivityRecorder $recorder,
     ): RedirectResponse {
-        abort_unless($merkez->acikMi(), 404);
+        abort_unless($center->isOpen(), 404);
 
-        $beklenen = $request->session()->pull(self::DURUM);
-        $dogrulayici = $request->session()->pull(self::DOGRULAYICI);
+        $expected = $request->session()->pull(self::STATUS);
+        $verifier = $request->session()->pull(self::VERIFIER);
 
         /*
          * DURUM EŞLEŞMELİ (CSRF).
@@ -70,17 +70,17 @@ class CenterLoginController extends Controller
          * kodunu kurbanın tarayıcısında kullandırıp onu kendi hesabına
          * bağlayabilirdi.
          */
-        if (blank($beklenen) || ! hash_equals((string) $beklenen, (string) $request->query('state'))) {
-            return $this->hata('Giriş akışı doğrulanamadı; lütfen yeniden deneyin.');
+        if (blank($expected) || ! hash_equals((string) $expected, (string) $request->query('state'))) {
+            return $this->error('Giriş akışı doğrulanamadı; lütfen yeniden deneyin.');
         }
 
-        if (blank($request->query('code')) || blank($dogrulayici)) {
-            return $this->hata('Merkezden kod gelmedi.');
+        if (blank($request->query('code')) || blank($verifier)) {
+            return $this->error('Merkezden kod gelmedi.');
         }
 
         try {
-            $jeton = $merkez->jeton((string) $request->query('code'), (string) $dogrulayici);
-            $kimlik = $merkez->kullanici((string) ($jeton['access_token'] ?? ''));
+            $token = $center->token((string) $request->query('code'), (string) $verifier);
+            $identity = $center->user((string) ($token['access_token'] ?? ''));
         } catch (CenterUnauthorizedException $e) {
             /*
              * MERKEZ KAPIYI KAPATTI — hata değil, KARAR.
@@ -94,14 +94,14 @@ class CenterLoginController extends Controller
             $recorder->recordAs(null, null, $request->ip(), null, 'login_failed',
                 'Merkez erişimi reddetti: '.$e->getMessage(), ActivityChannel::Auth);
 
-            return $this->hata($e->getMessage());
+            return $this->error($e->getMessage());
         } catch (Throwable $e) {
             report($e);
 
-            return $this->hata('Merkezle bağlantı kurulamadı; lütfen parolanızla girin.');
+            return $this->error('Merkezle bağlantı kurulamadı; lütfen parolanızla girin.');
         }
 
-        $kullanici = $eslestirici->bul($kimlik);
+        $user = $matcher->find($identity);
 
         /*
          * Eşleşme yoksa: hesap ya AÇILIR ya da kişi geri çevrilir.
@@ -115,25 +115,25 @@ class CenterLoginController extends Controller
          * alınmaz — rol atamak, o kişiye bakılmış olmasının kendisidir
          * (bkz. AccountOpener::acilabilirMi).
          */
-        if ($kullanici === null && $acici->acilabilirMi($kimlik)) {
-            $kullanici = $acici->ac($kimlik);
+        if ($user === null && $opener->canOpen($identity)) {
+            $user = $opener->open($identity);
 
-            $recorder->recordAs($kullanici->id, null, $request->ip(), $kullanici, 'kimlik_hesap_acildi',
-                $acici->aciklama($kullanici, $kimlik), ActivityChannel::Auth);
+            $recorder->recordAs($user->id, null, $request->ip(), $user, 'kimlik_hesap_acildi',
+                $opener->description($user, $identity), ActivityChannel::Auth);
         }
 
-        if ($kullanici === null) {
+        if ($user === null) {
             $recorder->recordAs(null, null, $request->ip(), null, 'login_failed',
-                "Merkez kimliği eşleşmedi: {$kimlik['email']}", ActivityChannel::Auth);
+                "Merkez kimliği eşleşmedi: {$identity['email']}", ActivityChannel::Auth);
 
-            return $this->hata('Bu kimlikle eşleşen bir hesap yok. Hesap açma isteği için sistem yöneticinize başvurun.');
+            return $this->error('Bu kimlikle eşleşen bir hesap yok. Hesap açma isteği için sistem yöneticinize başvurun.');
         }
 
-        if (! $kullanici->isActive()) {
-            return $this->hata('Hesabınız etkin değil. Sistem yöneticinize başvurun.');
+        if (! $user->isActive()) {
+            return $this->error('Hesabınız etkin değil. Sistem yöneticinize başvurun.');
         }
 
-        $ilkBag = $eslestirici->bagla($kullanici, $kimlik);
+        $firstBag = $matcher->bind($user, $identity);
 
         /*
          * Yalnızca İLK bağ kaydedilir.
@@ -142,9 +142,9 @@ class CenterLoginController extends Controller
          * burada tekrarlamak denetim kaydını ikizlerdi. Asıl anlatılmaya değer
          * olay, merkezdeki bir kimliğin bu hesaba ilk kez bağlanmasıdır.
          */
-        if ($ilkBag->wasRecentlyCreated) {
-            $recorder->recordAs($kullanici->id, null, $request->ip(), $kullanici, 'kimlik_baglandi',
-                "Merkez kimliği hesaba bağlandı: {$kimlik['email']}", ActivityChannel::Auth);
+        if ($firstBag->wasRecentlyCreated) {
+            $recorder->recordAs($user->id, null, $request->ip(), $user, 'kimlik_baglandi',
+                "Merkez kimliği hesaba bağlandı: {$identity['email']}", ActivityChannel::Auth);
         }
 
         /*
@@ -155,14 +155,14 @@ class CenterLoginController extends Controller
          * kılardı: süre dolsa da çerezle oturum yeniden açılırdı. Parola
          * girişi de remember kullanmaz; iki yol aynı kurala bağlıdır.
          */
-        Auth::login($kullanici, false);
+        Auth::login($user, false);
         $request->session()->regenerate();
 
         return redirect()->intended(route('overview'));
     }
 
-    private function hata(string $mesaj): RedirectResponse
+    private function error(string $message): RedirectResponse
     {
-        return redirect()->route('login')->withErrors(['email' => $mesaj]);
+        return redirect()->route('login')->withErrors(['email' => $message]);
     }
 }

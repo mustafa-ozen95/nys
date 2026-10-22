@@ -107,21 +107,21 @@ class PrefixListSettingsRequest extends FormRequest
     private function guardAngleBrackets(Validator $validator): void
     {
         foreach ($this->applyPaths() as $path) {
-            $acik = 0;
+            $open = 0;
 
-            foreach (str_split($path) as $karakter) {
-                $acik += match ($karakter) {
+            foreach (str_split($path) as $character) {
+                $open += match ($character) {
                     '<' => 1,
                     '>' => -1,
                     default => 0,
                 };
 
-                if ($acik < 0 || $acik > 1) {
+                if ($open < 0 || $open > 1) {
                     break;
                 }
             }
 
-            if ($acik !== 0) {
+            if ($open !== 0) {
                 $validator->errors()->add(
                     'apply_paths',
                     "Joker işareti kapanmamış: “{$path}”. Doğrusu “system radius-server <*>” biçimindedir.",

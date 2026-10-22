@@ -125,12 +125,12 @@ if (config('snmp.enabled')) {
 | (ölçüldü: beş tanım, tek süreç). Kilit iki dakikada düşer, süreç
 | beklenmedik şekilde ölürse işçi yeri sonsuza kadar boş kalmasın.
 */
-foreach (range(1, max(1, (int) config('sync.workers'))) as $sira) {
+foreach (range(1, max(1, (int) config('sync.workers'))) as $order) {
     Schedule::command(sprintf(
-        'queue:work %s --queue=%s --name=isci-%d --sleep=1 --max-time=55 --tries=2 --timeout=%d',
+        'queue:work %s --queue=%s --name=worker-%d --sleep=1 --max-time=55 --tries=2 --timeout=%d',
         config('queue.default'),
         config('zabbix.queue'),
-        $sira,
+        $order,
         max((int) config('sync.job_timeout'), (int) config('netconf.timeout') + 30),
     ))
         ->everyMinute()
@@ -151,7 +151,7 @@ foreach (range(1, max(1, (int) config('sync.workers'))) as $sira) {
 | Merkez kapalıysa komut kendisi çıkar; burada ayrıca koşul yazmak, ayar
 | değiştiğinde ikisinin ayrışmasına yol açardı.
 */
-Schedule::command('ag:kimlik-esitle')
+Schedule::command('identity:sync')
     ->everyFiveMinutes()
     ->withoutOverlapping(10)
     ->runInBackground();
@@ -162,7 +162,7 @@ Schedule::command('ag:kimlik-esitle')
  * Tarayıcı kapanışı haber veremediğinde (çökme, uyku, kopan ağ) kapanış
  * kaydı bu tur sayesinde yazılır. Dakikada bir koşar; iş yoksa tek sorgu.
  */
-Schedule::command('ag:konsol-temizle')
+Schedule::command('console:prune')
     ->everyMinute()
     ->withoutOverlapping();
 
@@ -173,4 +173,4 @@ Schedule::command('ag:konsol-temizle')
  * uyarı görür. Güncellemenin kendisi sunucudan yapılır. Ayarlar →
  * Güncelleme'deki düğme aynı kontrolü hemen yapar.
  */
-Schedule::command('guncelleme:denetle')->dailyAt('06:50');
+Schedule::command('update:check')->dailyAt('06:50');

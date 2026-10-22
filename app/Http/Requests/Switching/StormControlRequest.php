@@ -36,15 +36,15 @@ class StormControlRequest extends FormRequest
     public function rules(): array
     {
         $switchId = $this->route('switch')->id;
-        $mevcut = $this->route('stormControl');
+        $current = $this->route('stormControl');
 
         return [
             'interface_name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:64',
                 Rule::unique(SwitchStormControl::class, 'interface_name')
                     ->where('switch_id', $switchId)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             // Yüzde: cihaz 1-100 kabul ediyor.
@@ -81,13 +81,13 @@ class StormControlRequest extends FormRequest
      */
     private function guardSwitchingPort(Validator $validator): void
     {
-        $ad = $this->string('interface_name')->toString();
+        $name = $this->string('interface_name')->toString();
 
-        if ($ad === '') {
+        if ($name === '') {
             return;
         }
 
-        if ($ad === 'all') {
+        if ($name === 'all') {
             if (! $this->dialect()->supportsAllKeyword()) {
                 $validator->errors()->add(
                     'interface_name',
@@ -100,7 +100,7 @@ class StormControlRequest extends FormRequest
 
         $port = SwitchPort::query()
             ->where('switch_id', $this->route('switch')->id)
-            ->firstWhere('name', $ad);
+            ->firstWhere('name', $name);
 
         if ($port === null) {
             $validator->errors()->add('interface_name', 'Bu switchte böyle bir port yok.');
@@ -111,7 +111,7 @@ class StormControlRequest extends FormRequest
         if (! in_array($port->port_mode, [PortMode::Access, PortMode::Trunk], true)) {
             $validator->errors()->add(
                 'interface_name',
-                "{$ad} anahtarlama modunda değil; cihaz bu porta fırtına denetimi tanımlamayı reddediyor.",
+                "{$name} anahtarlama modunda değil; cihaz bu porta fırtına denetimi tanımlamayı reddediyor.",
             );
         }
     }
@@ -129,7 +129,7 @@ class StormControlRequest extends FormRequest
      */
     public function settings(): array
     {
-        $mevcut = $this->route('stormControl');
+        $current = $this->route('stormControl');
 
         return [
             'level' => $this->filled('level') ? $this->integer('level') : null,
@@ -139,16 +139,16 @@ class StormControlRequest extends FormRequest
             'no_multicast' => $this->boolean('no_multicast'),
             'no_registered_multicast' => $this->boolean('no_registered_multicast'),
             'no_unregistered_multicast' => $this->boolean('no_unregistered_multicast'),
-            'residual_xml' => $mevcut instanceof SwitchStormControl ? $mevcut->residual_xml : null,
+            'residual_xml' => $current instanceof SwitchStormControl ? $current->residual_xml : null,
         ];
     }
 
     public function interfaceName(): string
     {
-        $mevcut = $this->route('stormControl');
+        $current = $this->route('stormControl');
 
-        return $mevcut instanceof SwitchStormControl
-            ? (string) $mevcut->interface_name
+        return $current instanceof SwitchStormControl
+            ? (string) $current->interface_name
             : $this->string('interface_name')->toString();
     }
 

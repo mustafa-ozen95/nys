@@ -42,49 +42,49 @@ final class ConnectionOutput
      * @param  Collection<int, NetworkSwitch>  $switchler
      * @return array{icerik: string, ad: string, yazilan: int, yetkisiz: int, parolasiz: int}
      */
-    public function uret(
-        Collection $sunucular,
-        Collection $switchler,
-        User $kullanici,
-        string $gerekce,
+    public function generate(
+        Collection $servers,
+        Collection $switches,
+        User $user,
+        string $reason,
     ): array {
-        $satirlar = [];
-        $yetkisiz = 0;
-        $parolasiz = 0;
+        $rows = [];
+        $unauthorized = 0;
+        $passwordless = 0;
 
-        foreach ($sunucular as $sunucu) {
-            if (! $kullanici->can('export', $sunucu)) {
-                $yetkisiz++;
-
-                continue;
-            }
-
-            if (blank($sunucu->connection_password)) {
-                $parolasiz++;
+        foreach ($servers as $server) {
+            if (! $user->can('export', $server)) {
+                $unauthorized++;
 
                 continue;
             }
 
-            $satirlar[] = [
+            if (blank($server->connection_password)) {
+                $passwordless++;
+
+                continue;
+            }
+
+            $rows[] = [
                 'Sunucu',
-                (string) $sunucu->short_name,
-                (string) $sunucu->long_name,
-                $sunucu->os_type?->label() ?? '',
-                $sunucu->connection_protocol?->label() ?? '',
-                (string) $sunucu->ip_address,
-                (string) ($sunucu->connection_port ?? $this->varsayilanPort($sunucu)),
-                (string) $sunucu->connection_username,
-                (string) $sunucu->connection_password,
-                (string) $sunucu->location,
-                $sunucu->updated_at?->format('d.m.Y H:i') ?? '',
+                (string) $server->short_name,
+                (string) $server->long_name,
+                $server->os_type?->label() ?? '',
+                $server->connection_protocol?->label() ?? '',
+                (string) $server->ip_address,
+                (string) ($server->connection_port ?? $this->defaultPort($server)),
+                (string) $server->connection_username,
+                (string) $server->connection_password,
+                (string) $server->location,
+                $server->updated_at?->format('d.m.Y H:i') ?? '',
             ];
 
-            $this->yaz($sunucu, "{$sunucu->short_name} bağlantı bilgileri dosyaya çıkarıldı", $gerekce, $kullanici);
+            $this->write($server, "{$server->short_name} bağlantı bilgileri dosyaya çıkarıldı", $reason, $user);
         }
 
-        foreach ($switchler as $switch) {
-            if (! $kullanici->can('export', $switch)) {
-                $yetkisiz++;
+        foreach ($switches as $switch) {
+            if (! $user->can('export', $switch)) {
+                $unauthorized++;
 
                 continue;
             }
@@ -95,51 +95,51 @@ final class ConnectionOutput
              * yol yazılır; birini seçip ötekini atmak, çıktıyı eline alan
              * kişinin kurabileceği bağlantıyı eksiltmek olurdu.
              */
-            $yazilan = 0;
+            $written = 0;
 
-            foreach ($switch->credentials as $kimlik) {
-                $sir = (string) ($kimlik->password ?? $kimlik->community ?? '');
+            foreach ($switch->credentials as $identity) {
+                $secret = (string) ($identity->password ?? $identity->community ?? '');
 
-                if (blank($sir)) {
+                if (blank($secret)) {
                     continue;
                 }
 
-                $satirlar[] = [
+                $rows[] = [
                     'Switch',
                     (string) $switch->hostname,
                     (string) $switch->model,
                     'Junos',
-                    $kimlik->protocol?->label() ?? '',
+                    $identity->protocol?->label() ?? '',
                     (string) $switch->management_ip,
-                    (string) ($kimlik->port ?? ''),
-                    (string) $kimlik->username,
-                    $sir,
+                    (string) ($identity->port ?? ''),
+                    (string) $identity->username,
+                    $secret,
                     /* Konum switchte bir SEÇENEK (enum), sunucuda düz metin. */
                     $switch->location?->label() ?? '',
                     $switch->updated_at?->format('d.m.Y H:i') ?? '',
                 ];
 
-                $yazilan++;
+                $written++;
             }
 
-            if ($yazilan === 0) {
-                $parolasiz++;
+            if ($written === 0) {
+                $passwordless++;
 
                 continue;
             }
 
-            $this->yaz($switch, "{$switch->hostname} bağlantı bilgileri dosyaya çıkarıldı", $gerekce, $kullanici);
+            $this->write($switch, "{$switch->hostname} bağlantı bilgileri dosyaya çıkarıldı", $reason, $user);
         }
 
         return [
-            'icerik' => Workbook::uret('Baglanti bilgileri', [
+            'icerik' => Workbook::generate('Baglanti bilgileri', [
                 'Tür', 'Ad', 'Açıklama', 'Platform', 'Protokol',
                 'Adres', 'Port', 'Kullanıcı', 'Parola', 'Konum', 'Son güncelleme',
-            ], $satirlar),
+            ], $rows),
             'ad' => 'nys-baglanti-'.now()->format('Y-m-d-Hi').'.xlsx',
-            'yazilan' => count($satirlar),
-            'yetkisiz' => $yetkisiz,
-            'parolasiz' => $parolasiz,
+            'yazilan' => count($rows),
+            'yetkisiz' => $unauthorized,
+            'parolasiz' => $passwordless,
         ];
     }
 
@@ -149,20 +149,20 @@ final class ConnectionOutput
      * Boş bırakmak, çıktıyı eline alan kişiye eksik bilgi vermek olurdu:
      * panel de bağlanırken aynı varsayılanı kullanıyor.
      */
-    private function varsayilanPort(Server $sunucu): int
+    private function defaultPort(Server $server): int
     {
-        return $sunucu->connection_protocol?->value === 'rdp' ? 3389 : 22;
+        return $server->connection_protocol?->value === 'rdp' ? 3389 : 22;
     }
 
-    private function yaz(object $konu, string $metin, string $gerekce, User $kullanici): void
+    private function write(object $subject, string $text, string $reason, User $user): void
     {
         $this->activity->recordAs(
-            (int) $kullanici->id,
-            $gerekce,
+            (int) $user->id,
+            $reason,
             request()->ip(),
-            $konu,
+            $subject,
             'exported',
-            $metin,
+            $text,
             ActivityChannel::Crud,
         );
     }

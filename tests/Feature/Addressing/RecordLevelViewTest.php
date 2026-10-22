@@ -20,12 +20,12 @@ final class RecordLevelViewTest extends TestCase
 
     public function test_gorme_yasagi_olan_blok_agacta_ve_detayda_gorunmez(): void
     {
-        $gizli = AddressBlock::factory()->network('10.8.0.0/16')->create(['description' => 'GIZLI-NOT-ALANI']);
-        $acik = AddressBlock::factory()->network('10.9.0.0/16')->create();
+        $hidden = AddressBlock::factory()->network('10.8.0.0/16')->create(['description' => 'GIZLI-NOT-ALANI']);
+        $open = AddressBlock::factory()->network('10.9.0.0/16')->create();
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)
-            ->syncResource($user, 'addressing', ['view'], [], ['view' => [$gizli->id]]);
+            ->syncResource($user, 'addressing', ['view'], [], ['view' => [$hidden->id]]);
         $user = $user->fresh();
 
         $this->actingAs($user)
@@ -35,13 +35,13 @@ final class RecordLevelViewTest extends TestCase
             ->assertDontSee('10.8.0.0/16');
 
         $this->actingAs($user)
-            ->get(route('addressing.index', ['block' => $gizli->uuid]))
+            ->get(route('addressing.index', ['block' => $hidden->uuid]))
             ->assertOk()
             ->assertDontSee('GIZLI-NOT-ALANI')
             ->assertDontSee('10.8.0.0/16');
 
         $this->actingAs($user)
-            ->get(route('addressing.index', ['block' => $acik->uuid]))
+            ->get(route('addressing.index', ['block' => $open->uuid]))
             ->assertOk()
             ->assertSee('10.9.0.0/16');
     }

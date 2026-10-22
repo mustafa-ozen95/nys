@@ -177,7 +177,7 @@ final class IpAddressWriteTest extends TestCase
     {
         $switch = $this->switch();
         $vlan = $this->vlanWithL3($switch);
-        $hedef = Vlan::factory()->for($switch, 'switch')->create([
+        $target = Vlan::factory()->for($switch, 'switch')->create([
             'name' => 'ikinci', 'vlan_tag' => 200, 'l3_interface' => 'vlan.200',
         ]);
 
@@ -196,7 +196,7 @@ final class IpAddressWriteTest extends TestCase
         $this->actingAs($this->operator())
             ->put(route('switches.ip-addresses.update', [$switch, $address]), [
                 'attachment' => 'vlan',
-                'vlan_id' => $hedef->uuid,
+                'vlan_id' => $target->uuid,
                 'address' => '2001:db8::1',
             ])
             ->assertSessionHasNoErrors()
@@ -218,7 +218,7 @@ final class IpAddressWriteTest extends TestCase
     {
         $switch = $this->switch();
         $vlan = $this->vlanWithL3($switch);
-        $hedef = Vlan::factory()->for($switch, 'switch')->create([
+        $target = Vlan::factory()->for($switch, 'switch')->create([
             'name' => 'ikinci', 'vlan_tag' => 200, 'l3_interface' => 'vlan.200',
         ]);
 
@@ -237,7 +237,7 @@ final class IpAddressWriteTest extends TestCase
         $this->actingAs($this->operator())
             ->put(route('switches.ip-addresses.update', [$switch, $address]), [
                 'attachment' => 'vlan',
-                'vlan_id' => $hedef->uuid,
+                'vlan_id' => $target->uuid,
                 'address' => '10.9.9.1',
             ])
             ->assertRedirect();
@@ -399,7 +399,7 @@ final class IpAddressWriteTest extends TestCase
         AddressBlock::factory()->network('10.9.9.0/24')->create(['core_switch_id' => $switch->id]);
 
         $ae = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ae0']);
-        $uye = SwitchPort::factory()->for($switch, 'switch')->create([
+        $member = SwitchPort::factory()->for($switch, 'switch')->create([
             'name' => 'ge-0/0/5',
             'aggregate_port_id' => $ae->id,
         ]);
@@ -409,7 +409,7 @@ final class IpAddressWriteTest extends TestCase
         $this->actingAs($this->operator())
             ->post(route('switches.ip-addresses.store', $switch), [
                 'attachment' => 'port',
-                'switch_port_id' => $uye->uuid,
+                'switch_port_id' => $member->uuid,
                 'address' => '10.9.9.7',
             ])
             ->assertSessionHasErrors('switch_port_id');

@@ -5,11 +5,11 @@
 @if (! $hasOptions() && ! $manual)
     <p class="text-sm text-muted">{{ $emptyMessage() }}</p>
 @else
-    <div class="picker" data-secim>
+    <div class="picker" data-selection>
         @if ($hasOptions())
             <x-form.select :name="$manualActive ? null : $name" :id="$id ?? $name"
                            :options="$choices()" :selected="$selected()"
-                           class="mono" data-secim-liste="{{ $name }}" />
+                           class="mono" data-selection-list="{{ $name }}" />
         @endif
 
         <input type="text"
@@ -18,7 +18,7 @@
                id="{{ $manualId() }}"
                value="{{ $manualValue() }}"
                placeholder="{{ $placeholder }}"
-               data-secim-elle
+               data-selection-manual
                aria-label="{{ $manualAria }}"
                aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
                @unless ($manualOpen()) hidden @endunless>

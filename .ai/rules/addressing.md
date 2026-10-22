@@ -62,8 +62,8 @@ gönderilir.
 **Mekanizma adrese özgü DEĞİL.** Aynı ihtiyaç AS numarası için de var
 (müşteri anonsu); mekanizma `App\View\Components\Form\Picker`
 ile ortak `x-form.picker` bileşenindedir; `IpPicker` yalnızca ADRESE ÖZGÜ
-metinleri taşıyan bir alt sınıftır. İşaretleme `data-secim`, `data-secim-liste`
-ve `data-secim-elle` kullanır, JS
+metinleri taşıyan bir alt sınıftır. İşaretleme `data-selection`, `data-selection-list`
+ve `data-selection-manual` kullanır, JS
 `resources/js/components/selection.js` içindedir.
 
 Yeni bir "listeden seç ya da elle gir" alanı için `x-form.picker` kullanılır;

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  * Asıl kural KODDA duruyor (UserPermissionResolver); bu göç veriyi
  * onunla hizalar — ekranda "var" görünüp hiçbir işe yaramayan yetki kalmasın.
  *
- * Yönetim kaynakları config'ten okunur (permissions.yonetim_kaynaklari):
+ * Yönetim kaynakları config'ten okunur (permissions.management_resources):
  * ayarlar, kullanıcılar, etkinlik kaydı. Cihaz ekranları (switchler,
  * sunucular, adresleme, BGP, prefix anonsu) DOKUNULMAZ — onlar işin kendisi.
  *
@@ -21,7 +21,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $kaynaklar = (array) config('permissions.yonetim_kaynaklari', ['settings', 'users', 'logs']);
+        $kaynaklar = (array) config('permissions.management_resources', ['settings', 'users', 'logs']);
 
         foreach (DB::table('roles')->where('is_admin', false)->get() as $rol) {
             $sablon = json_decode((string) $rol->template, true) ?: [];

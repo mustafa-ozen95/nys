@@ -90,9 +90,9 @@ trait RespondsToDeviceWrite
          * Kuyrukta istek olmadığı için kullanıcı, gerekçe ve IP burada
          * yakalanır — yoksa kayıt sahipsiz kalırdı.
          */
-        $konu = $this->writeSubject($arguments);
+        $subject = $this->writeSubject($arguments);
 
-        $this->guardPendingWrite($konu);
+        $this->guardPendingWrite($subject);
 
         $job = SwitchWriteJob::create([
             'switch_id' => $switch->id,
@@ -101,8 +101,8 @@ trait RespondsToDeviceWrite
             'status' => SwitchWriteStatus::Queued,
             'reason' => request()->input('reason'),
             'ip_address' => request()->ip(),
-            'subject_type' => $konu?->getMorphClass(),
-            'subject_id' => $konu?->getKey(),
+            'subject_type' => $subject?->getMorphClass(),
+            'subject_id' => $subject?->getKey(),
         ]);
 
         ApplySwitchWriteJob::dispatch($job, $switch, $configurator, $method, $arguments);
@@ -125,9 +125,9 @@ trait RespondsToDeviceWrite
      */
     private function writeSubject(array $arguments): ?Model
     {
-        foreach ($arguments as $arguman) {
-            if ($arguman instanceof Model && $arguman->exists) {
-                return $arguman;
+        foreach ($arguments as $argument) {
+            if ($argument instanceof Model && $argument->exists) {
+                return $argument;
             }
         }
 
@@ -150,14 +150,14 @@ trait RespondsToDeviceWrite
             return;
         }
 
-        $suren = SwitchWriteJob::query()->pending()->forSubject($subject)->first();
+        $lasting = SwitchWriteJob::query()->pending()->forSubject($subject)->first();
 
-        if ($suren === null) {
+        if ($lasting === null) {
             return;
         }
 
         throw ValidationException::withMessages([
-            'write_job' => "Bu kayıt üzerinde bir işlem sürüyor ({$suren->summary}); "
+            'write_job' => "Bu kayıt üzerinde bir işlem sürüyor ({$lasting->summary}); "
                 .'bitmeden yeni bir değişiklik gönderilemez.',
         ]);
     }

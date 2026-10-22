@@ -30,43 +30,43 @@ final class IdentityMirrorTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function merkezliKullanici(UserStatus $durum = UserStatus::Active): User
+    private function centeredUser(UserStatus $status = UserStatus::Active): User
     {
-        $kullanici = User::factory()->create(['status' => $durum]);
+        $user = User::factory()->create(['status' => $status]);
 
         UserIdentity::create([
-            'user_id' => $kullanici->id,
-            'provider' => AccountMatcher::SAGLAYICI,
+            'user_id' => $user->id,
+            'provider' => AccountMatcher::PROVIDER,
             'subject' => (string) Str::uuid(),
-            'email' => $kullanici->email,
+            'email' => $user->email,
         ]);
 
-        return $kullanici;
+        return $user;
     }
 
     #[Test]
     public function merkezde_erisimi_kalkan_burada_kapanir(): void
     {
-        $kullanici = $this->merkezliKullanici();
+        $user = $this->centeredUser();
 
-        app(IdentitySyncer::class)->uygula($kullanici, [
-            'durum' => 'askida', 'girebilir' => false, 'rol' => null,
+        app(IdentitySyncer::class)->apply($user, [
+            'status' => 'askida', 'can_enter' => false, 'role' => null,
         ]);
 
-        $this->assertSame(UserStatus::Inactive, $kullanici->fresh()->status);
+        $this->assertSame(UserStatus::Inactive, $user->fresh()->status);
     }
 
     /** Merkezde geri açılan hesap burada kapalı kalmamalı. */
     #[Test]
     public function merkezde_geri_acilan_burada_da_acilir(): void
     {
-        $kullanici = $this->merkezliKullanici(UserStatus::Inactive);
+        $user = $this->centeredUser(UserStatus::Inactive);
 
-        app(IdentitySyncer::class)->uygula($kullanici, [
-            'durum' => 'etkin', 'girebilir' => true, 'rol' => null,
+        app(IdentitySyncer::class)->apply($user, [
+            'status' => 'etkin', 'can_enter' => true, 'role' => null,
         ]);
 
-        $this->assertSame(UserStatus::Active, $kullanici->fresh()->status);
+        $this->assertSame(UserStatus::Active, $user->fresh()->status);
     }
 
     /**
@@ -76,13 +76,13 @@ final class IdentityMirrorTest extends TestCase
     #[Test]
     public function kapali_hesabin_rolu_de_esitlenir(): void
     {
-        $kullanici = $this->merkezliKullanici(UserStatus::Inactive);
-        $hedef = Role::query()->where('is_admin', false)->first() ?? Role::query()->first();
+        $user = $this->centeredUser(UserStatus::Inactive);
+        $target = Role::query()->where('is_admin', false)->first() ?? Role::query()->first();
 
-        app(IdentitySyncer::class)->uygula($kullanici, [
-            'durum' => 'askida', 'girebilir' => false, 'rol' => $hedef->slug,
+        app(IdentitySyncer::class)->apply($user, [
+            'status' => 'askida', 'can_enter' => false, 'role' => $target->slug,
         ]);
 
-        $this->assertSame($hedef->id, $kullanici->fresh()->role_id);
+        $this->assertSame($target->id, $user->fresh()->role_id);
     }
 }

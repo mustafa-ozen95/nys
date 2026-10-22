@@ -101,11 +101,11 @@ Route::middleware(['auth:api', 'throttle:api'])
  *
  * Hız sınırı var: imza tutmasa bile bu uç merkeze bir istek attırabilir.
  */
-Route::post('kimlik/tazele', IdentityRefreshController::class)
+Route::post('identity/refresh', IdentityRefreshController::class)
     ->middleware('throttle:60,1')
-    ->name('api.kimlik.tazele');
+    ->name('api.identity.refresh');
 
 /* MERKEZDEN "bu kişi çıkış yaptı" — ortak çıkış (bkz. IdentityLogoutController). */
-Route::post('kimlik/cikis', IdentityLogoutController::class)
+Route::post('identity/logout', IdentityLogoutController::class)
     ->middleware('throttle:60,1')
-    ->name('api.kimlik.cikis');
+    ->name('api.identity.logout');

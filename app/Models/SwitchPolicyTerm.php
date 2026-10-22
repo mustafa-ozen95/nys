@@ -77,15 +77,15 @@ class SwitchPolicyTerm extends Model
     protected function referencedCommunities(): Attribute
     {
         return Attribute::get(function (): array {
-            $adlar = array_filter([$this->community_delete]);
+            $names = array_filter([$this->community_delete]);
 
             foreach ($this->then_actions['communities'] ?? [] as $community) {
                 if (filled($community['name'] ?? null)) {
-                    $adlar[] = (string) $community['name'];
+                    $names[] = (string) $community['name'];
                 }
             }
 
-            return array_values(array_unique([...$adlar, ...($this->match_conditions['communities'] ?? [])]));
+            return array_values(array_unique([...$names, ...($this->match_conditions['communities'] ?? [])]));
         });
     }
 
@@ -111,26 +111,26 @@ class SwitchPolicyTerm extends Model
     protected function summary(): Attribute
     {
         return Attribute::get(function (): string {
-            $kosullar = [];
+            $conditions = [];
 
             if ($this->match_prefix_lists) {
                 $liste = implode(', ', $this->match_prefix_lists);
-                $tur = $this->match_type?->label();
-                $kosullar[] = $tur === null ? $liste : "{$liste} ({$tur})";
+                $round = $this->match_type?->label();
+                $conditions[] = $round === null ? $liste : "{$liste} ({$round})";
             }
 
-            $kosullar = [...$kosullar, ...PolicyMatch::summary($this->match_conditions)];
+            $conditions = [...$conditions, ...PolicyMatch::summary($this->match_conditions)];
 
             // Eşleşme koşulu olmayan terim HER ŞEYE uyar; genellikle sonuncu
             // terimdir ve zinciri kapatır.
-            $parcalar = [$kosullar === [] ? 'her şey' : implode(', ', $kosullar)];
+            $fragments = [$conditions === [] ? 'her şey' : implode(', ', $conditions)];
 
             /*
              * Sonlandırıcı eylem terimde KENDİ sütununda durur (action);
              * then_actions yalnızca değiştirici eylemleri taşır. İkisi iki
              * yerde tutulsaydı biri diğerinden habersiz güncellenirdi.
              */
-            $eylemler = PolicyThen::summary($this->then_actions);
+            $actions = PolicyThen::summary($this->then_actions);
 
             /*
              * Eski kayıtlarda community silme yalnızca kendi sütunundadır;
@@ -138,22 +138,22 @@ class SwitchPolicyTerm extends Model
              * eşitlemeden önce özet bilgisiz kalmasın diye ikisi de bakılır,
              * ama satır bir kez yazılır.
              */
-            $silinen = $this->community_delete;
-            $listede = in_array($silinen, array_column($this->then_actions['communities'] ?? [], 'name'), true);
+            $deleted = $this->community_delete;
+            $list = in_array($deleted, array_column($this->then_actions['communities'] ?? [], 'name'), true);
 
-            if ($silinen !== null && ! $listede) {
-                array_unshift($eylemler, "community sil: {$silinen}");
+            if ($deleted !== null && ! $list) {
+                array_unshift($actions, "community sil: {$deleted}");
             }
 
-            $etiket = $this->action?->label();
+            $tag = $this->action?->label();
 
-            if ($etiket !== null) {
-                $eylemler[] = $etiket;
+            if ($tag !== null) {
+                $actions[] = $tag;
             }
 
-            $parcalar[] = $eylemler === [] ? 'eylem yok' : implode(', ', $eylemler);
+            $fragments[] = $actions === [] ? 'eylem yok' : implode(', ', $actions);
 
-            return implode(' · ', $parcalar);
+            return implode(' · ', $fragments);
         });
     }
 

@@ -101,23 +101,23 @@ class ApplySwitchWriteJob implements ShouldBeEncrypted, ShouldQueue
             'started_at' => now(),
         ])->save();
 
-        $sonuc = app($this->configurator)->{$this->method}($this->switch, ...$this->arguments);
+        $result = app($this->configurator)->{$this->method}($this->switch, ...$this->arguments);
 
-        $fark = ConfigurationRedactor::apply($sonuc['diff']);
+        $diff = ConfigurationRedactor::apply($result['diff']);
 
         // Commit kalıcı oldu ama geri okuma düştüyse iş yine "tamamlandı"dır;
         // kullanıcıya ekranın bayat olabileceği söylenir.
-        $okumaUyarisi = collect($sonuc['warnings'] ?? [])
-            ->first(fn (string $uyari): bool => str_starts_with($uyari, ConfigurationWriter::READBACK_WARNING));
+        $readWarning = collect($result['warnings'] ?? [])
+            ->first(fn (string $warning): bool => str_starts_with($warning, ConfigurationWriter::READBACK_WARNING));
 
         $this->record->forceFill([
-            'status' => $sonuc['committed'] ? SwitchWriteStatus::Completed : SwitchWriteStatus::Unchanged,
-            'diff' => $sonuc['committed'] ? $fark : null,
-            'message' => $sonuc['committed'] ? $okumaUyarisi : 'Cihaz zaten bu durumda, değişiklik yapılmadı.',
+            'status' => $result['committed'] ? SwitchWriteStatus::Completed : SwitchWriteStatus::Unchanged,
+            'diff' => $result['committed'] ? $diff : null,
+            'message' => $result['committed'] ? $readWarning : 'Cihaz zaten bu durumda, değişiklik yapılmadı.',
             'finished_at' => now(),
         ])->save();
 
-        if (! $sonuc['committed']) {
+        if (! $result['committed']) {
             return;
         }
 
@@ -132,7 +132,7 @@ class ApplySwitchWriteJob implements ShouldBeEncrypted, ShouldQueue
             $this->record->ip_address,
             $this->switch,
             'configured',
-            "{$this->switch->hostname} · {$this->record->summary}: ".str_replace("\n", ' ', $fark),
+            "{$this->switch->hostname} · {$this->record->summary}: ".str_replace("\n", ' ', $diff),
             ActivityChannel::Config,
         );
     }

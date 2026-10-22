@@ -146,7 +146,7 @@ kaldırılmışken bile GEÇER.
 Asenkron bir işin sonucunu ölçen test, önce işi bekler:
 
 ```js
-const istek = page.waitForResponse((y) => y.url().includes('/bildirimler/okundu'));
+const istek = page.waitForResponse((y) => y.url().includes('/notifications/seen'));
 await dugme.click();
 expect((await istek).status()).toBe(200);
 ```

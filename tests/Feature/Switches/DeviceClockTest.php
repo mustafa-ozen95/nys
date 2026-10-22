@@ -171,13 +171,13 @@ final class DeviceClockTest extends TestCase
         NetworkSwitch::factory()->create(['hostname' => 'aaa-erisim', 'role' => SwitchRole::Access]);
         NetworkSwitch::factory()->create(['hostname' => 'zzz-omurga', 'role' => SwitchRole::Core]);
 
-        $sira = $this->actingAs($this->operator())
+        $order = $this->actingAs($this->operator())
             ->get(route('switches.index'))
             ->assertOk()
             ->viewData('switches')
             ->pluck('hostname');
 
-        $this->assertSame('zzz-omurga', $sira->first(), 'Omurga listenin başında değil.');
+        $this->assertSame('zzz-omurga', $order->first(), 'Omurga listenin başında değil.');
     }
 
     private function device(): FakeJunosDevice

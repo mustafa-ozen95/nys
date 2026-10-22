@@ -84,14 +84,14 @@ class SwitchPolicyController extends Controller implements HasMiddleware
 
     public function destroy(NetworkSwitch $switch, SwitchPolicyStatement $policyStatement): RedirectResponse
     {
-        $bagli = $this->dependencies->forPolicy($policyStatement);
+        $bound = $this->dependencies->forPolicy($policyStatement);
 
         // Politikayı içeri alan ya da dışarı veren bir BGP grubu varsa cihaz
         // commit'i reddeder: "Policy referenced but not defined".
-        if ($bagli !== []) {
+        if ($bound !== []) {
             return back()->with(
                 'error',
-                $this->dependencies->message("Politika {$policyStatement->name}", $bagli),
+                $this->dependencies->message("Politika {$policyStatement->name}", $bound),
             );
         }
 
@@ -179,16 +179,16 @@ class SwitchPolicyController extends Controller implements HasMiddleware
      */
     private function ordered(SwitchPolicyStatement $policy, array $uuids): array
     {
-        $mevcut = $policy->terms->keyBy('uuid');
+        $current = $policy->terms->keyBy('uuid');
 
         abort_unless(
-            count($uuids) === $mevcut->count() && $mevcut->keys()->diff($uuids)->isEmpty(),
+            count($uuids) === $current->count() && $current->keys()->diff($uuids)->isEmpty(),
             422,
             'Sıralama listesi politikanın terimleriyle birebir eşleşmeli.',
         );
 
         return collect($uuids)
-            ->map(fn (string $uuid): array => $this->termAttributes($mevcut[$uuid]))
+            ->map(fn (string $uuid): array => $this->termAttributes($current[$uuid]))
             ->all();
     }
 

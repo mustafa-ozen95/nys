@@ -14,20 +14,20 @@
         araya açıklama karıştırılmamalıdır.
     </p>
 
-    <x-form.field kural="switch_bgp.karsi-taraf:peer_config" name="peer_config" label="Karşı tarafın configi" :id="'peer-metin-'.$neighbor->uuid"
+    <x-form.field rule="switch_bgp.karsi-taraf:peer_config" name="peer_config" label="Karşı tarafın configi" :id="'peer-config-'.$neighbor->uuid"
                   hint="Bizim tarafın aynasıdır: bizim komşu adresimiz onların yerel adresi olur.">
-        <textarea class="textarea input--mono" id="peer-metin-{{ $neighbor->uuid }}"
+        <textarea class="textarea input--mono" id="peer-config-{{ $neighbor->uuid }}"
                   rows="{{ min(count($configuration['lines']) + 1, 18) }}" readonly
-                  data-kopyala-kaynak>{{ implode(PHP_EOL, $configuration['lines']) }}</textarea>
+                  data-copy-source>{{ implode(PHP_EOL, $configuration['lines']) }}</textarea>
     </x-form.field>
 
     @if ($configuration['interface'] !== [])
-        <x-form.field kural="switch_bgp.karsi-taraf:peer_interface" name="peer_interface" label="Karşı tarafın bacak adresi"
-                      :id="'peer-arayuz-'.$neighbor->uuid"
+        <x-form.field rule="switch_bgp.karsi-taraf:peer_interface" name="peer_interface" label="Karşı tarafın bacak adresi"
+                      :id="'peer-interface-'.$neighbor->uuid"
                       hint="ARAYUZ yerine kendi port adlarını yazmalılar; o yüzden ayrı duruyor.">
-            <textarea class="textarea input--mono" id="peer-arayuz-{{ $neighbor->uuid }}"
+            <textarea class="textarea input--mono" id="peer-interface-{{ $neighbor->uuid }}"
                       rows="2" readonly
-                      data-kopyala-kaynak>{{ implode(PHP_EOL, $configuration['interface']) }}</textarea>
+                      data-copy-source>{{ implode(PHP_EOL, $configuration['interface']) }}</textarea>
         </x-form.field>
     @endif
 
@@ -36,11 +36,11 @@
         bu metin kaydı gözden geçirmek ve gerekirse aynı oturumu başka bir
         cihaza kurmak için var.
     --}}
-    <x-form.field kural="switch_bgp.karsi-taraf:our_config" name="our_config" label="Bizim taraf" :id="'bizim-metin-'.$neighbor->uuid"
+    <x-form.field rule="switch_bgp.karsi-taraf:our_config" name="our_config" label="Bizim taraf" :id="'our-config-'.$neighbor->uuid"
                   hint="Bu oturumun bizdeki hâli. Cihaza yazmak için değil; panel yazmayı kendisi yapar.">
-        <textarea class="textarea input--mono" id="bizim-metin-{{ $neighbor->uuid }}"
+        <textarea class="textarea input--mono" id="our-config-{{ $neighbor->uuid }}"
                   rows="{{ min(count($ours['lines']) + 1, 18) }}" readonly
-                  data-kopyala-kaynak>{{ implode(PHP_EOL, $ours['lines']) }}</textarea>
+                  data-copy-source>{{ implode(PHP_EOL, $ours['lines']) }}</textarea>
     </x-form.field>
 
     @if ($configuration['notes'] !== [] || $ours['notes'] !== [])
@@ -55,7 +55,7 @@
 
 <x-ui.modal-actions :submit="false" cancel="Kapat">
     <button type="button" class="btn"
-            data-kopyala="#bizim-metin-{{ $neighbor->uuid }}">Bizim tarafı kopyala</button>
+            data-copy="#our-config-{{ $neighbor->uuid }}">Bizim tarafı kopyala</button>
     <button type="button" class="btn btn--primary"
-            data-kopyala="#peer-metin-{{ $neighbor->uuid }}">Karşı tarafı kopyala</button>
+            data-copy="#peer-config-{{ $neighbor->uuid }}">Karşı tarafı kopyala</button>
 </x-ui.modal-actions>

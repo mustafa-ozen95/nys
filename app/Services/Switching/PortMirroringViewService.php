@@ -39,9 +39,9 @@ class PortMirroringViewService
          * Listeler BİR KEZ okunur. Her kayıt için yeniden sorulsaydı üç
          * aynalama üç kat port ve VLAN sorgusu demek olurdu.
          */
-        $kaynaklar = $this->sourceInterfaceOptions($switch);
-        $cikislar = $this->outputInterfaceOptions($switch);
-        $vlanlar = $this->vlanOptions($switch);
+        $sources = $this->sourceInterfaceOptions($switch);
+        $exits = $this->outputInterfaceOptions($switch);
+        $vlans = $this->vlanOptions($switch);
 
         return [
             'analyzers' => $analyzers,
@@ -51,11 +51,11 @@ class PortMirroringViewService
              * açılır listede "yok" seçeneği de bulunur; Blade bunu kendisi
              * eklemez (bkz. .ai/rules/interface.md — hesap Blade'de yapılmaz).
              */
-            'sourceInterfaceOptions' => $kaynaklar,
-            'vlanOptions' => $vlanlar,
-            'outputInterfaceOptions' => $this->withNone($cikislar),
-            'outputVlanOptions' => $this->withNone($vlanlar),
-            'analyzerOptions' => $this->perAnalyzer($analyzers, $kaynaklar, $cikislar, $vlanlar),
+            'sourceInterfaceOptions' => $sources,
+            'vlanOptions' => $vlans,
+            'outputInterfaceOptions' => $this->withNone($exits),
+            'outputVlanOptions' => $this->withNone($vlans),
+            'analyzerOptions' => $this->perAnalyzer($analyzers, $sources, $exits, $vlans),
         ];
     }
 

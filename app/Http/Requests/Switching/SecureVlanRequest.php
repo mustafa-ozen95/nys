@@ -30,15 +30,15 @@ class SecureVlanRequest extends SecureAccessRequest
      */
     public function rules(): array
     {
-        $mevcut = $this->route('secureVlan');
+        $current = $this->route('secureVlan');
 
         return [
             'vlan_name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:64',
                 Rule::unique(SwitchSecureVlan::class, 'vlan_name')
                     ->where('switch_id', $this->switch()->id)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             'examine_dhcp' => ['boolean'],
@@ -102,16 +102,16 @@ class SecureVlanRequest extends SecureAccessRequest
             return;
         }
 
-        $bagimlilar = [
+        $dependents = [
             'arp_inspection' => 'ARP denetimi',
             'ip_source_guard' => 'IP kaynak koruması',
         ];
 
-        foreach ($bagimlilar as $alan => $etiket) {
+        foreach ($dependents as $alan => $tag) {
             if ($this->boolean($alan)) {
                 $validator->errors()->add(
                     $alan,
-                    "{$etiket} DHCP snooping tablosuna dayanır; snooping kapalıyken tablo boş kalır ve "
+                    "{$tag} DHCP snooping tablosuna dayanır; snooping kapalıyken tablo boş kalır ve "
                         .'bu VLAN’daki trafik düşürülür. Önce DHCP snooping’i açın.',
                 );
             }
@@ -126,7 +126,7 @@ class SecureVlanRequest extends SecureAccessRequest
      */
     public function settings(): array
     {
-        $mevcut = $this->route('secureVlan');
+        $current = $this->route('secureVlan');
 
         return [
             'examine_dhcp' => $this->boolean('examine_dhcp'),
@@ -134,7 +134,7 @@ class SecureVlanRequest extends SecureAccessRequest
             'ip_source_guard' => $this->boolean('ip_source_guard'),
             'mac_move_limit' => $this->filled('mac_move_limit') ? $this->integer('mac_move_limit') : null,
             'mac_move_action' => $this->filled('mac_move_action') ? $this->string('mac_move_action')->toString() : null,
-            'residual_xml' => $mevcut instanceof SwitchSecureVlan ? $mevcut->residual_xml : null,
+            'residual_xml' => $current instanceof SwitchSecureVlan ? $current->residual_xml : null,
         ];
     }
 
@@ -144,9 +144,9 @@ class SecureVlanRequest extends SecureAccessRequest
      */
     public function vlanName(): string
     {
-        $mevcut = $this->route('secureVlan');
+        $current = $this->route('secureVlan');
 
-        return $mevcut instanceof SwitchSecureVlan ? (string) $mevcut->vlan_name : $this->name();
+        return $current instanceof SwitchSecureVlan ? (string) $current->vlan_name : $this->name();
     }
 
     private function name(): string

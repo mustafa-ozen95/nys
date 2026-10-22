@@ -37,19 +37,19 @@ class WindowsDriver implements ServerDriver
      * (LocalAccountTokenFilterPolicy tanımsızken). Kurtarma hesabı açılıp
      * kanıt aşamasında düşer ve tur boşuna iptal olur.
      *
-     * O kaydı 1 yapan kurulumlarda ayar açılabilir: SUNUCU_WINRM_KURTARMA=true.
+     * O kaydı 1 yapan kurulumlarda ayar açılabilir: SERVER_WINRM_RECOVERY=true.
      */
-    public function kurtarmaDestekler(): bool
+    public function recoverySupports(): bool
     {
-        return (bool) config('server.winrm.kurtarma', false);
+        return (bool) config('server.winrm.recovery', false);
     }
 
-    public function engel(Server $sunucu): ?string
+    public function engel(Server $server): ?string
     {
         return match (true) {
-            blank($sunucu->ip_address) => 'Adres tanımlı değil.',
-            blank($sunucu->connection_username) => 'Kullanıcı adı tanımlı değil.',
-            blank($sunucu->connection_password) => 'Kayıtlı parola yok; güncelleme mevcut parolayla başlar.',
+            blank($server->ip_address) => 'Adres tanımlı değil.',
+            blank($server->connection_username) => 'Kullanıcı adı tanımlı değil.',
+            blank($server->connection_password) => 'Kayıtlı parola yok; güncelleme mevcut parolayla başlar.',
             default => null,
         };
     }

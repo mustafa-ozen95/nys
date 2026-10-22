@@ -73,7 +73,7 @@ final class FakeJunosAccounts implements NetconfTransport
     {
         $this->rejected = array_values(array_filter(
             $this->rejected,
-            static fn (string $kayitli): bool => $kayitli !== $name,
+            static fn (string $registered): bool => $registered !== $name,
         ));
     }
 
@@ -98,13 +98,13 @@ final class FakeJunosAccounts implements NetconfTransport
 
     public function open(string $host, int $port, string $username, string $password, int $timeout): void
     {
-        $kabul = isset($this->accounts[$username])
+        $accept = isset($this->accounts[$username])
             && hash_equals($this->accounts[$username], $password)
             && ! in_array($username, $this->rejected, true);
 
-        $this->attempts[] = compact('host', 'username', 'password') + ['accepted' => $kabul];
+        $this->attempts[] = compact('host', 'username', 'password') + ['accepted' => $accept];
 
-        if (! $kabul) {
+        if (! $accept) {
             throw new NetconfException("{$host} NETCONF kimlik doğrulaması başarısız.");
         }
 
@@ -167,22 +167,22 @@ final class FakeJunosAccounts implements NetconfTransport
 
     private function apply(string $document): void
     {
-        if (preg_match_all('#<user delete="delete"><name>([^<]+)</name></user>#', $document, $silinen)) {
-            foreach ($silinen[1] as $name) {
+        if (preg_match_all('#<user delete="delete"><name>([^<]+)</name></user>#', $document, $deleted)) {
+            foreach ($deleted[1] as $name) {
                 unset($this->accounts[$name]);
             }
         }
 
-        if (preg_match_all('#<user><name>([^<]+)</name>.*?</user>#s', $document, $yazilan, PREG_SET_ORDER)) {
-            foreach ($yazilan as [$block, $name]) {
-                if (preg_match('#<plain-text-password-value>([^<]*)</plain-text-password-value>#', $block, $parola)) {
-                    $this->accounts[$name] = $parola[1];
+        if (preg_match_all('#<user><name>([^<]+)</name>.*?</user>#s', $document, $written, PREG_SET_ORDER)) {
+            foreach ($written as [$block, $name]) {
+                if (preg_match('#<plain-text-password-value>([^<]*)</plain-text-password-value>#', $block, $password)) {
+                    $this->accounts[$name] = $password[1];
 
                     if (in_array($name, $this->rejectOnChange, true)) {
                         $this->rejectUser($name);
                         $this->rejectOnChange = array_values(array_filter(
                             $this->rejectOnChange,
-                            static fn (string $kayitli): bool => $kayitli !== $name,
+                            static fn (string $registered): bool => $registered !== $name,
                         ));
                     }
                 } elseif (! isset($this->accounts[$name])) {

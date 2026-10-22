@@ -38,31 +38,31 @@ class AssignmentRights
      */
     public function missing(User $user, ?AddressBlock $before, ?AddressBlock $after): array
     {
-        $eksik = [];
+        $missing = [];
 
-        $eskiRoute = $before === null ? ['switch_id' => null, 'next_hop' => null] : $this->routes->fingerprint($before);
-        $yeniRoute = $after === null ? ['switch_id' => null, 'next_hop' => null] : $this->routes->fingerprint($after);
+        $oldRoute = $before === null ? ['switch_id' => null, 'next_hop' => null] : $this->routes->fingerprint($before);
+        $newRoute = $after === null ? ['switch_id' => null, 'next_hop' => null] : $this->routes->fingerprint($after);
 
-        if ($eskiRoute !== $yeniRoute) {
-            if ($eskiRoute['switch_id'] !== null && ! $this->may($user, 'deleteSwitchRoutes', $eskiRoute['switch_id'])) {
-                $eksik['connection_type'] = 'Mevcut statik route’u kaldırmak için o switchte route silme yetkisi gerekir.';
+        if ($oldRoute !== $newRoute) {
+            if ($oldRoute['switch_id'] !== null && ! $this->may($user, 'deleteSwitchRoutes', $oldRoute['switch_id'])) {
+                $missing['connection_type'] = 'Mevcut statik route’u kaldırmak için o switchte route silme yetkisi gerekir.';
             }
 
-            if ($yeniRoute['switch_id'] !== null && ! $this->may($user, 'createSwitchRoutes', $yeniRoute['switch_id'])) {
-                $eksik['connection_type'] = 'Statik route cihaza yazılır; bunun için o switchte route ekleme yetkisi gerekir.';
+            if ($newRoute['switch_id'] !== null && ! $this->may($user, 'createSwitchRoutes', $newRoute['switch_id'])) {
+                $missing['connection_type'] = 'Statik route cihaza yazılır; bunun için o switchte route ekleme yetkisi gerekir.';
             }
         }
 
-        $eskiArayuz = $before === null ? ['switch_id' => null, 'interface' => null, 'cidr' => null] : $this->interfaces->fingerprint($before);
-        $yeniArayuz = $after === null ? ['switch_id' => null, 'interface' => null, 'cidr' => null] : $this->interfaces->fingerprint($after);
+        $oldInterface = $before === null ? ['switch_id' => null, 'interface' => null, 'cidr' => null] : $this->interfaces->fingerprint($before);
+        $newInterface = $after === null ? ['switch_id' => null, 'interface' => null, 'cidr' => null] : $this->interfaces->fingerprint($after);
 
-        if ($eskiArayuz !== $yeniArayuz) {
-            if ($eskiArayuz['switch_id'] !== null && ! $this->may($user, 'deleteSwitchIpAddresses', $eskiArayuz['switch_id'])) {
-                $eksik['connection_type'] = 'Mevcut geçit adresini kaldırmak için o switchte IP adresi silme yetkisi gerekir.';
+        if ($oldInterface !== $newInterface) {
+            if ($oldInterface['switch_id'] !== null && ! $this->may($user, 'deleteSwitchIpAddresses', $oldInterface['switch_id'])) {
+                $missing['connection_type'] = 'Mevcut geçit adresini kaldırmak için o switchte IP adresi silme yetkisi gerekir.';
             }
 
-            if ($yeniArayuz['switch_id'] !== null && ! $this->may($user, 'createSwitchIpAddresses', $yeniArayuz['switch_id'])) {
-                $eksik['connection_type'] = 'Geçit adresi cihaza yazılır; bunun için o switchte IP adresi ekleme yetkisi gerekir.';
+            if ($newInterface['switch_id'] !== null && ! $this->may($user, 'createSwitchIpAddresses', $newInterface['switch_id'])) {
+                $missing['connection_type'] = 'Geçit adresi cihaza yazılır; bunun için o switchte IP adresi ekleme yetkisi gerekir.';
             }
         }
 
@@ -70,10 +70,10 @@ class AssignmentRights
         if ($after === null && $before?->switch_prefix_list_id !== null
             && $before->core_switch_id !== null
             && ! $this->may($user, 'configure', $before->core_switch_id)) {
-            $eksik['prefix_list_id'] = 'Prefix list ataması omurga switchten çıkarılır; bunun için o switchte “Cihaza Yaz” yetkisi gerekir.';
+            $missing['prefix_list_id'] = 'Prefix list ataması omurga switchten çıkarılır; bunun için o switchte “Cihaza Yaz” yetkisi gerekir.';
         }
 
-        return $eksik;
+        return $missing;
     }
 
     private function may(User $user, string $ability, int $switchId): bool

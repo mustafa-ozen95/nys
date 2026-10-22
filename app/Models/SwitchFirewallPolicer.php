@@ -68,7 +68,7 @@ class SwitchFirewallPolicer extends Model
     protected function summary(): Attribute
     {
         return Attribute::get(function (): string {
-            $parcalar = array_filter([
+            $fragments = array_filter([
                 $this->bandwidth_limit !== null ? "hız {$this->bandwidth_limit}" : null,
                 $this->bandwidth_percent !== null ? "hız %{$this->bandwidth_percent}" : null,
                 $this->burst_size_limit !== null ? "burst {$this->burst_size_limit}" : null,
@@ -78,7 +78,7 @@ class SwitchFirewallPolicer extends Model
                 $this->loss_priority !== null ? "kayıp önceliği {$this->loss_priority}" : null,
             ]);
 
-            return $parcalar === [] ? 'Sınır tanımsız' : implode(' · ', $parcalar);
+            return $fragments === [] ? 'Sınır tanımsız' : implode(' · ', $fragments);
         });
     }
 

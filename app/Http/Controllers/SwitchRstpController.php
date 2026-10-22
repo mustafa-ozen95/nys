@@ -73,7 +73,7 @@ class SwitchRstpController extends Controller implements HasMiddleware
          * Ethernet Switching" — routed ve yapılandırılmamış portlarda
          * spanning tree tanımlanamaz (jn32-test ile doğrulandı).
          */
-        $anahtarlamaPortlari = $switch->ports()
+        $switchingPorts = $switch->ports()
             ->whereIn('port_mode', [PortMode::Access->value, PortMode::Trunk->value])
             ->orderBy('if_index')
             ->pluck('name', 'name')
@@ -91,7 +91,7 @@ class SwitchRstpController extends Controller implements HasMiddleware
              * lehçede de kabul ediliyor (test2 ve test4'te ölçüldü), bu
              * yüzden kısayol her zaman durur.
              */
-            'interfaceOptions' => ['all' => 'Bütün portlar (all)'] + $anahtarlamaPortlari,
+            'interfaceOptions' => ['all' => 'Bütün portlar (all)'] + $switchingPorts,
 
             /*
              * FIRTINA listesi AYRIDIR. Aynı sözcük komşu hiyerarşide başka
@@ -101,7 +101,7 @@ class SwitchRstpController extends Controller implements HasMiddleware
              * yazılır (bkz. .ai/rules/junos.md).
              */
             'stormInterfaceOptions' => ($allKeyword ? ['all' => 'Bütün portlar (all)'] : [])
-                + $anahtarlamaPortlari,
+                + $switchingPorts,
 
             'switches' => $this->navigation->switches($request->user()),
             'objects' => $this->navigation->objects($switch, 'rstp'),

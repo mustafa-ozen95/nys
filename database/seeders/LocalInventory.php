@@ -29,12 +29,12 @@ final class LocalInventory
      * yok" hâllerinde ayrı ayrı sınanabilsin diye. Üretimde hep varsayılan
      * dizin kullanılır ve depodaki gerçek dosyaya dokunulmaz.
      */
-    private static ?string $dizin = null;
+    private static ?string $directory = null;
 
     /**
      * @return array<int|string, mixed>
      */
-    public static function al(string $anahtar): array
+    public static function take(string $key): array
     {
         /*
          * Kapı ÖNBELLEĞİN ÖNÜNDE durur.
@@ -43,9 +43,9 @@ final class LocalInventory
          * korumayı atlatırdı — testler bunu yakaladı: senaryo tek başına
          * geçiyor, takımın içinde düşüyordu.
          */
-        self::kapiyiKontrolEt();
+        self::gateCheckDo();
 
-        self::$veri ??= self::yukle();
+        self::$veri ??= self::load();
 
         /*
          * Dosya yoksa BOŞ dönülür ve seeder hiçbir şey yazmaz. Uydurma bir
@@ -56,31 +56,31 @@ final class LocalInventory
             return [];
         }
 
-        if (! array_key_exists($anahtar, self::$veri)) {
-            throw new RuntimeException("Envanter dosyasında '{$anahtar}' anahtarı yok.");
+        if (! array_key_exists($key, self::$veri)) {
+            throw new RuntimeException("Envanter dosyasında '{$key}' anahtarı yok.");
         }
 
         /** @var array<int|string, mixed> */
-        return self::$veri[$anahtar];
+        return self::$veri[$key];
     }
 
     /** Gerçek veri var mı? Testler buna göre ne kadar iddialı olacağına karar verir. */
-    public static function gercekMi(): bool
+    public static function isReal(): bool
     {
-        return is_file(self::yol('inventory.php'));
+        return is_file(self::path('inventory.php'));
     }
 
     /**
      * @return array<string, mixed>
      */
-    private static function yukle(): array
+    private static function load(): array
     {
-        if (! self::gercekMi()) {
+        if (! self::isReal()) {
             return [];
         }
 
         /** @var array<string, mixed> */
-        return require self::yol('inventory.php');
+        return require self::path('inventory.php');
     }
 
     /**
@@ -91,9 +91,9 @@ final class LocalInventory
      * olmayan sunucular ve switch'ler yazardı. Kurulumu yapan kişi dosyayı
      * unutmuşsa bunu ekranda görmeli.
      */
-    private static function kapiyiKontrolEt(): void
+    private static function gateCheckDo(): void
     {
-        if (! self::gercekMi() && app()->environment('production')) {
+        if (! self::isReal() && app()->environment('production')) {
             throw new RuntimeException(
                 'Envanter dosyası yok: database/seeders/local/inventory.php. '
                 .'Şablonu (inventory.sample.php) kopyalayıp doldurun; üretimde şablon verisi kullanılmaz.',
@@ -101,15 +101,15 @@ final class LocalInventory
         }
     }
 
-    private static function yol(string $ad): string
+    private static function path(string $name): string
     {
-        return (self::$dizin ?? __DIR__.'/local').'/'.$ad;
+        return (self::$directory ?? __DIR__.'/local').'/'.$name;
     }
 
     /** Testler için: kaynağı başka bir dizine bağlar ve önbelleği düşürür. */
-    public static function dizinAyarla(?string $dizin): void
+    public static function directoryConfigure(?string $directory): void
     {
-        self::$dizin = $dizin;
+        self::$directory = $directory;
         self::$veri = null;
     }
 }

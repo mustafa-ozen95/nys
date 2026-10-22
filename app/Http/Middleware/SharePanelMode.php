@@ -23,8 +23,8 @@ class SharePanelMode
 {
     public function handle(Request $request, Closure $next): Response
     {
-        View::share('panelMode', $request->user()?->etkinPanelModu() ?? PanelMode::Simple);
-        View::share('gelismisModaGecebilir', (bool) $request->user()?->gelismisModaGecebilir());
+        View::share('panelMode', $request->user()?->activePanelMode() ?? PanelMode::Simple);
+        View::share('gelismisModaGecebilir', (bool) $request->user()?->advancedModeCanPass());
 
         return $next($request);
     }

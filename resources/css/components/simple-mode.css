@@ -1,19 +1,19 @@
 /*
- * Ayarlar → Basit mod: her switch bölümü bir kart (bkz. settings/partials/basit-mod).
+ * Ayarlar → Basit mod: her switch bölümü bir kart (bkz. settings/partials/simple-mode).
  */
-.basit-mod {
+.simple-mode {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
 }
 
-.basit-mod__bolum {
+.simple-mode__section {
     padding: var(--space-3) var(--space-4);
     border: 1px solid var(--color-line);
     border-radius: var(--radius);
 }
 
-.basit-mod__bas {
+.simple-mode__head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -21,17 +21,17 @@
     gap: var(--space-2) var(--space-4);
 }
 
-.basit-mod__anahtarlar {
+.simple-mode__keys {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-4);
 }
 
-.basit-mod__alanlar {
+.simple-mode__fields {
     margin-top: var(--space-2);
 }
 
-.basit-mod__alanlar > summary {
+.simple-mode__fields > summary {
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -40,7 +40,7 @@
     color: var(--color-text-secondary);
 }
 
-.basit-mod__izgara {
+.simple-mode__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: var(--space-2) var(--space-4);

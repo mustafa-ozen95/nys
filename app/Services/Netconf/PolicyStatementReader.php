@@ -237,9 +237,9 @@ class PolicyStatementReader
     private function splitPrefixListFilters(array $match): array
     {
         $filters = $match['prefix_list_filters'] ?? [];
-        $turler = array_unique(array_column($filters, 'match_type'));
+        $types = array_unique(array_column($filters, 'match_type'));
 
-        if ($filters === [] || count($turler) !== 1) {
+        if ($filters === [] || count($types) !== 1) {
             return [[], null, $match];
         }
 
@@ -247,7 +247,7 @@ class PolicyStatementReader
 
         return [
             array_values(array_column($filters, 'list')),
-            PrefixMatchType::tryFrom((string) reset($turler)),
+            PrefixMatchType::tryFrom((string) reset($types)),
             $match,
         ];
     }

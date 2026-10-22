@@ -139,22 +139,22 @@ class DeviceSettingsRequest extends FormRequest
             return null;
         }
 
-        $kapsam = $this->lines("{$key}_scope");
+        $scope = $this->lines("{$key}_scope");
 
         // Açık ama kapsam verilmemiş: cihazdaki yaygın kullanım "all".
-        return $kapsam === [] ? ['all'] : $kapsam;
+        return $scope === [] ? ['all'] : $scope;
     }
 
     private function lines(string $key): array
     {
-        $ham = $this->input($key);
+        $raw = $this->input($key);
 
-        if (is_array($ham)) {
-            return array_values(array_filter(array_map('trim', $ham), 'filled'));
+        if (is_array($raw)) {
+            return array_values(array_filter(array_map('trim', $raw), 'filled'));
         }
 
         return array_values(array_filter(
-            array_map('trim', preg_split('/[\r\n,]+/', (string) $ham) ?: []),
+            array_map('trim', preg_split('/[\r\n,]+/', (string) $raw) ?: []),
             'filled',
         ));
     }

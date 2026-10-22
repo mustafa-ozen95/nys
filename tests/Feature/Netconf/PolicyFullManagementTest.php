@@ -50,10 +50,10 @@ final class PolicyFullManagementTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
         // Varsayılan eylem TERİMLERDEN SONRA gelmeli; sıra Junos'ta anlamlı.
-        $this->assertStringContainsString('<term><name>A</name><then><accept/></then></term><then><reject/></then>', $yazilan);
+        $this->assertStringContainsString('<term><name>A</name><then><accept/></then></term><then><reject/></then>', $written);
     }
 
     /**
@@ -98,11 +98,11 @@ final class PolicyFullManagementTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<term><name>A</name>', $yazilan);
-        $this->assertStringContainsString('<from><protocol>direct</protocol></from>', $yazilan);
-        $this->assertStringContainsString('<then><accept/></then></policy-statement>', $yazilan);
+        $this->assertStringContainsString('<term><name>A</name>', $written);
+        $this->assertStringContainsString('<from><protocol>direct</protocol></from>', $written);
+        $this->assertStringContainsString('<then><accept/></then></policy-statement>', $written);
     }
 
     /**
@@ -127,15 +127,15 @@ final class PolicyFullManagementTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
         $this->assertStringContainsString(
             '<route-filter><address>10.0.0.0/8</address><orlonger/></route-filter>',
-            $yazilan,
+            $written,
         );
         $this->assertStringContainsString(
             '<route-filter><address>172.16.0.0/12</address><prefix-length-range>/24-/32</prefix-length-range></route-filter>',
-            $yazilan,
+            $written,
         );
     }
 
@@ -206,20 +206,20 @@ final class PolicyFullManagementTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<as-path>musteri1-den</as-path>', $yazilan);
-        $this->assertStringContainsString('<protocol>bgp</protocol>', $yazilan);
-        $this->assertStringContainsString('<neighbor>198.18.20.1</neighbor>', $yazilan);
+        $this->assertStringContainsString('<as-path>musteri1-den</as-path>', $written);
+        $this->assertStringContainsString('<protocol>bgp</protocol>', $written);
+        $this->assertStringContainsString('<neighbor>198.18.20.1</neighbor>', $written);
         $this->assertStringContainsString(
             '<local-preference><local-preference>200</local-preference></local-preference>',
-            $yazilan,
+            $written,
         );
-        $this->assertStringContainsString('<metric><add/><metric>10</metric></metric>', $yazilan);
-        $this->assertStringContainsString('<as-path-prepend>65000 65000</as-path-prepend>', $yazilan);
+        $this->assertStringContainsString('<metric><add/><metric>10</metric></metric>', $written);
+        $this->assertStringContainsString('<as-path-prepend>65000 65000</as-path-prepend>', $written);
         $this->assertStringContainsString(
             '<community><add/><community-name>topluluk-a</community-name></community>',
-            $yazilan,
+            $written,
         );
     }
 
@@ -291,12 +291,12 @@ final class PolicyFullManagementTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<uydurma-kapsayici>x</uydurma-kapsayici>', $yazilan, 'Politika satırı kayboldu.');
-        $this->assertStringContainsString('<uydurma-kosul>y</uydurma-kosul>', $yazilan, 'from satırı kayboldu.');
-        $this->assertStringContainsString('<uydurma-eylem>z</uydurma-eylem>', $yazilan, 'then satırı kayboldu.');
-        $this->assertStringContainsString('<uydurma-terim-alani>q</uydurma-terim-alani>', $yazilan, 'Terim satırı kayboldu.');
+        $this->assertStringContainsString('<uydurma-kapsayici>x</uydurma-kapsayici>', $written, 'Politika satırı kayboldu.');
+        $this->assertStringContainsString('<uydurma-kosul>y</uydurma-kosul>', $written, 'from satırı kayboldu.');
+        $this->assertStringContainsString('<uydurma-eylem>z</uydurma-eylem>', $written, 'then satırı kayboldu.');
+        $this->assertStringContainsString('<uydurma-terim-alani>q</uydurma-terim-alani>', $written, 'Terim satırı kayboldu.');
     }
 
     /**

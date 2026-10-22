@@ -78,11 +78,11 @@ class Picker extends Component
      */
     public function choices(): array
     {
-        $secenekler = ['' => $this->empty] + $this->options;
+        $options = ['' => $this->empty] + $this->options;
 
         return $this->manual
-            ? $secenekler + [self::MANUAL => $this->manualLabel]
-            : $secenekler;
+            ? $options + [self::MANUAL => $this->manualLabel]
+            : $options;
     }
 
     /**

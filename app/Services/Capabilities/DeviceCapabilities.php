@@ -27,9 +27,9 @@ class DeviceCapabilities
      */
     public function values(NetworkSwitch $switch, string $key): ?array
     {
-        $olculen = $switch->device_capabilities[$key] ?? null;
+        $measured = $switch->device_capabilities[$key] ?? null;
 
-        return is_array($olculen) ? array_values(array_map(strval(...), $olculen)) : null;
+        return is_array($measured) ? array_values(array_map(strval(...), $measured)) : null;
     }
 
     /**
@@ -37,9 +37,9 @@ class DeviceCapabilities
      */
     public function supports(NetworkSwitch $switch, string $key, string $value): bool
     {
-        $olculen = $this->values($switch, $key);
+        $measured = $this->values($switch, $key);
 
-        return $olculen === null || in_array($value, $olculen, true);
+        return $measured === null || in_array($value, $measured, true);
     }
 
     /**
@@ -54,22 +54,22 @@ class DeviceCapabilities
      */
     public function speedsFor(NetworkSwitch $switch, string $interfaceName): ?array
     {
-        $kapsam = PortSpeedCapability::scope($interfaceName);
-        $olculen = $this->values($switch, 'port.speeds');
+        $scope = PortSpeedCapability::scope($interfaceName);
+        $measured = $this->values($switch, 'port.speeds');
 
-        if ($kapsam === null || $olculen === null) {
+        if ($scope === null || $measured === null) {
             return null;
         }
 
-        $onek = $kapsam.':';
+        $prefix = $scope.':';
 
-        $hizlar = array_values(array_map(
-            static fn (string $anahtar): string => substr($anahtar, strlen($onek)),
-            array_filter($olculen, static fn (string $a): bool => str_starts_with($a, $onek)),
+        $speeds = array_values(array_map(
+            static fn (string $key): string => substr($key, strlen($prefix)),
+            array_filter($measured, static fn (string $a): bool => str_starts_with($a, $prefix)),
         ));
 
         // Bu PIC hiç ölçülmemiş: daraltma yapılmaz.
-        return $hizlar === [] ? null : $hizlar;
+        return $speeds === [] ? null : $speeds;
     }
 
     /**
@@ -80,9 +80,9 @@ class DeviceCapabilities
      */
     public function filterSpeeds(NetworkSwitch $switch, string $interfaceName, array $options): array
     {
-        $olculen = $this->speedsFor($switch, $interfaceName);
+        $measured = $this->speedsFor($switch, $interfaceName);
 
-        return $olculen === null ? $options : array_intersect_key($options, array_flip($olculen));
+        return $measured === null ? $options : array_intersect_key($options, array_flip($measured));
     }
 
     /**
@@ -97,12 +97,12 @@ class DeviceCapabilities
      */
     public function filter(NetworkSwitch $switch, string $key, array $options): array
     {
-        $olculen = $this->values($switch, $key);
+        $measured = $this->values($switch, $key);
 
-        if ($olculen === null) {
+        if ($measured === null) {
             return $options;
         }
 
-        return array_intersect_key($options, array_flip($olculen));
+        return array_intersect_key($options, array_flip($measured));
     }
 }

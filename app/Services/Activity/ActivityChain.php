@@ -115,9 +115,9 @@ class ActivityChain
      */
     private function rememberTail(string $chain, ActivityLog $log): void
     {
-        $nokta = ['id' => $log->id, 'hash' => $log->hash];
+        $point = ['id' => $log->id, 'hash' => $log->hash];
 
-        DB::afterCommit(fn () => Cache::forever($this->tailKey($chain), $nokta));
+        DB::afterCommit(fn () => Cache::forever($this->tailKey($chain), $point));
     }
 
     /**
@@ -127,9 +127,9 @@ class ActivityChain
      */
     public function forgetTailIfChainEmpty(string $chain): void
     {
-        $kalan = ActivityLog::query()->where('chain', $chain)->whereNotNull('hash')->exists();
+        $remaining = ActivityLog::query()->where('chain', $chain)->whereNotNull('hash')->exists();
 
-        if (! $kalan) {
+        if (! $remaining) {
             Cache::forget($this->tailKey($chain));
         }
     }
@@ -172,13 +172,13 @@ class ActivityChain
         $acknowledged = 0;
 
         foreach (self::CHAINS as $chain) {
-            $sonuc = $this->verifyChain($chain);
+            $result = $this->verifyChain($chain);
 
-            $acknowledged += $sonuc['acknowledged'];
-            $checked += $sonuc['checked'];
-            $unprotected += $sonuc['unprotected'];
-            $broken ??= $sonuc['broken_id'];
-            $brokenIds = [...$brokenIds, ...$sonuc['broken_ids']];
+            $acknowledged += $result['acknowledged'];
+            $checked += $result['checked'];
+            $unprotected += $result['unprotected'];
+            $broken ??= $result['broken_id'];
+            $brokenIds = [...$brokenIds, ...$result['broken_ids']];
         }
 
         $result = [
@@ -213,12 +213,12 @@ class ActivityChain
         $unprotected = 0;
         $broken = [];
         $fingerprints = [];
-        $son = null;
+        $last = null;
 
         ActivityLog::query()
             ->where('chain', $chain)
             ->orderBy('id')
-            ->chunkById(500, function ($rows) use (&$previous, &$checked, &$unprotected, &$broken, &$fingerprints, &$son): bool {
+            ->chunkById(500, function ($rows) use (&$previous, &$checked, &$unprotected, &$broken, &$fingerprints, &$last): bool {
                 foreach ($rows as $log) {
                     if ($log->hash === null) {
                         $unprotected++;
@@ -234,7 +234,7 @@ class ActivityChain
                     }
 
                     $previous = $log->hash;
-                    $son = ['id' => $log->id, 'hash' => $log->hash];
+                    $last = ['id' => $log->id, 'hash' => $log->hash];
                 }
 
                 return true;
@@ -244,7 +244,7 @@ class ActivityChain
         // mühürle gizlenemez.
         [$broken, $acknowledged] = $this->applySeal($chain, $broken, $fingerprints);
 
-        $this->checkTail($chain, $son, $broken);
+        $this->checkTail($chain, $last, $broken);
 
         return [
             'checked' => $checked,
@@ -280,9 +280,9 @@ class ActivityChain
         $counts = [];
 
         foreach (self::CHAINS as $chain) {
-            $sonuc = $this->verifyChain($chain);
-            $entries[$chain] = $sonuc['fingerprints'];
-            $counts[$chain] = count($sonuc['fingerprints']);
+            $result = $this->verifyChain($chain);
+            $entries[$chain] = $result['fingerprints'];
+            $counts[$chain] = count($result['fingerprints']);
         }
 
         $body = ['version' => 1, 'created_at' => now()->toIso8601String(), 'note' => $note, 'entries' => $entries];
@@ -310,18 +310,18 @@ class ActivityChain
         }
 
         $entries = $this->readSeal()[$chain] ?? [];
-        $kalan = [];
-        $kabul = 0;
+        $remaining = [];
+        $accept = 0;
 
         foreach ($broken as $id) {
             if (isset($entries[$id]) && hash_equals((string) $entries[$id], $fingerprints[$id])) {
-                $kabul++;
+                $accept++;
             } else {
-                $kalan[] = $id;
+                $remaining[] = $id;
             }
         }
 
-        return [$kalan, $kabul];
+        return [$remaining, $accept];
     }
 
     /**
@@ -394,22 +394,22 @@ class ActivityChain
      * @param  array{id: int, hash: string}|null  $son
      * @param  list<int>  $broken
      */
-    private function checkTail(string $chain, ?array $son, array &$broken): void
+    private function checkTail(string $chain, ?array $last, array &$broken): void
     {
-        $nokta = Cache::get($this->tailKey($chain));
+        $point = Cache::get($this->tailKey($chain));
 
-        if (is_array($nokta) && isset($nokta['id'], $nokta['hash'])) {
-            $hash = ActivityLog::query()->where('chain', $chain)->whereKey($nokta['id'])->value('hash');
+        if (is_array($point) && isset($point['id'], $point['hash'])) {
+            $hash = ActivityLog::query()->where('chain', $chain)->whereKey($point['id'])->value('hash');
 
-            if ($hash !== $nokta['hash']) {
-                $broken[] = (int) $nokta['id'];
+            if ($hash !== $point['hash']) {
+                $broken[] = (int) $point['id'];
             }
 
             return;
         }
 
-        if ($son !== null && $broken === []) {
-            Cache::forever($this->tailKey($chain), $son);
+        if ($last !== null && $broken === []) {
+            Cache::forever($this->tailKey($chain), $last);
         }
     }
 
@@ -466,7 +466,7 @@ class ActivityChain
      */
     private function hashFor(ActivityLog $log, ?string $previous): string
     {
-        $ortak = [
+        $shared = [
             $previous ?? '',
             $log->created_at?->format('Y-m-d H:i:s.u') ?? '',
             (string) $log->user_id,
@@ -479,8 +479,8 @@ class ActivityChain
 
         // Satır kendi biçimini söyler; doğrulama o biçimle hesaplar.
         $payload = implode('|', ((int) $log->chain_version) >= 2
-            ? [...$ortak, (string) $log->reason, (string) $log->ip_address]
-            : [...$ortak, (string) $log->ip_address]);
+            ? [...$shared, (string) $log->reason, (string) $log->ip_address]
+            : [...$shared, (string) $log->ip_address]);
 
         return hash_hmac('sha256', $payload, (string) config('activity.chain_key'));
     }

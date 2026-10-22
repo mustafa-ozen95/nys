@@ -281,8 +281,8 @@ class PortReader
                 continue;
             }
 
-            foreach ($node->xpath('./*[local-name()="interface"]/*[local-name()="name"]') ?: [] as $arayuz) {
-                $port = preg_replace('/\.\d+$/', '', trim((string) $arayuz));
+            foreach ($node->xpath('./*[local-name()="interface"]/*[local-name()="name"]') ?: [] as $interface) {
+                $port = preg_replace('/\.\d+$/', '', trim((string) $interface));
 
                 if ($port !== null && $port !== '') {
                     $members[$port][] = $name;
@@ -433,11 +433,11 @@ class PortReader
      */
     private function switchingMode(SimpleXMLElement $node): string
     {
-        foreach (['port-mode', 'interface-mode'] as $etiket) {
-            $deger = trim((string) ($node->xpath('.//*[local-name()="'.$etiket.'"]')[0] ?? ''));
+        foreach (['port-mode', 'interface-mode'] as $tag) {
+            $value = trim((string) ($node->xpath('.//*[local-name()="'.$tag.'"]')[0] ?? ''));
 
-            if ($deger !== '') {
-                return $deger;
+            if ($value !== '') {
+                return $value;
             }
         }
 
@@ -514,10 +514,10 @@ class PortReader
          * şemasını bilmiyor, bu yüzden ikisine de bakar — bir cihazda
          * yalnızca biri bulunur.
          */
-        $duz = trim((string) ($node->xpath('./*[local-name()="speed"]')[0] ?? ''));
+        $flat = trim((string) ($node->xpath('./*[local-name()="speed"]')[0] ?? ''));
 
-        if ($duz !== '') {
-            return match ($duz) {
+        if ($flat !== '') {
+            return match ($flat) {
                 '10m' => '10',
                 '100m' => '100',
                 '1g' => '1000',

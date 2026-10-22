@@ -1,5 +1,5 @@
 <x-layout.gate :title="$session['label'].' oturumu'" wide>
-    <div class="remote-session" data-oturum-jetonu="{{ $token }}">
+    <div class="remote-session" data-session-token="{{ $token }}">
         <header class="remote-session__head">
             <span class="dot dot--green"></span>
             <span class="mono">{{ $session['label'] }}</span>
@@ -7,7 +7,7 @@
 
             <span class="spacer"></span>
 
-            <button type="button" class="btn btn--danger btn--sm" data-oturum-kapat>Oturumu kapat</button>
+            <button type="button" class="btn btn--danger btn--sm" data-session-close>Oturumu kapat</button>
         </header>
 
         <iframe class="remote-session__frame"

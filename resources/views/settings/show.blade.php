@@ -35,7 +35,7 @@
 
                 <x-ui.panel :title="$group['label']">
                     {{-- Basit mod'un kendi düzeni var: 28 bölüm anahtarı ve 167 alan düz listede okunamazdı. --}}
-                    @if ($group['slug'] === 'basit-mod')
+                    @if ($group['slug'] === 'simple-mode')
                         @include('settings.partials.simple-mode')
                     @else
                         <div class="form-grid">

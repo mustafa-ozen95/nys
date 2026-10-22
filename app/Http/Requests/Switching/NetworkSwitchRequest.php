@@ -95,29 +95,29 @@ class NetworkSwitchRequest extends FormRequest
                 return;
             }
 
-            $kayitli = $switch->credentials()->pluck('protocol')
-                ->map(fn ($protokol): string => $protokol instanceof CredentialProtocol ? $protokol->value : (string) $protokol);
+            $registered = $switch->credentials()->pluck('protocol')
+                ->map(fn ($protocol): string => $protocol instanceof CredentialProtocol ? $protocol->value : (string) $protocol);
 
-            $eksik = [];
+            $missing = [];
 
-            if ($kayitli->contains(CredentialProtocol::Ssh->value) && ! $this->filled('ssh_password')) {
-                $eksik['ssh_password'] = 'SSH parolası';
+            if ($registered->contains(CredentialProtocol::Ssh->value) && ! $this->filled('ssh_password')) {
+                $missing['ssh_password'] = 'SSH parolası';
             }
 
             // Boş NETCONF parolası SSH'ınkinden kopyalanır; ikisi de boşsa eski parola kalır.
-            if ($kayitli->contains(CredentialProtocol::Netconf->value)
+            if ($registered->contains(CredentialProtocol::Netconf->value)
                 && ! ($this->boolean('netconf_enabled') && ($this->filled('netconf_password') || $this->filled('ssh_password')))) {
-                $eksik['netconf_password'] = 'NETCONF parolası (ve NETCONF açık)';
+                $missing['netconf_password'] = 'NETCONF parolası (ve NETCONF açık)';
             }
 
-            if ($kayitli->contains(CredentialProtocol::SnmpV2c->value) && ! $this->filled('snmp_community')) {
-                $eksik['snmp_community'] = 'SNMP community';
+            if ($registered->contains(CredentialProtocol::SnmpV2c->value) && ! $this->filled('snmp_community')) {
+                $missing['snmp_community'] = 'SNMP community';
             }
 
-            foreach ($eksik as $alan => $ad) {
+            foreach ($missing as $alan => $name) {
                 $validator->errors()->add(
                     $alan,
-                    "Yönetim IP adresi değişirken kayıtlı kimlik bilgisi yeni adrese gönderilir; $ad yeniden girilmeli "
+                    "Yönetim IP adresi değişirken kayıtlı kimlik bilgisi yeni adrese gönderilir; $name yeniden girilmeli "
                     .'(ya da “Parolayı Gör” yetkisi gerekir).',
                 );
             }

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { girisYap } from '../support/login.js';
+import { performLogin } from '../support/login.js';
 
 /**
  * Sayfa geçişleri tarayıcıyı YENİLEMEZ.
@@ -20,29 +20,29 @@ import { girisYap } from '../support/login.js';
  * İşaret bu spec'e özgüdür (yenilenme ölçümü); ortak giriş adımına
  * karışmaz.
  */
-async function girisYapVeIsaretle(page) {
-    await girisYap(page);
-    await page.evaluate(() => { window.__gezinmeIsareti = 'duruyor'; });
+async function loginAndMark(page) {
+    await performLogin(page);
+    await page.evaluate(() => { window.__navigationMarker = 'duruyor'; });
 }
 
 /** Üst menüden git ve adresin değiştiğini bekle. */
-async function menudenGit(page, yol) {
-    const baglanti = page.locator(`a[href$="${yol}"]`).first();
+async function goFromMenu(page, path) {
+    const connection = page.locator(`a[href$="${path}"]`).first();
 
-    test.skip(await baglanti.count() === 0, `Menüde ${yol} bağlantısı yok.`);
+    test.skip(await connection.count() === 0, `Menüde ${path} bağlantısı yok.`);
 
-    await baglanti.click();
-    await page.waitForFunction((hedef) => window.location.pathname === hedef, yol, { timeout: 15000 });
+    await connection.click();
+    await page.waitForFunction((target) => window.location.pathname === target, path, { timeout: 15000 });
 }
 
 test('menüden gezinmek sayfayı yenilemez', async ({ page }) => {
-    await girisYapVeIsaretle(page);
+    await loginAndMark(page);
 
-    for (const yol of ['/switchler', '/adresleme', '/sunucular', '/kullanicilar']) {
-        await menudenGit(page, yol);
+    for (const path of ['/switches', '/addressing', '/servers', '/users']) {
+        await goFromMenu(page, path);
 
         // İşaret duruyorsa JavaScript bağlamı korunmuş, yani yenileme olmamış.
-        await expect(await page.evaluate(() => window.__gezinmeIsareti)).toBe('duruyor');
+        await expect(await page.evaluate(() => window.__navigationMarker)).toBe('duruyor');
     }
 
     // Başlık da güncellenmeli; yoksa sekme eski sayfanın adını taşır.
@@ -50,18 +50,18 @@ test('menüden gezinmek sayfayı yenilemez', async ({ page }) => {
 });
 
 test('geri ve ileri de yenilemeden çalışır', async ({ page }) => {
-    await girisYapVeIsaretle(page);
+    await loginAndMark(page);
 
-    await menudenGit(page, '/switchler');
-    await menudenGit(page, '/sunucular');
+    await goFromMenu(page, '/switches');
+    await goFromMenu(page, '/servers');
 
     await page.goBack();
-    await page.waitForFunction(() => window.location.pathname === '/switchler', null, { timeout: 15000 });
-    await expect(await page.evaluate(() => window.__gezinmeIsareti)).toBe('duruyor');
+    await page.waitForFunction(() => window.location.pathname === '/switches', null, { timeout: 15000 });
+    await expect(await page.evaluate(() => window.__navigationMarker)).toBe('duruyor');
 
     await page.goForward();
-    await page.waitForFunction(() => window.location.pathname === '/sunucular', null, { timeout: 15000 });
-    await expect(await page.evaluate(() => window.__gezinmeIsareti)).toBe('duruyor');
+    await page.waitForFunction(() => window.location.pathname === '/servers', null, { timeout: 15000 });
+    await expect(await page.evaluate(() => window.__navigationMarker)).toBe('duruyor');
 });
 
 /**
@@ -73,11 +73,11 @@ test('geri ve ileri de yenilemeden çalışır', async ({ page }) => {
  * demek olurdu, yani "hiçbir şey olmadı".
  */
 test('geçişten sonra tema düğmesi bir kez çalışır', async ({ page }) => {
-    await girisYapVeIsaretle(page);
+    await loginAndMark(page);
 
-    await menudenGit(page, '/switchler');
-    await menudenGit(page, '/sunucular');
-    await menudenGit(page, '/kullanicilar');
+    await goFromMenu(page, '/switches');
+    await goFromMenu(page, '/servers');
+    await goFromMenu(page, '/users');
 
     const once = await page.evaluate(() => document.documentElement.dataset.theme);
 
@@ -89,13 +89,13 @@ test('geçişten sonra tema düğmesi bir kez çalışır', async ({ page }) => 
 });
 
 test('geçişten sonra pencere açılır', async ({ page }) => {
-    await girisYapVeIsaretle(page);
+    await loginAndMark(page);
 
-    await menudenGit(page, '/switchler');
-    await menudenGit(page, '/sunucular');
+    await goFromMenu(page, '/switches');
+    await goFromMenu(page, '/servers');
 
     await page.getByRole('button', { name: 'Yeni sunucu' }).click();
-    await expect(page.locator('#sunucu-ekle')).toBeVisible();
+    await expect(page.locator('#server-add')).toBeVisible();
 });
 
 /**
@@ -103,19 +103,19 @@ test('geçişten sonra pencere açılır', async ({ page }) => {
  * Düğüme doğrudan bağlanan bir dinleyici ilk geçişte kopardı.
  */
 test('geçişten sonra bildirim paneli çalışır', async ({ page }) => {
-    await girisYapVeIsaretle(page);
+    await loginAndMark(page);
 
-    await menudenGit(page, '/switchler');
-    await menudenGit(page, '/sunucular');
+    await goFromMenu(page, '/switches');
+    await goFromMenu(page, '/servers');
 
-    await page.locator('[data-bildirim-ac]').click();
-    await expect(page.locator('[data-bildirim-panel]')).toBeVisible();
+    await page.locator('[data-notification-open]').click();
+    await expect(page.locator('[data-notification-panel]')).toBeVisible();
 
-    const istek = page.waitForResponse(
-        (yanit) => yanit.url().includes('/bildirimler/okundu') && yanit.request().method() === 'POST',
+    const request = page.waitForResponse(
+        (response) => response.url().includes('/notifications/seen') && response.request().method() === 'POST',
     );
 
-    await page.locator('[data-bildirim-okundu]').click();
+    await page.locator('[data-notification-read]').click();
 
-    expect((await istek).status()).toBe(200);
+    expect((await request).status()).toBe(200);
 });

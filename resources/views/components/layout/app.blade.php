@@ -17,7 +17,7 @@
         Tema çerezinin alan adı. Merkez ve paneller ayrı köklerdir; üst alan
         adı verilince seçim dördünde de paylaşılır (bkz. config/theme.php).
     --}}
-    <meta name="tema-alan" content="{{ config('theme.cerez_alani') }}">
+    <meta name="tema-alan" content="{{ config('theme.cookie_domain') }}">
 
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ asset('favicon.svg') }}">

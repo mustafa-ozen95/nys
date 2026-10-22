@@ -25,14 +25,14 @@ use Throwable;
 class CertificateType
 {
     /** Kurulumun konteynere bağladığı yollar (standart kurulumda bağlı değil; bkz. docker/README.md → Sertifika sekmesi). */
-    private const DURUM = '/etc/dc/sertifika-durum.json';
+    private const STATUS = '/etc/dc/sertifika-durum.json';
 
     private const PANEL = '/etc/dc/sertifika-panel';
 
     /** @return array<string, mixed>|null */
-    public function durum(): ?array
+    public function status(): ?array
     {
-        return $this->oku(self::DURUM);
+        return $this->read(self::STATUS);
     }
 
     /**
@@ -44,21 +44,21 @@ class CertificateType
      *
      * @return list<array{ad: string, deger: string}>|null
      */
-    public function kayitlar(): ?array
+    public function records(): ?array
     {
-        $veri = $this->oku(self::PANEL.'/kayitlar.json');
+        $veri = $this->read(self::PANEL.'/kayitlar.json');
 
         return $veri === null ? null : array_values((array) ($veri['kayitlar'] ?? []));
     }
 
     /** @return array<string, mixed>|null */
-    public function sonIslem(): ?array
+    public function lastOperation(): ?array
     {
-        return $this->oku(self::PANEL.'/islem.json');
+        return $this->read(self::PANEL.'/islem.json');
     }
 
     /** Sunucu henüz isteği almadıysa ekran "işleniyor" der. */
-    public function istekBekliyorMu(): bool
+    public function isRequestPending(): bool
     {
         return is_file(self::PANEL.'/istek.json');
     }
@@ -72,15 +72,15 @@ class CertificateType
      *
      * @return list<array{ad: string, deger: string, yayildi: bool}>
      */
-    public function yayilmaDurumu(): array
+    public function propagationStatus(): array
     {
         $liste = [];
 
-        foreach ($this->kayitlar() ?? [] as $kayit) {
+        foreach ($this->records() ?? [] as $record) {
             $liste[] = [
-                'ad' => (string) $kayit['ad'],
-                'deger' => (string) $kayit['deger'],
-                'yayildi' => $this->txtVarMi((string) $kayit['ad'], (string) $kayit['deger']),
+                'ad' => (string) $record['ad'],
+                'deger' => (string) $record['deger'],
+                'yayildi' => $this->hasTxt((string) $record['ad'], (string) $record['deger']),
             ];
         }
 
@@ -92,14 +92,14 @@ class CertificateType
      *
      * @param  'baslat'|'tamamla'  $eylem
      */
-    public function istekBirak(string $eylem): bool
+    public function requestLeave(string $action): bool
     {
         if (! is_dir(self::PANEL) || ! is_writable(self::PANEL)) {
             return false;
         }
 
         $veri = json_encode([
-            'eylem' => $eylem,
+            'eylem' => $action,
             'isteyen' => (string) (Auth::user()?->email ?? 'bilinmiyor'),
             'zaman' => now()->toIso8601String(),
         ], JSON_UNESCAPED_UNICODE);
@@ -114,17 +114,17 @@ class CertificateType
      * çözümleyicisi de dışarıyı görüyor. Sorgu başarısızsa "yayılmadı"
      * denir — eksik bilgi "tamam" sayılmamalı.
      */
-    private function txtVarMi(string $ad, string $deger): bool
+    private function hasTxt(string $name, string $value): bool
     {
         try {
-            $kayitlar = @dns_get_record($ad, DNS_TXT) ?: [];
+            $records = @dns_get_record($name, DNS_TXT) ?: [];
         } catch (Throwable) {
             return false;
         }
 
-        foreach ($kayitlar as $kayit) {
-            foreach ((array) ($kayit['entries'] ?? [$kayit['txt'] ?? '']) as $metin) {
-                if (trim((string) $metin) === $deger) {
+        foreach ($records as $record) {
+            foreach ((array) ($record['entries'] ?? [$record['txt'] ?? '']) as $text) {
+                if (trim((string) $text) === $value) {
                     return true;
                 }
             }
@@ -134,13 +134,13 @@ class CertificateType
     }
 
     /** @return array<string, mixed>|null */
-    private function oku(string $yol): ?array
+    private function read(string $path): ?array
     {
-        if (! is_file($yol) || ! is_readable($yol)) {
+        if (! is_file($path) || ! is_readable($path)) {
             return null;
         }
 
-        $veri = json_decode((string) file_get_contents($yol), true);
+        $veri = json_decode((string) file_get_contents($path), true);
 
         return is_array($veri) ? $veri : null;
     }

@@ -21,13 +21,13 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureUserIsActive
 {
     /** Yönlendirme anlamayan uçlar. */
-    private const ATLANAN = ['ajax.remote.guard'];
+    private const SKIPPED = ['ajax.remote.guard'];
 
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if (in_array($request->route()?->getName(), self::ATLANAN, true)) {
+        if (in_array($request->route()?->getName(), self::SKIPPED, true)) {
             return $next($request);
         }
 

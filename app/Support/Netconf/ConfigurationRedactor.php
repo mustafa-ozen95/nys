@@ -46,7 +46,7 @@ final class ConfigurationRedactor
     public static function apply(string $configuration): string
     {
         // "authentication-key "$9$abc";" → "authentication-key ••••;"
-        $anahtarlar = implode('|', array_map(
+        $keys = implode('|', array_map(
             static fn (string $statement): string => preg_quote($statement, '/'),
             self::SECRET_STATEMENTS,
         ));
@@ -57,8 +57,8 @@ final class ConfigurationRedactor
          * kaçar — SNMP community tam olarak öyle basılıyor:
          *   + community "gizli" { authorization read-only; }
          */
-        $sonuc = preg_replace(
-            '/\b('.$anahtarlar.')\s+("[^"]*"|\S+?)(?=\s*[;{]|\s*$)/mi',
+        $result = preg_replace(
+            '/\b('.$keys.')\s+("[^"]*"|\S+?)(?=\s*[;{]|\s*$)/mi',
             '$1 '.self::MASK,
             $configuration,
         ) ?? $configuration;
@@ -68,6 +68,6 @@ final class ConfigurationRedactor
          * maskelenir: Junos onları satır başında ya da beklenmedik bir
          * bağlamda da basabilir.
          */
-        return preg_replace('/"?\$[19]\$[^\s";]+"?/', self::MASK, $sonuc) ?? $sonuc;
+        return preg_replace('/"?\$[19]\$[^\s";]+"?/', self::MASK, $result) ?? $result;
     }
 }

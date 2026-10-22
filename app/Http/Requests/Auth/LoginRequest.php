@@ -76,7 +76,7 @@ class LoginRequest extends FormRequest
      */
     private function ensureIsNotRateLimited(): void
     {
-        $sinir = (int) config('auth.max_attempts');
+        $limit = (int) config('auth.max_attempts');
 
         /*
          * SIFIR "KİLİT YOK" DEMEKTİR ve burada erken dönmek ŞARTTIR.
@@ -85,11 +85,11 @@ class LoginRequest extends FormRequest
          * ya da eşit olduğu için İLK yanlış paroladan sonra kilitler, yani
          * kapatmak isterken en sert hâline getirirdi.
          */
-        if ($sinir <= 0) {
+        if ($limit <= 0) {
             return;
         }
 
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $sinir)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $limit)) {
             return;
         }
 

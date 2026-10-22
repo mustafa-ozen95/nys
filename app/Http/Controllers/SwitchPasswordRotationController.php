@@ -74,7 +74,7 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
             ->values();
 
         return view('settings.passwords', [
-            'sections' => $this->catalog->tabs('parolalar'),
+            'sections' => $this->catalog->tabs('passwords'),
             'switches' => $switches,
             'stranded' => SwitchPasswordRotation::query()
                 ->stranded()
@@ -101,7 +101,7 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
              * Kaydetme yine ayar ucundan geçer (doğrulama, saklama ve bölüm
              * yetkisi orada); yetkisi olmayana form hiç gösterilmez.
              */
-            'formatGroup' => $group = $this->catalog->group('cihaz-parolasi'),
+            'formatGroup' => $group = $this->catalog->group('device-password'),
             'formatValues' => collect($group['items'] ?? [])
                 ->mapWithKeys(fn ($item): array => [$item->key => config($item->key)])
                 ->all(),
@@ -126,10 +126,10 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
      */
     private function activeSummary(array $active): array
     {
-        $biten = array_sum(array_column($active, 'adim'));
-        $toplam = max(1, array_sum(array_column($active, 'toplam')));
+        $ending = array_sum(array_column($active, 'adim'));
+        $total = max(1, array_sum(array_column($active, 'toplam')));
 
-        return ['biten' => $biten, 'toplam' => $toplam, 'yuzde' => (int) round($biten / $toplam * 100)];
+        return ['biten' => $ending, 'toplam' => $total, 'yuzde' => (int) round($ending / $total * 100)];
     }
 
     /**
@@ -172,57 +172,57 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
      */
     private function activeMap($switches): array
     {
-        $harita = [];
+        $map = [];
 
         foreach ($switches as $switch) {
-            $durum = $this->durum($switch);
+            $status = $this->status($switch);
 
-            if ($durum !== null) {
-                $harita[$switch->uuid] = $durum;
+            if ($status !== null) {
+                $map[$switch->uuid] = $status;
             }
         }
 
-        return $harita;
+        return $map;
     }
 
     /** Bu cihazda süren bir tur var mı? Yoksa null. */
-    private function durum(NetworkSwitch $switch): ?array
+    private function status(NetworkSwitch $switch): ?array
     {
-        $tur = $switch->latestPasswordRotation;
-        $bekleyen = RotateSwitchPasswordJob::bekleyen($switch->id);
+        $round = $switch->latestPasswordRotation;
+        $pending = RotateSwitchPasswordJob::pending($switch->id);
 
         /*
          * Kuyruğa alındı ama işçi henüz başlamadı: tur kaydı yok, iş var.
          * Kayıt izden SONRA açıldıysa iş başlamış demektir ve iz düşer.
          */
-        $baslamamis = $bekleyen !== null
-            && ($tur === null || $tur->created_at?->timestamp < $bekleyen);
+        $notStarted = $pending !== null
+            && ($round === null || $round->created_at?->timestamp < $pending);
 
-        if ($baslamamis) {
+        if ($notStarted) {
             return [
                 'yuzde' => 4,
                 'adim' => 0,
-                'toplam' => PasswordRotationStage::ADIM_SAYISI,
+                'toplam' => PasswordRotationStage::STEP_COUNT,
                 'metin' => 'Sıraya alındı, işçi bekleniyor…',
                 'durum' => PasswordRotationStatus::Pending->value,
             ];
         }
 
-        if ($tur === null || ! in_array($tur->status, [PasswordRotationStatus::Pending, PasswordRotationStatus::Running], true)) {
+        if ($round === null || ! in_array($round->status, [PasswordRotationStatus::Pending, PasswordRotationStatus::Running], true)) {
             return null;
         }
 
-        RotateSwitchPasswordJob::iziSil($switch->id);
+        RotateSwitchPasswordJob::traceDelete($switch->id);
 
-        $asama = $tur->stage ?? PasswordRotationStage::Started;
-        $adim = $asama->step();
+        $stage = $round->stage ?? PasswordRotationStage::Started;
+        $step = $stage->step();
 
         return [
-            'yuzde' => (int) round($adim / PasswordRotationStage::ADIM_SAYISI * 100),
-            'adim' => $adim,
-            'toplam' => PasswordRotationStage::ADIM_SAYISI,
-            'metin' => $asama->running(),
-            'durum' => $tur->status->value,
+            'yuzde' => (int) round($step / PasswordRotationStage::STEP_COUNT * 100),
+            'adim' => $step,
+            'toplam' => PasswordRotationStage::STEP_COUNT,
+            'metin' => $stage->running(),
+            'durum' => $round->status->value,
         ];
     }
 
@@ -253,7 +253,7 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
             ->filter(fn (NetworkSwitch $switch): bool => $request->user()->can('rotate', $switch))
             ->values();
 
-        RotateSwitchPasswordJob::sirayaAl(
+        RotateSwitchPasswordJob::enqueueChain(
             $switches->pluck('id')->all(),
             $request->user()?->id,
         );
@@ -274,7 +274,7 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
      */
     public function update(NetworkSwitch $switch): RedirectResponse
     {
-        RotateSwitchPasswordJob::kuyrukla($switch->id, request()->user()?->id);
+        RotateSwitchPasswordJob::enqueue($switch->id, request()->user()?->id);
 
         return back()->with('status', "{$switch->hostname} için parola değişimi kuyruğa alındı.");
     }
@@ -295,7 +295,7 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
      */
     public function manual(DevicePasswordRequest $request, NetworkSwitch $switch): RedirectResponse
     {
-        RotateSwitchPasswordJob::kuyrukla(
+        RotateSwitchPasswordJob::enqueue(
             $switch->id,
             $request->user()?->id,
             $request->string('password')->toString(),
@@ -335,7 +335,7 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
      */
     private function format(): string
     {
-        $siniflar = array_keys(array_filter([
+        $classes = array_keys(array_filter([
             'küçük harf' => config('credentials.rotation.lowercase'),
             'büyük harf' => config('credentials.rotation.uppercase'),
             'rakam' => config('credentials.rotation.digits'),
@@ -347,12 +347,12 @@ class SwitchPasswordRotationController extends Controller implements HasMiddlewa
          * config elle ya da .env üzerinden de bozulabilir. Ekran o durumda
          * boş bir cümle değil, sorunu söyleyen bir cümle basmalı.
          */
-        if ($siniflar === []) {
+        if ($classes === []) {
             return 'HİÇBİR KARAKTER SINIFI AÇIK DEĞİL — parola üretilemez';
         }
 
-        $son = array_pop($siniflar);
+        $last = array_pop($classes);
 
-        return $siniflar === [] ? $son : implode(', ', $siniflar).' ve '.$son;
+        return $classes === [] ? $last : implode(', ', $classes).' ve '.$last;
     }
 }

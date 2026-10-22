@@ -31,7 +31,7 @@ abstract class TestCase extends BaseTestCase
      * YETKİ DAĞITIMINI AÇAR — üretimde panelin yönetimi yalnızca yöneticide.
      *
      * Ayarlar, kullanıcılar ve etkinlik kaydı yönetici olmayana verilemez
-     * (bkz. config/permissions.php · yonetim_yalnizca_yonetici). Düzenek
+     * (bkz. config/permissions.php · admin_only_management). Düzenek
      * silinmedi, kapatıldı: rol şablonu, kişisel izin/yasak ve yetki
      * ekranları yerinde duruyor.
      *
@@ -39,9 +39,9 @@ abstract class TestCase extends BaseTestCase
      * güvenemez. Bu yüzden düzeneği sınayan sınıflar ayarı açıyor; kapalı
      * hâlin kendisi YonetimYalnizcaYoneticiTest'te sınanıyor.
      */
-    protected function yetkiDagitimiAc(): void
+    protected function permissionDistributionOpen(): void
     {
-        config(['permissions.yonetim_yalnizca_yonetici' => false]);
+        config(['permissions.admin_only_management' => false]);
     }
 
     /**

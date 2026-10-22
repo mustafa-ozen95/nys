@@ -11,40 +11,40 @@ import { $$, on } from '../lib/dom.js';
  * değerleri de gönderir ve sunucu çelişkili bir istek alır (hem envanterdeki
  * cihaz hem dış cihaz gibi).
  */
-function uygula(form) {
-    const hedef = form.querySelector('[name="target"]')?.value ?? 'switch';
-    const kaynak = form.querySelector('[name="source"]')?.value ?? 'manual';
+function apply(form) {
+    const target = form.querySelector('[name="target"]')?.value ?? 'switch';
+    const source = form.querySelector('[name="source"]')?.value ?? 'manual';
 
-    goster(form, '[data-hedef]', (alan) => alan.dataset.hedef === hedef);
-    goster(form, '[data-kaynak]', (alan) => alan.dataset.kaynak === kaynak);
+    show(form, '[data-target]', (field) => field.dataset.target === target);
+    show(form, '[data-source]', (field) => field.dataset.source === source);
 }
 
-function goster(form, secici, kosul) {
-    form.querySelectorAll(secici).forEach((alan) => {
-        const gorunur = kosul(alan);
+function show(form, selector, condition) {
+    form.querySelectorAll(selector).forEach((field) => {
+        const visible = condition(field);
 
-        alan.hidden = !gorunur;
-        alan.querySelectorAll('input, select, textarea').forEach((girdi) => {
-            girdi.disabled = !gorunur;
+        field.hidden = !visible;
+        field.querySelectorAll('input, select, textarea').forEach((input) => {
+            input.disabled = !visible;
         });
     });
 }
 
 export function init() {
-    const formlar = $$('[data-config-formu]');
+    const forms = $$('[data-config-form]');
 
-    if (formlar.length === 0) {
+    if (forms.length === 0) {
         return;
     }
 
-    formlar.forEach(uygula);
+    forms.forEach(apply);
 
     // on(): (olay, seçici, işleyici) — kapsam belge geneli.
-    on('change', '[data-config-formu] [name="target"], [data-config-formu] [name="source"]', (event, secici) => {
-        const form = secici.closest('[data-config-formu]');
+    on('change', '[data-config-form] [name="target"], [data-config-form] [name="source"]', (event, selector) => {
+        const form = selector.closest('[data-config-form]');
 
         if (form) {
-            uygula(form);
+            apply(form);
         }
     });
 }

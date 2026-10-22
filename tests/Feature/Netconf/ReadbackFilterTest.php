@@ -38,7 +38,7 @@ final class ReadbackFilterTest extends TestCase
     /**
      * @return list<array{0: class-string, 1: string}>
      */
-    public static function esitleyiciler(): array
+    public static function syncers(): array
     {
         return [
             'fırtına denetimi' => [StormControlSynchronizer::class, 'storm-control'],
@@ -51,42 +51,42 @@ final class ReadbackFilterTest extends TestCase
     /**
      * @param  class-string  $esitleyici
      */
-    #[DataProvider('esitleyiciler')]
-    public function test_els_cihazdan_olmayan_kok_istenmez(string $esitleyici, string $etiket): void
+    #[DataProvider('syncers')]
+    public function test_els_cihazdan_olmayan_kok_istenmez(string $syncer, string $tag): void
     {
         $switch = $this->switch(JunosSchemaProfile::Els);
         $device = $this->device();
 
         app(NetconfClient::class)->run(
             $switch,
-            fn (NetconfSession $session) => app($esitleyici)->sync($switch, $session),
+            fn (NetconfSession $session) => app($syncer)->sync($switch, $session),
         );
 
         $this->assertStringNotContainsString(
             '<ethernet-switching-options/>',
             implode('', $device->written),
-            "{$etiket}: ELS cihazdan olmayan kök istendi; cihaz bütün eşitlemeyi reddeder.",
+            "{$tag}: ELS cihazdan olmayan kök istendi; cihaz bütün eşitlemeyi reddeder.",
         );
     }
 
     /**
      * @param  class-string  $esitleyici
      */
-    #[DataProvider('esitleyiciler')]
-    public function test_els_oncesi_cihazdan_kok_istenmeye_devam_eder(string $esitleyici, string $etiket): void
+    #[DataProvider('syncers')]
+    public function test_els_oncesi_cihazdan_kok_istenmeye_devam_eder(string $syncer, string $tag): void
     {
         $switch = $this->switch(JunosSchemaProfile::PreEls);
         $device = $this->device();
 
         app(NetconfClient::class)->run(
             $switch,
-            fn (NetconfSession $session) => app($esitleyici)->sync($switch, $session),
+            fn (NetconfSession $session) => app($syncer)->sync($switch, $session),
         );
 
         $this->assertStringContainsString(
             '<ethernet-switching-options/>',
             implode('', $device->written),
-            "{$etiket}: ELS öncesinde ayar ORADA duruyor; kök istenmezse envanter boş kalır.",
+            "{$tag}: ELS öncesinde ayar ORADA duruyor; kök istenmezse envanter boş kalır.",
         );
     }
 

@@ -52,7 +52,7 @@ final class SwitchSettingsScreenTest extends TestCase
             // basılmaz. (Silme ve düzenleme aynı adrestedir, ayıran yöntem
             // olduğu için adres değil formun kendisi aranır.)
             ->assertSee('panel')
-            ->assertDontSee('hesap-sil-'.$switch->loginUsers->firstWhere('name', 'admin')->uuid);
+            ->assertDontSee('account-delete-'.$switch->loginUsers->firstWhere('name', 'admin')->uuid);
     }
 
     public function test_ekran_sasi_alarmlarini_gosterir(): void

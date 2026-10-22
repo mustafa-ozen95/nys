@@ -23,10 +23,10 @@ Vekilsiz deneme: `cp docker-compose.override.example.yml docker-compose.override
 | Servis | Ne | Not |
 |---|---|---|
 | `panel` | nginx + php-fpm + kuyruk işçileri + zamanlayıcı + uzak oturumlar (ttyd, guacd, Tomcat), supervisord altında | yalnız 80 |
-| `db` | MariaDB 11.4 | `VT_KOPYA=0` ile kalkmaz (dışarıdaki veritabanı) |
+| `db` | MariaDB 11.4 | `DB_REPLICAS=0` ile kalkmaz (dışarıdaki veritabanı) |
 | `redis` | önbellek, oturum, kuyruk | kalıcılık kapalı: yeniden başlatmada oturumlar düşer, veri düşmez |
 
-`AG_YALITIMI=true` konteynerleri switchlerden, Zabbix'ten, kimlik merkezinden (KYM) ve dışarıdan yalıtır
+`NETWORK_ISOLATED=true` konteynerleri switchlerden, Zabbix'ten, kimlik merkezinden (KYM) ve dışarıdan yalıtır
 (taşıma ya da deneme kurulumu canlı cihazlara yazmasın diye).
 
 ### Panelin içinde
@@ -35,9 +35,9 @@ Vekilsiz deneme: `cp docker-compose.override.example.yml docker-compose.override
 | --- | --- |
 | `nginx` | Panel + `/ssh-proxy` + `/rdp-proxy`, `auth_request` dahil |
 | `php-fpm` | Panel (unix soketi) |
-| `isci-yazma` | `nms-switch-write` — `--tries=1`, `--timeout=300` |
-| `isci-genel` | `default` — e-posta ve bildirimler |
-| `zamanlayici` | `schedule:work`; eşitleme işçilerini bu açar |
+| `worker-write` | `nms-switch-write` — `--tries=1`, `--timeout=300` |
+| `worker-general` | `default` — e-posta ve bildirimler |
+| `scheduler` | `schedule:work`; eşitleme işçilerini bu açar |
 | `restart` | Panelin istediği yeniden başlatma (veritabanı taşıması); root, tek iş |
 | `guacd` | Guacamole proxy arka planı, 127.0.0.1:4822 |
 | `tomcat` | Guacamole web uygulaması, 127.0.0.1:8090 |
@@ -45,7 +45,7 @@ Vekilsiz deneme: `cp docker-compose.override.example.yml docker-compose.override
 `guacd` ve `tomcat` YALNIZCA `GUACAMOLE_SECRET` verilmişse başlar: RDP
 kullanmayan bir kurulumda 200 MB'lık bir JVM boşuna dönmesin.
 
-`isci-genel` olmazsa anons mailleri `default` kuyruğuna alınır ve hiç
+`worker-general` olmazsa anons mailleri `default` kuyruğuna alınır ve hiç
 işlenmez.
 
 ### Uzak oturumlar neden panelin konteynerinde
@@ -67,7 +67,7 @@ sokulmuş.
 
 ## Hacimler
 
-Adlar `ONEK` ile başlar (varsayılan `nys`); aynı sunucuda ikinci kurulum onu değiştirir.
+Adlar `STACK_PREFIX` ile başlar (varsayılan `nys`); aynı sunucuda ikinci kurulum onu değiştirir.
 
 | Hacim | İçerik |
 |---|---|
@@ -105,7 +105,7 @@ parolası `DB_PASSWORD`, ilk açılışta kullanıcı ve veritabanı bununla kur
 panel veritabanını en çok üç dakika bekler, gelmezse açılmaz (konteyner yeniden dener).
 
 Dışarıdaki ya da platformun yönettiği bir MariaDB/MySQL: `DB_*`'ı ona çevirin ve
-`VT_KOPYA=0` deyin.
+`DB_REPLICAS=0` deyin.
 
 Oturumun saat dilimi konteynerin saatidir (`DB_TIMEZONE`, varsayılan `+03:00`): UTC'de
 çalışan bir sunucuda TIMESTAMP sütunları 3 saat kaymış okunmasın.
@@ -145,7 +145,7 @@ imajı kuran herkeste aynı giriş bulunurdu.
 Giriş yapıp parolayı değiştirdikten sonra o dosyayı silin. Hesabı sonradan açmak için
 (parola sorulur, komut satırına yazılmaz):
 
-    docker compose exec panel php artisan ag:yonetici-ekle
+    docker compose exec panel php artisan admin:add
 
 ### Laboratuvar envanteri yazılmaz
 
@@ -178,7 +178,7 @@ ve RADB'ye (43) giden bağlantıların **hepsi dışa doğrudur**. Compose'un NA
 köprü ağı yeter; `network_mode: host` ya da macvlan gerekmez. Konteynerin
 yönetim ağına L3 erişimi olmalı.
 
-`AG_YALITIMI=true` iken bu bağlantıların hiçbiri kurulamaz: deneme ve taşıma
+`NETWORK_ISOLATED=true` iken bu bağlantıların hiçbiri kurulamaz: deneme ve taşıma
 kurulumu içindir, gerçek kurulumda kapalı kalır.
 
 
@@ -218,14 +218,14 @@ derlemek yerine onu kullanabilir.
 Ayarlar → Güncelleme (yalnız yönetici) çalışan sürümü GitHub'da main dalının **son başarılı
 imaj derlemesiyle** karşılaştırır: kaç commit geride, hangi commit'ler yeni. Yön de ölçülür;
 çalışan sürüm son derlemeden yeniyse "güncelleme" denmez. Kontrol her sabah 06:50'de kendiliğinden
-yapılır (`guncelleme:denetle`). Yeni sürüm varsa yöneticiler panelin üstünde uyarı görür.
+yapılır (`update:check`). Yeni sürüm varsa yöneticiler panelin üstünde uyarı görür.
 Ekran **yalnızca bakar**.
 
-- Çalışan sürüm imaja derlemede yazılır (`ARG SURUM` → `UYGULAMA_SURUMU`; iş akışı commit'i verir).
+- Çalışan sürüm imaja derlemede yazılır (`ARG APP_VERSION` → `APP_VERSION`; iş akışı commit'i verir).
 - Depo açık: jeton gerekmez, GitHub'a jetonsuz sorulur (sınır IP başına saatte 60 istek). Depo
-  özelse `GUNCELLEME_JETONU` salt okunur bir jeton olmalı (fine-grained, yalnız panel depoları,
+  özelse `UPDATE_TOKEN` salt okunur bir jeton olmalı (fine-grained, yalnız panel depoları,
   Contents ve Actions: read). Erişilemezse kontrol "hata" der, panelin başka yeri etkilenmez.
-- Çalışan sürüm derlemede imaja yazılır (`ARG SURUM`, iş akışı commit'i verir). Derlemeye commit
+- Çalışan sürüm derlemede imaja yazılır (`ARG APP_VERSION`, iş akışı commit'i verir). Derlemeye commit
   vermeyen platformlarda (NineDeploy gibi) bağlamdaki `.git`'ten okunur (`docker/version-read.sh`;
   `.dockerignore` yalnız `HEAD` ve ref'leri alır).
 - Panel GitHub'a çıkamıyorsa (kapalı ağ) kontrol "erişilemedi" der.
@@ -245,7 +245,7 @@ Ekran **yalnızca bakar**.
 - **`HTTP_HOST` portu Debian'ın `fastcgi_params`'ında düşüyor.** Dosya
   bilinçli bir güvenlik önlemi olarak `fastcgi_param HTTP_HOST $host;` yazıyor
   ve `$host` istemcinin verdiği PORTU KORUMAZ. Sonuç: standart olmayan bir
-  portta çalışan panel giriş sonrası `http://192.0.2.50/giris` adresine
+  portta çalışan panel giriş sonrası `http://192.0.2.50/login` adresine
   yönlendirir, port kaybolduğu için sayfa açılmaz. nginx 1.30 bunun için
   `$is_request_port$request_port` getirdi; 1.22'de yok, aynısını `map` ile
   elle kuruyoruz — konak nginx'in normalleştirdiği `$host`tan, port yalnızca
@@ -253,7 +253,7 @@ Ekran **yalnızca bakar**.
 - **`http2 on;` YAZILMAZ.** O sözdizimi nginx 1.25.1 ile geldi; imajdaki
   bookworm 1.22 taşıyor ve "unknown directive http2" ile başlamayı reddediyor.
 - **guacd 1.5.5 imajı Alpine/musl tabanlıdır.** İkilileri glibc tabanlı bu
-  imaja kopyalanamaz; guacd kaynaktan derlenir (`guacd-derleme` aşaması,
+  imaja kopyalanamaz; guacd kaynaktan derlenir (`guacd-build` aşaması,
   ~7 dakika). Java tarafı taşınabilir olduğu için `guacamole.war` ve
   `guacamole-auth-json-1.5.5.jar` resmi imajdan doğrudan kopyalanır.
 - **WAR derleme sırasında AÇILIR.** Tomcat `nsm` olarak çalışıyor, kurulum

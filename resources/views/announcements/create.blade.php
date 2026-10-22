@@ -39,10 +39,10 @@
                         </div>
 
                         <x-form.field name="recipients" label="Alıcılar" class="field--separated">
-                            <div class="row row--wrap recipient-list" data-secim-grubu>
+                            <div class="row row--wrap recipient-list" data-selection-group>
                                 @if ($recipients->isNotEmpty())
-                                    <label class="checkbox recipient-list__tumu">
-                                        <input type="checkbox" data-tumunu-sec>
+                                    <label class="checkbox recipient-list__all">
+                                        <input type="checkbox" data-select-all>
                                         <span>Tümü</span>
                                     </label>
                                 @endif
@@ -119,13 +119,13 @@
                         <details class="mail-log" @if ($selectedMail?->is($mail)) open @endif>
                             <summary class="mail-log__head">
                                 <x-ui.badge :variant="$mail->status->badge()">{{ $mail->status->label() }}</x-ui.badge>
-                                <span class="mono mail-log__alici">{{ $mail->recipient_email }}</span>
+                                <span class="mono mail-log__recipient">{{ $mail->recipient_email }}</span>
                                 <span class="text-sm text-muted mono mail-log__prefix">{{ $mail->prefixes }}</span>
-                                <span class="text-sm text-muted mail-log__dil">{{ $mail->locale === 'en' ? 'EN' : 'TR' }}</span>
-                                <span class="text-sm text-muted mail-log__zaman">{{ $mail->created_at->diffForHumans() }}</span>
+                                <span class="text-sm text-muted mail-log__language">{{ $mail->locale === 'en' ? 'EN' : 'TR' }}</span>
+                                <span class="text-sm text-muted mail-log__time">{{ $mail->created_at->diffForHumans() }}</span>
                             </summary>
 
-                            <div class="mail-log__govde">
+                            <div class="mail-log__body">
                                 <x-ui.facts :rows="[
                                     'Alıcı' => $mail->recipient_label,
                                     'Konu' => $mail->subject,

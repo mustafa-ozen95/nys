@@ -84,7 +84,7 @@ enum PasswordRotationStage: string
     }
 
     /** Turdaki toplam adım sayısı. */
-    public const ADIM_SAYISI = 6;
+    public const STEP_COUNT = 6;
 
     /**
      * Tur SÜRERKEN ne yapıldığını anlatır.

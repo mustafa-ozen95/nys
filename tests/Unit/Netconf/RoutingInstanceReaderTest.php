@@ -21,7 +21,7 @@ final class RoutingInstanceReaderTest extends TestCase
 {
     public function test_tablolar_okunur(): void
     {
-        $tablolar = collect($this->oku(
+        $tables = collect($this->read(
             '<routing-instances>'
             .'<instance><name>tablo-a</name><instance-type>forwarding</instance-type>'
             .'<description>musteri tablosu</description></instance>'
@@ -29,10 +29,10 @@ final class RoutingInstanceReaderTest extends TestCase
             .'</routing-instances>'
         ))->keyBy('name');
 
-        $this->assertSame('forwarding', $tablolar['tablo-a']['instance_type']);
-        $this->assertSame('musteri tablosu', $tablolar['tablo-a']['description']);
-        $this->assertSame('virtual-router', $tablolar['ikinci']['instance_type']);
-        $this->assertNull($tablolar['ikinci']['description']);
+        $this->assertSame('forwarding', $tables['tablo-a']['instance_type']);
+        $this->assertSame('musteri tablosu', $tables['tablo-a']['description']);
+        $this->assertSame('virtual-router', $tables['ikinci']['instance_type']);
+        $this->assertNull($tables['ikinci']['description']);
     }
 
     /**
@@ -41,7 +41,7 @@ final class RoutingInstanceReaderTest extends TestCase
      */
     public function test_tablonun_govdesi_ham_haliyle_korunur(): void
     {
-        $tablo = $this->oku(
+        $table = $this->read(
             '<routing-instances><instance><name>tablo-a</name>'
             .'<instance-type>forwarding</instance-type>'
             .'<routing-options><static><route><name>0.0.0.0/0</name>'
@@ -50,21 +50,21 @@ final class RoutingInstanceReaderTest extends TestCase
             .'</instance></routing-instances>'
         )[0];
 
-        $korunan = implode('', $tablo['residual_xml']);
+        $protected = implode('', $table['residual_xml']);
 
-        $this->assertStringContainsString('qualified-next-hop', $korunan);
-        $this->assertStringContainsString('198.51.100.141', $korunan);
+        $this->assertStringContainsString('qualified-next-hop', $protected);
+        $this->assertStringContainsString('198.51.100.141', $protected);
     }
 
     public function test_tablo_yoksa_bos_liste(): void
     {
-        $this->assertSame([], $this->oku('<routing-instances/>'));
+        $this->assertSame([], $this->read('<routing-instances/>'));
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    private function oku(string $body): array
+    private function read(string $body): array
     {
         $transport = new FakeNetconfTransport([
             '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities>'

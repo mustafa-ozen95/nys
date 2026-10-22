@@ -56,9 +56,9 @@ final class DeviceWriteQueueTest extends TestCase
 
         Queue::assertPushed(ApplySwitchWriteJob::class);
 
-        $kayit = SwitchWriteJob::query()->firstOrFail();
-        $this->assertSame(SwitchWriteStatus::Queued, $kayit->status);
-        $this->assertSame($switch->id, $kayit->switch_id);
+        $record = SwitchWriteJob::query()->firstOrFail();
+        $this->assertSame(SwitchWriteStatus::Queued, $record->status);
+        $this->assertSame($switch->id, $record->switch_id);
     }
 
     /**
@@ -82,11 +82,11 @@ final class DeviceWriteQueueTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $kayit = SwitchWriteJob::query()->firstOrFail();
+        $record = SwitchWriteJob::query()->firstOrFail();
 
-        $this->assertSame($user->id, $kayit->user_id);
-        $this->assertSame('yayın fırtınası şüphesi', $kayit->reason);
-        $this->assertNotNull($kayit->ip_address);
+        $this->assertSame($user->id, $record->user_id);
+        $this->assertSame('yayın fırtınası şüphesi', $record->reason);
+        $this->assertNotNull($record->ip_address);
     }
 
     /**
@@ -115,9 +115,9 @@ final class DeviceWriteQueueTest extends TestCase
             'reason' => 'gerekçe',
         ]);
 
-        $kayit = SwitchWriteJob::query()->firstOrFail();
-        $this->assertSame(SwitchWriteStatus::Completed, $kayit->status);
-        $this->assertNotNull($kayit->diff);
+        $record = SwitchWriteJob::query()->firstOrFail();
+        $this->assertSame(SwitchWriteStatus::Completed, $record->status);
+        $this->assertNotNull($record->diff);
     }
 
     /**
@@ -128,14 +128,14 @@ final class DeviceWriteQueueTest extends TestCase
     {
         $switch = $this->switch();
 
-        $kayit = SwitchWriteJob::create([
+        $record = SwitchWriteJob::create([
             'switch_id' => $switch->id,
             'summary' => 'deneme',
             'status' => SwitchWriteStatus::Queued,
         ]);
 
         $is = new ApplySwitchWriteJob(
-            $kayit,
+            $record,
             $switch,
             StormControlConfigurator::class,
             'apply',
@@ -144,11 +144,11 @@ final class DeviceWriteQueueTest extends TestCase
 
         $is->failed(NetconfException::transport('cihaz reddetti', 'rpc'));
 
-        $kayit->refresh();
+        $record->refresh();
 
-        $this->assertSame(SwitchWriteStatus::Failed, $kayit->status);
-        $this->assertSame('cihaz reddetti', $kayit->message);
-        $this->assertNotNull($kayit->finished_at);
+        $this->assertSame(SwitchWriteStatus::Failed, $record->status);
+        $this->assertSame('cihaz reddetti', $record->message);
+        $this->assertNotNull($record->finished_at);
     }
 
     /**
@@ -178,20 +178,20 @@ final class DeviceWriteQueueTest extends TestCase
     {
         $switch = $this->switch();
 
-        $kayit = SwitchWriteJob::create([
+        $record = SwitchWriteJob::create([
             'switch_id' => $switch->id,
             'summary' => 'deneme',
             'status' => SwitchWriteStatus::Running,
         ]);
 
-        $yabanci = User::factory()->create();
+        $foreign = User::factory()->create();
 
-        $this->actingAs($yabanci)
-            ->getJson(route('switches.write-jobs.show', [$switch, $kayit]))
+        $this->actingAs($foreign)
+            ->getJson(route('switches.write-jobs.show', [$switch, $record]))
             ->assertForbidden();
 
         $this->actingAs($this->operator())
-            ->getJson(route('switches.write-jobs.show', [$switch, $kayit]))
+            ->getJson(route('switches.write-jobs.show', [$switch, $record]))
             ->assertOk()
             ->assertJson([
                 'status' => 'running',
@@ -206,16 +206,16 @@ final class DeviceWriteQueueTest extends TestCase
     public function test_baska_switchin_isi_okunamaz(): void
     {
         $switch = $this->switch();
-        $digeri = NetworkSwitch::factory()->create(['management_ip' => '198.18.20.196']);
+        $other = NetworkSwitch::factory()->create(['management_ip' => '198.18.20.196']);
 
-        $kayit = SwitchWriteJob::create([
-            'switch_id' => $digeri->id,
+        $record = SwitchWriteJob::create([
+            'switch_id' => $other->id,
             'summary' => 'deneme',
             'status' => SwitchWriteStatus::Running,
         ]);
 
         $this->actingAs($this->operator())
-            ->getJson(route('switches.write-jobs.show', [$switch, $kayit]))
+            ->getJson(route('switches.write-jobs.show', [$switch, $record]))
             ->assertNotFound();
     }
 

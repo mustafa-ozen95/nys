@@ -88,17 +88,17 @@ final class PasswordRotationTest extends TestCase
 
         $this->rotator()->rotate($switch);
 
-        $kurtarmayla = array_filter(
+        $recovery = array_filter(
             $device->attempts,
-            static fn (array $deneme): bool => $deneme['username'] === 'nsm-kurtarma' && $deneme['accepted'],
+            static fn (array $trial): bool => $trial['username'] === 'nsm-kurtarma' && $trial['accepted'],
         );
 
-        $this->assertNotEmpty($kurtarmayla, 'Kurtarma hesabıyla hiç oturum açılmamış.');
+        $this->assertNotEmpty($recovery, 'Kurtarma hesabıyla hiç oturum açılmamış.');
 
         // Reddedilen tek bir oturum denemesi bile olmamalı.
         $this->assertSame(
             [],
-            array_filter($device->attempts, static fn (array $deneme): bool => ! $deneme['accepted']),
+            array_filter($device->attempts, static fn (array $trial): bool => ! $trial['accepted']),
         );
     }
 
@@ -177,10 +177,10 @@ final class PasswordRotationTest extends TestCase
         $device->rejectOnNextPasswordChange('admin');
 
         $this->rotator()->rotate($switch);
-        $ikinci = $this->rotator()->rotate($switch->fresh());
+        $second = $this->rotator()->rotate($switch->fresh());
 
-        $this->assertSame(PasswordRotationStatus::Failed, $ikinci->status);
-        $this->assertStringContainsString('temizlenmemiş', (string) $ikinci->error);
+        $this->assertSame(PasswordRotationStatus::Failed, $second->status);
+        $this->assertStringContainsString('temizlenmemiş', (string) $second->error);
     }
 
     /**
@@ -245,10 +245,10 @@ final class PasswordRotationTest extends TestCase
 
         $this->rotator()->rotate($switch);
 
-        $kayitlar = ActivityLog::query()->pluck('description')->implode(' ');
+        $records = ActivityLog::query()->pluck('description')->implode(' ');
 
-        $this->assertStringNotContainsString('eskiparola', $kayitlar);
-        $this->assertStringNotContainsString($device->accounts()['admin'], $kayitlar);
+        $this->assertStringNotContainsString('eskiparola', $records);
+        $this->assertStringNotContainsString($device->accounts()['admin'], $records);
     }
 
     public function test_onarim_calisan_panel_hesabiyla_kurtarmayi_siler(): void
@@ -263,9 +263,9 @@ final class PasswordRotationTest extends TestCase
         // Cihaz yeniden oturum açtırıyor; paneldeki yeni parola geçerli.
         $device->acceptUser('admin');
 
-        $onarilan = $this->rotator()->repair($rotation->fresh())->fresh();
+        $repaired = $this->rotator()->repair($rotation->fresh())->fresh();
 
-        $this->assertFalse($onarilan->recovery_active);
+        $this->assertFalse($repaired->recovery_active);
         $this->assertArrayNotHasKey('nsm-kurtarma', $device->accounts());
         $this->assertSame($device->accounts()['admin'], $switch->fresh()->netconfCredential->password);
 
@@ -274,8 +274,8 @@ final class PasswordRotationTest extends TestCase
          * kalır: ekranda kalıcı bir kırmızı satır, gerçekten bakım isteyen
          * cihazı görünmez kılardı.
          */
-        $this->assertSame(PasswordRotationStatus::Succeeded, $onarilan->status);
-        $this->assertStringStartsWith('onarıldı · ', (string) $onarilan->error);
+        $this->assertSame(PasswordRotationStatus::Succeeded, $repaired->status);
+        $this->assertStringStartsWith('onarıldı · ', (string) $repaired->error);
     }
 
     /**
@@ -294,9 +294,9 @@ final class PasswordRotationTest extends TestCase
         $device->acceptUser('admin');
         $device->setPassword('admin', 'elleDegistirildi9');
 
-        $onarilan = $this->rotator()->repair($rotation->fresh());
+        $repaired = $this->rotator()->repair($rotation->fresh());
 
-        $this->assertFalse($onarilan->fresh()->recovery_active);
+        $this->assertFalse($repaired->fresh()->recovery_active);
         $this->assertArrayNotHasKey('nsm-kurtarma', $device->accounts());
         $this->assertSame($device->accounts()['admin'], $switch->fresh()->netconfCredential->password);
         $this->assertNotSame('elleDegistirildi9', $device->accounts()['admin']);

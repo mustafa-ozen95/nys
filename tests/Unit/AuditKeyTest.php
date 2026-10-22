@@ -14,25 +14,25 @@ use Tests\TestCase;
  */
 class AuditKeyTest extends TestCase
 {
-    private const AD = 'ACTIVITY_CHAIN_KEY';
+    private const NAME = 'ACTIVITY_CHAIN_KEY';
 
     /** @return array<string, mixed> */
-    private function ayarlarIle(?string $deger): array
+    private function settingsWith(?string $value): array
     {
-        $eski = [$_ENV[self::AD] ?? null, $_SERVER[self::AD] ?? null];
-        if ($deger === null) {
-            unset($_ENV[self::AD], $_SERVER[self::AD]);
+        $old = [$_ENV[self::NAME] ?? null, $_SERVER[self::NAME] ?? null];
+        if ($value === null) {
+            unset($_ENV[self::NAME], $_SERVER[self::NAME]);
         } else {
-            $_ENV[self::AD] = $_SERVER[self::AD] = $deger;
+            $_ENV[self::NAME] = $_SERVER[self::NAME] = $value;
         }
         try {
             return require config_path('activity.php');
         } finally {
-            foreach ([0 => '_ENV', 1 => '_SERVER'] as $i => $dizi) {
-                if ($eski[$i] === null) {
-                    unset($GLOBALS[$dizi][self::AD]);
+            foreach ([0 => '_ENV', 1 => '_SERVER'] as $i => $array) {
+                if ($old[$i] === null) {
+                    unset($GLOBALS[$array][self::NAME]);
                 } else {
-                    $GLOBALS[$dizi][self::AD] = $eski[$i];
+                    $GLOBALS[$array][self::NAME] = $old[$i];
                 }
             }
         }
@@ -41,12 +41,12 @@ class AuditKeyTest extends TestCase
     public function test_bos_anahtar_app_keye_duser(): void
     {
         $this->assertNotSame('', (string) env('APP_KEY'));
-        $this->assertSame(env('APP_KEY'), $this->ayarlarIle('')['chain_key']);
-        $this->assertSame(env('APP_KEY'), $this->ayarlarIle(null)['chain_key']);
+        $this->assertSame(env('APP_KEY'), $this->settingsWith('')['chain_key']);
+        $this->assertSame(env('APP_KEY'), $this->settingsWith(null)['chain_key']);
     }
 
     public function test_verilen_anahtar_kullanilir(): void
     {
-        $this->assertSame('ayri-anahtar', $this->ayarlarIle('ayri-anahtar')['chain_key']);
+        $this->assertSame('ayri-anahtar', $this->settingsWith('ayri-anahtar')['chain_key']);
     }
 }

@@ -77,7 +77,7 @@ final class ChunkedFraming implements MessageFraming
      */
     private function header(NetconfTransport $transport): string
     {
-        for ($deneme = 0; $deneme < 3; $deneme++) {
+        for ($trial = 0; $trial < 3; $trial++) {
             $line = trim($transport->readUntil("\n"));
 
             if ($line !== '') {

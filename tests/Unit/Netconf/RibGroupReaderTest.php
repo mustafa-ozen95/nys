@@ -21,20 +21,20 @@ final class RibGroupReaderTest extends TestCase
 {
     public function test_gruplar_ve_sirali_tablolar_okunur(): void
     {
-        $sonuc = $this->oku(
+        $result = $this->read(
             '<rib-groups><name>rib-grup-a</name>'
             .'<import-rib>tablo-a.inet.0</import-rib><import-rib>inet.0</import-rib></rib-groups>'
             .'<interface-routes><rib-group><inet>rib-grup-a</inet></rib-group></interface-routes>'
         );
 
-        $grup = $sonuc['groups'][0];
+        $group = $result['groups'][0];
 
-        $this->assertSame('rib-grup-a', $grup['name']);
+        $this->assertSame('rib-grup-a', $group['name']);
 
         // SIRA anlamlıdır: Junos tabloları bu sırayla dener.
-        $this->assertSame(['tablo-a.inet.0', 'inet.0'], $grup['import_ribs']);
+        $this->assertSame(['tablo-a.inet.0', 'inet.0'], $group['import_ribs']);
 
-        $this->assertSame('rib-grup-a', $sonuc['interface_routes']);
+        $this->assertSame('rib-grup-a', $result['interface_routes']);
     }
 
     /**
@@ -43,23 +43,23 @@ final class RibGroupReaderTest extends TestCase
      */
     public function test_isaretci_yoksa_null(): void
     {
-        $sonuc = $this->oku('<rib-groups><name>tek</name><import-rib>inet.0</import-rib></rib-groups>');
+        $result = $this->read('<rib-groups><name>tek</name><import-rib>inet.0</import-rib></rib-groups>');
 
-        $this->assertNull($sonuc['interface_routes']);
+        $this->assertNull($result['interface_routes']);
     }
 
     public function test_grup_yoksa_bos_liste(): void
     {
-        $sonuc = $this->oku('<autonomous-system>65001</autonomous-system>');
+        $result = $this->read('<autonomous-system>65001</autonomous-system>');
 
-        $this->assertSame([], $sonuc['groups']);
-        $this->assertNull($sonuc['interface_routes']);
+        $this->assertSame([], $result['groups']);
+        $this->assertNull($result['interface_routes']);
     }
 
     /**
      * @return array{groups: list<array<string, mixed>>, interface_routes: ?string}
      */
-    private function oku(string $body): array
+    private function read(string $body): array
     {
         $transport = new FakeNetconfTransport([
             '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities>'

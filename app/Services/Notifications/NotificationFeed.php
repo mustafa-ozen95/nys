@@ -42,24 +42,24 @@ class NotificationFeed
      */
     public function forUser(User $user): array
     {
-        $sinir = CarbonImmutable::now()->subHours((int) config('activity.notifications.window_hours'));
-        $gorulen = $user->notifications_seen_at;
+        $limit = CarbonImmutable::now()->subHours((int) config('activity.notifications.window_hours'));
+        $seen = $user->notifications_seen_at;
 
-        $kayitlar = $this->writes($user, $sinir)
-            ->merge($this->failures($user, $sinir))
+        $records = $this->writes($user, $limit)
+            ->merge($this->failures($user, $limit))
             ->sortByDesc('at')
             ->take(self::LIMIT)
             ->values();
 
         return [
-            'items' => $kayitlar->map(fn (array $kayit): array => [
-                ...$kayit,
-                'at' => $kayit['at']->toIso8601String(),
-                'ago' => $kayit['at']->diffForHumans(),
-                'unseen' => $gorulen === null || $kayit['at']->greaterThan($gorulen),
+            'items' => $records->map(fn (array $record): array => [
+                ...$record,
+                'at' => $record['at']->toIso8601String(),
+                'ago' => $record['at']->diffForHumans(),
+                'unseen' => $seen === null || $record['at']->greaterThan($seen),
             ])->all(),
-            'unseen' => $kayitlar->filter(
-                fn (array $kayit): bool => $gorulen === null || $kayit['at']->greaterThan($gorulen),
+            'unseen' => $records->filter(
+                fn (array $record): bool => $seen === null || $record['at']->greaterThan($seen),
             )->count(),
             'generated_at' => CarbonImmutable::now()->toIso8601String(),
         ];
@@ -113,27 +113,27 @@ class NotificationFeed
             ->where('status', '!=', 'ok')
             ->whereNotIn('operation', ['write', 'rollback'])
             ->where('created_at', '>=', $since)
-            ->where(function ($sorgu) use ($user): void {
-                $sorgu->whereNull('switch_id')
+            ->where(function ($query) use ($user): void {
+                $query->whereNull('switch_id')
                     ->orWhereIn('switch_id', NetworkSwitch::query()->visibleTo($user)->select('id'));
             })
             ->latest('id')
             ->limit(self::LIMIT)
             ->get()
             ->toBase()
-            ->map(fn (DeviceOperation $islem): array => [
-                'id' => 'islem:'.$islem->uuid,
+            ->map(fn (DeviceOperation $operation): array => [
+                'id' => 'islem:'.$operation->uuid,
                 'kind' => 'failure',
-                'title' => $islem->summary ?? $islem->operation,
-                'switch' => $islem->switch?->hostname ?? $islem->target,
-                'switch_uuid' => $islem->switch?->uuid,
+                'title' => $operation->summary ?? $operation->operation,
+                'switch' => $operation->switch?->hostname ?? $operation->target,
+                'switch_uuid' => $operation->switch?->uuid,
                 'actor' => null,
-                'detail' => $islem->device_message === null
+                'detail' => $operation->device_message === null
                     ? null
-                    : $this->firstLine($islem->device_message),
-                'label' => $islem->status === 'warning' ? 'Cihaz uyardı' : 'Başarısız',
-                'badge' => ($islem->status === 'warning' ? BadgeVariant::Yellow : BadgeVariant::Red)->value,
-                'at' => CarbonImmutable::parse($islem->created_at),
+                    : $this->firstLine($operation->device_message),
+                'label' => $operation->status === 'warning' ? 'Cihaz uyardı' : 'Başarısız',
+                'badge' => ($operation->status === 'warning' ? BadgeVariant::Yellow : BadgeVariant::Red)->value,
+                'at' => CarbonImmutable::parse($operation->created_at),
             ]);
     }
 
@@ -142,8 +142,8 @@ class NotificationFeed
      */
     private function firstLine(string $text): string
     {
-        $tek = trim((string) preg_replace('/\s+/', ' ', $text));
+        $single = trim((string) preg_replace('/\s+/', ' ', $text));
 
-        return mb_strlen($tek) > 160 ? mb_substr($tek, 0, 157).'…' : $tek;
+        return mb_strlen($single) > 160 ? mb_substr($single, 0, 157).'…' : $single;
     }
 }

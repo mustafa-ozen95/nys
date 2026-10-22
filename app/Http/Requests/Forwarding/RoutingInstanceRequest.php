@@ -34,7 +34,7 @@ class RoutingInstanceRequest extends FormRequest
     public function rules(): array
     {
         $switchId = $this->route('switch')->id;
-        $mevcut = $this->route('routingInstance');
+        $current = $this->route('routingInstance');
 
         return [
             /*
@@ -42,11 +42,11 @@ class RoutingInstanceRequest extends FormRequest
              * boşluklu ya da özel karakterli adı reddediyor.
              */
             'name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:63', 'regex:/^[A-Za-z0-9_.-]+$/',
                 Rule::unique(SwitchRoutingInstance::class, 'name')
                     ->where('switch_id', $switchId)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             'instance_type' => ['required', Rule::in($this->allowedTypes())],
@@ -61,11 +61,11 @@ class RoutingInstanceRequest extends FormRequest
      */
     public function allowedTypes(): array
     {
-        $turler = array_keys(RoutingInstanceType::options());
-        $olculen = app(DeviceCapabilities::class)
+        $types = array_keys(RoutingInstanceType::options());
+        $measured = app(DeviceCapabilities::class)
             ->values($this->route('switch'), 'routing.instance_types');
 
-        return $olculen === null ? $turler : array_values(array_intersect($turler, $olculen));
+        return $measured === null ? $types : array_values(array_intersect($types, $measured));
     }
 
     /**
@@ -73,12 +73,12 @@ class RoutingInstanceRequest extends FormRequest
      */
     public function settings(): array
     {
-        $mevcut = $this->route('routingInstance');
+        $current = $this->route('routingInstance');
 
         return [
             'instance_type' => $this->string('instance_type')->toString(),
             'description' => $this->string('description')->trim()->toString() ?: null,
-            'residual_xml' => $mevcut?->residual_xml,
+            'residual_xml' => $current?->residual_xml,
         ];
     }
 

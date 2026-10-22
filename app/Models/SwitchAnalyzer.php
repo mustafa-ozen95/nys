@@ -116,14 +116,14 @@ class SwitchAnalyzer extends Model
     protected function sourceSummary(): Attribute
     {
         return Attribute::get(function (): string {
-            $parcalar = array_filter([
+            $fragments = array_filter([
                 $this->listed('giriş', $this->ingress_interfaces),
                 $this->listed('çıkış', $this->egress_interfaces),
                 $this->listed('giriş VLAN', $this->ingress_vlans),
                 $this->listed('çıkış VLAN', $this->egress_vlans),
             ]);
 
-            return $parcalar === [] ? 'kaynak seçilmemiş' : implode(' · ', $parcalar);
+            return $fragments === [] ? 'kaynak seçilmemiş' : implode(' · ', $fragments);
         });
     }
 

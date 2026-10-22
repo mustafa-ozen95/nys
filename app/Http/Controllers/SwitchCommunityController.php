@@ -72,12 +72,12 @@ class SwitchCommunityController extends Controller implements HasMiddleware
 
     public function destroy(NetworkSwitch $switch, SwitchCommunity $community): RedirectResponse
     {
-        $bagli = $this->dependencies->forCommunity($community);
+        $bound = $this->dependencies->forCommunity($community);
 
-        if ($bagli !== []) {
+        if ($bound !== []) {
             return back()->with(
                 'error',
-                $this->dependencies->message("Community {$community->name}", $bagli),
+                $this->dependencies->message("Community {$community->name}", $bound),
             );
         }
 

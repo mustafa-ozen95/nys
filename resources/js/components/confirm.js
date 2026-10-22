@@ -1,5 +1,5 @@
 import { $, on } from '../lib/dom.js';
-import { formuGonder } from './navigation.js';
+import { submitForm} from './navigation.js';
 
 /**
  * Tehlikeli işlemler için onay penceresi.
@@ -52,16 +52,16 @@ function open(trigger) {
 
     accept.className = `btn btn--${trigger.dataset.confirmVariant === 'danger' ? 'danger' : 'primary'}`;
 
-    const tazele = () => {
-        const dogrulandi = verify === '' || input.value.trim() === verify;
-        const gerekceli = reasonless || reason.value.trim().length >= 3;
+    const refresh = () => {
+        const verified = verify === '' || input.value.trim() === verify;
+        const withReason = reasonless || reason.value.trim().length >= 3;
 
-        accept.disabled = !dogrulandi || !gerekceli;
+        accept.disabled = !verified || !withReason;
     };
 
-    input.oninput = tazele;
-    reason.oninput = tazele;
-    tazele();
+    input.oninput = refresh;
+    reason.oninput = refresh;
+    refresh();
 
     box.hidden = false;
     (reasonless ? (verify === '' ? accept : input) : reason).focus();
@@ -81,7 +81,7 @@ function close() {
 
 function proceed() {
     const trigger = pending;
-    const gerekce = dialog()?.querySelector('[data-confirm-reason]')?.value?.trim() ?? '';
+    const justification = dialog()?.querySelector('[data-confirm-reason]')?.value?.trim() ?? '';
 
     close();
 
@@ -94,21 +94,21 @@ function proceed() {
 
     if (trigger.tagName === 'FORM') {
         // Gerekçe forma taşınır; sunucu onu arar.
-        if (gerekce !== '') {
-            const alan = document.createElement('input');
+        if (justification !== '') {
+            const field = document.createElement('input');
 
-            alan.type = 'hidden';
-            alan.name = 'reason';
-            alan.value = gerekce;
-            trigger.appendChild(alan);
+            field.type = 'hidden';
+            field.name = 'reason';
+            field.value = justification;
+            trigger.appendChild(field);
         }
 
         /*
          * Uzun süren işi başlatan form YERİNDE gönderilir; tam sayfa
          * yenilemesi ekranı beyaza düşürür.
          */
-        if (trigger.dataset.yerinde !== undefined) {
-            formuGonder(trigger);
+        if (trigger.dataset.inPlace !== undefined) {
+            submitForm(trigger);
 
             return;
         }
@@ -135,9 +135,9 @@ export function init() {
     });
 
     /* Onay istemeyen ama yerinde gönderilmesi gereken formlar. */
-    on('submit', 'form[data-yerinde]:not([data-confirm])', (event, form) => {
+    on('submit', 'form[data-in-place]:not([data-confirm])', (event, form) => {
         event.preventDefault();
-        formuGonder(form);
+        submitForm(form);
     });
 
     on('click', '[data-confirm-accept]', proceed);

@@ -5,9 +5,9 @@
     kullanılabilir.
 --}}
 <div class="stack">
-    <x-form.field :name="$actionName" label="Sonuç" :id="$prefix.'-sonuc'"
+    <x-form.field :name="$actionName" label="Sonuç" :id="$prefix.'-result'"
                   hint="Zinciri bitiren eylem. “Sonraki politikaya geç” değerlendirmeyi devreder.">
-        <x-form.select :name="$actionName" :id="$prefix.'-sonuc'" :options="$actionOptions"
+        <x-form.select :name="$actionName" :id="$prefix.'-result'" :options="$actionOptions"
                        :selected="$actionValue" />
     </x-form.field>
 

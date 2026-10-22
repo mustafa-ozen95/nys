@@ -71,9 +71,9 @@ class SwitchAddressCandidateService
      */
     public function cidrFor(NetworkSwitch $switch, string $address): ?string
     {
-        $blok = $this->blockFor($switch, $address);
+        $block = $this->blockFor($switch, $address);
 
-        return $blok === null ? null : trim($address).'/'.$blok->prefix_length;
+        return $block === null ? null : trim($address).'/'.$block->prefix_length;
     }
 
     /**

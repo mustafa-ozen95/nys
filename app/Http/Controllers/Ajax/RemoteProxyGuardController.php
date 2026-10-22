@@ -46,15 +46,15 @@ class RemoteProxyGuardController extends Controller
             return response()->noContent(Response::HTTP_FORBIDDEN);
         }
 
-        $hedef = $this->requestedTarget($request);
+        $target = $this->requestedTarget($request);
 
         // Adres kurallı biçimde okunamıyorsa nginx'in sunacağı kaynakla bizim
         // yetkilendirdiğimiz kaynak ayrışabilir; bu durumda hiçbir şey sorulmaz.
-        if ($hedef === false) {
+        if ($target === false) {
             return response()->noContent(Response::HTTP_FORBIDDEN);
         }
 
-        $port = $hedef;
+        $port = $target;
 
         $session = $port === null
             ? $this->sessions->forUser($request->user()->id, ConnectionProtocol::Rdp)
@@ -98,18 +98,18 @@ class RemoteProxyGuardController extends Controller
             return null;
         }
 
-        $yol = explode('?', (string) $request->header('X-Original-Uri'), 2)[0];
+        $path = explode('?', (string) $request->header('X-Original-Uri'), 2)[0];
 
-        if (preg_match('#[%\\\\\x00-\x20\x7f]|//#', $yol) === 1
-            || in_array('..', explode('/', $yol), true)
-            || in_array('.', explode('/', $yol), true)) {
+        if (preg_match('#[%\\\\\x00-\x20\x7f]|//#', $path) === 1
+            || in_array('..', explode('/', $path), true)
+            || in_array('.', explode('/', $path), true)) {
             return false;
         }
 
-        if (preg_match('#^/ssh-proxy/([1-9]\d{3})(?:/|$)#', $yol, $eslesme) === 1) {
-            return (int) $eslesme[1];
+        if (preg_match('#^/ssh-proxy/([1-9]\d{3})(?:/|$)#', $path, $match) === 1) {
+            return (int) $match[1];
         }
 
-        return str_starts_with($yol, '/rdp-proxy/') ? null : false;
+        return str_starts_with($path, '/rdp-proxy/') ? null : false;
     }
 }

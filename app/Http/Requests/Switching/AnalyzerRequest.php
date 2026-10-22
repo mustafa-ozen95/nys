@@ -50,12 +50,12 @@ class AnalyzerRequest extends FormRequest
     public function rules(): array
     {
         $switch = $this->route('switch');
-        $mevcut = $this->analyzer();
-        $secenekler = app(PortMirroringViewService::class);
+        $current = $this->analyzer();
+        $options = app(PortMirroringViewService::class);
 
-        $kaynaklar = array_keys($secenekler->sourceInterfaceOptions($switch, $mevcut));
-        $cikislar = array_keys($secenekler->outputInterfaceOptions($switch, $mevcut));
-        $vlanlar = array_keys($secenekler->vlanOptions($switch, $mevcut));
+        $sources = array_keys($options->sourceInterfaceOptions($switch, $current));
+        $exits = array_keys($options->outputInterfaceOptions($switch, $current));
+        $vlans = array_keys($options->vlanOptions($switch, $current));
 
         return [
             /*
@@ -63,11 +63,11 @@ class AnalyzerRequest extends FormRequest
              * creation failed" ile reddeder.
              */
             'name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:63', 'regex:/^[A-Za-z][A-Za-z0-9_.\-]*$/',
                 Rule::unique(SwitchAnalyzer::class, 'name')
                     ->where('switch_id', $switch->id)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             /*
@@ -84,17 +84,17 @@ class AnalyzerRequest extends FormRequest
 
             'loss_priority' => ['nullable', Rule::in(self::LOSS_PRIORITIES)],
 
-            'output_interface' => ['nullable', Rule::in($cikislar)],
-            'output_vlan' => ['nullable', Rule::in($vlanlar)],
+            'output_interface' => ['nullable', Rule::in($exits)],
+            'output_vlan' => ['nullable', Rule::in($vlans)],
 
             'ingress_interfaces' => ['array'],
-            'ingress_interfaces.*' => [Rule::in($kaynaklar)],
+            'ingress_interfaces.*' => [Rule::in($sources)],
             'egress_interfaces' => ['array'],
-            'egress_interfaces.*' => [Rule::in($kaynaklar)],
+            'egress_interfaces.*' => [Rule::in($sources)],
             'ingress_vlans' => ['array'],
-            'ingress_vlans.*' => [Rule::in($vlanlar)],
+            'ingress_vlans.*' => [Rule::in($vlans)],
             'egress_vlans' => ['array'],
-            'egress_vlans.*' => [Rule::in($vlanlar)],
+            'egress_vlans.*' => [Rule::in($vlans)],
         ];
     }
 
@@ -130,15 +130,15 @@ class AnalyzerRequest extends FormRequest
      */
     private function guardSwitchingPort(Validator $validator): void
     {
-        $ad = $this->string('output_interface')->toString();
+        $name = $this->string('output_interface')->toString();
 
-        if ($ad === '') {
+        if ($name === '') {
             return;
         }
 
         $port = SwitchPort::query()
             ->where('switch_id', $this->route('switch')->id)
-            ->firstWhere('name', $this->physical($ad));
+            ->firstWhere('name', $this->physical($name));
 
         if ($port === null) {
             $validator->errors()->add('output_interface', 'Bu switchte böyle bir port yok.');
@@ -149,7 +149,7 @@ class AnalyzerRequest extends FormRequest
         if (! app(PortMirroringViewService::class)->isSwitching($port->port_mode)) {
             $validator->errors()->add(
                 'output_interface',
-                "{$ad} anahtarlama ailesinde değil; cihaz aynalama çıkışını bu porta yazmayı reddediyor.",
+                "{$name} anahtarlama ailesinde değil; cihaz aynalama çıkışını bu porta yazmayı reddediyor.",
             );
         }
     }
@@ -163,17 +163,17 @@ class AnalyzerRequest extends FormRequest
      */
     private function guardAggregatedOutput(Validator $validator): void
     {
-        $adaylar = array_filter(array_merge(
+        $candidates = array_filter(array_merge(
             [$this->string('output_interface')->toString()],
             (array) $this->input('ingress_interfaces', []),
             (array) $this->input('egress_interfaces', []),
         ));
 
-        foreach ($adaylar as $ad) {
-            if (preg_match('/^ae\d+/', (string) $ad) === 1) {
+        foreach ($candidates as $name) {
+            if (preg_match('/^ae\d+/', (string) $name) === 1) {
                 $validator->errors()->add(
                     'output_interface',
-                    "{$ad} bir toplama (ae) arayüzü; cihaz aynalamada ae arayüzünü kabul etmiyor.",
+                    "{$name} bir toplama (ae) arayüzü; cihaz aynalamada ae arayüzünü kabul etmiyor.",
                 );
 
                 return;
@@ -190,23 +190,23 @@ class AnalyzerRequest extends FormRequest
      */
     private function guardOutputHasNoVlan(Validator $validator): void
     {
-        $ad = $this->string('output_interface')->toString();
+        $name = $this->string('output_interface')->toString();
 
-        if ($ad === '' || $validator->errors()->has('output_interface')) {
+        if ($name === '' || $validator->errors()->has('output_interface')) {
             return;
         }
 
         $port = SwitchPort::query()
             ->where('switch_id', $this->route('switch')->id)
             ->with('vlans')
-            ->firstWhere('name', $this->physical($ad));
+            ->firstWhere('name', $this->physical($name));
 
         if ($port !== null && $port->vlans->isNotEmpty()) {
-            $uyelik = $port->vlans->pluck('name')->join(', ');
+            $membership = $port->vlans->pluck('name')->join(', ');
 
             $validator->errors()->add(
                 'output_interface',
-                "{$ad} şu VLAN'lara üye: {$uyelik}. Cihaz, aynalama çıkışının hiçbir VLAN'a üye olmamasını istiyor; "
+                "{$name} şu VLAN'lara üye: {$membership}. Cihaz, aynalama çıkışının hiçbir VLAN'a üye olmamasını istiyor; "
                 .'önce portun VLAN üyeliğini kaldırın.',
             );
         }
@@ -217,17 +217,17 @@ class AnalyzerRequest extends FormRequest
      */
     private function guardSourceIsNotOutput(Validator $validator): void
     {
-        $cikis = $this->string('output_interface')->toString();
+        $exit = $this->string('output_interface')->toString();
 
-        if ($cikis === '') {
+        if ($exit === '') {
             return;
         }
 
         foreach (['ingress_interfaces', 'egress_interfaces'] as $alan) {
-            if (in_array($cikis, (array) $this->input($alan, []), true)) {
+            if (in_array($exit, (array) $this->input($alan, []), true)) {
                 $validator->errors()->add(
                     $alan,
-                    "{$cikis} hem kaynak hem çıkış olamaz; aynalanan trafik kendi portuna geri gönderilemez.",
+                    "{$exit} hem kaynak hem çıkış olamaz; aynalanan trafik kendi portuna geri gönderilemez.",
                 );
             }
         }
@@ -241,13 +241,13 @@ class AnalyzerRequest extends FormRequest
      */
     private function guardRename(Validator $validator): void
     {
-        $mevcut = $this->analyzer();
+        $current = $this->analyzer();
 
-        if ($mevcut === null || ! $this->filled('name')) {
+        if ($current === null || ! $this->filled('name')) {
             return;
         }
 
-        if ($this->string('name')->toString() !== (string) $mevcut->name) {
+        if ($this->string('name')->toString() !== (string) $current->name) {
             $validator->errors()->add(
                 'name',
                 'Aynalama adı cihazda kimliktir ve değiştirilemez; yeni ad için kayıt silinip yeniden eklenir.',
@@ -265,7 +265,7 @@ class AnalyzerRequest extends FormRequest
      */
     public function settings(): array
     {
-        $mevcut = $this->analyzer();
+        $current = $this->analyzer();
 
         return [
             'ratio' => $this->filled('ratio') ? $this->integer('ratio') : null,
@@ -276,7 +276,7 @@ class AnalyzerRequest extends FormRequest
             'ingress_vlans' => $this->names('ingress_vlans'),
             'egress_interfaces' => $this->names('egress_interfaces'),
             'egress_vlans' => $this->names('egress_vlans'),
-            'residual_xml' => $mevcut?->residual_xml,
+            'residual_xml' => $current?->residual_xml,
         ];
     }
 
@@ -306,9 +306,9 @@ class AnalyzerRequest extends FormRequest
 
     private function analyzer(): ?SwitchAnalyzer
     {
-        $mevcut = $this->route('analyzer');
+        $current = $this->route('analyzer');
 
-        return $mevcut instanceof SwitchAnalyzer ? $mevcut : null;
+        return $current instanceof SwitchAnalyzer ? $current : null;
     }
 
     /**

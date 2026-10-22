@@ -17,10 +17,10 @@
 #  kuyruk; kalıcılık kapalı).
 #
 #  Dışarıdaki ya da platformun yönettiği bir veritabanı: DB_HOST ve
-#  kimlik bilgilerini verin, VT_KOPYA=0 ile db servisi hiç kalkmaz.
+#  kimlik bilgilerini verin, DB_REPLICAS=0 ile db servisi hiç kalkmaz.
 #
-#  Adlar: konteyner ve hacimler ONEK ile başlar (varsayılan nys). Aynı
-#  sunucuda ikinci kurulum ONEK'i değiştirir.
+#  Adlar: konteyner ve hacimler STACK_PREFIX ile başlar (varsayılan nys). Aynı
+#  sunucuda ikinci kurulum STACK_PREFIX'i değiştirir.
 # =============================================================================
 
 services:
@@ -28,8 +28,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: ${ONEK:-nys}:yerel
-    container_name: ${ONEK:-nys}
+    image: ${STACK_PREFIX:-nys}:local
+    container_name: ${STACK_PREFIX:-nys}
     restart: unless-stopped
     # Kapanış NE KADAR SÜRÜYORSA o kadar beklenir; buradaki değer bir hedef
     # değil, asla devreye girmemesi gereken bir TAVANDIR. Cihaza yazan bir iş
@@ -59,18 +59,18 @@ services:
       - REDIS_HOST
       - REDIS_PORT
       - REDIS_PASSWORD
-      - KIMLIK_ACIK
-      - KIMLIK_ADRES
-      - KIMLIK_ISTEMCI
-      - KIMLIK_ISTEMCI_SIR
-      - KIMLIK_DONUS
-      - KIMLIK_BILDIRIM_SIR
-      - KIMLIK_AD
-      - KIMLIK_KOK
-      - KIMLIK_YONETICI_DEVRI
-      - TEMA_ALANI
+      - IDENTITY_ENABLED
+      - IDENTITY_URL
+      - IDENTITY_CLIENT_ID
+      - IDENTITY_CLIENT_SECRET
+      - IDENTITY_REDIRECT_URI
+      - IDENTITY_NOTIFY_SECRET
+      - IDENTITY_NAME
+      - IDENTITY_CA_CERT
+      - IDENTITY_ADMIN_TAKEOVER
+      - THEME_COOKIE_DOMAIN
       - ACTIVITY_CHAIN_KEY
-      - GUNCELLEME_JETONU
+      - UPDATE_TOKEN
       - ZABBIX_ENABLED
       - ZABBIX_URL
       - ZABBIX_API_TOKEN
@@ -79,8 +79,8 @@ services:
       - ARCHIVAL_SITE
       - GUACAMOLE_SECRET
       - GUACAMOLE_USER
-      - SUNUCU_WINRM_KURTARMA
-      - ORNEK_VERI
+      - SERVER_WINRM_RECOVERY
+      - SAMPLE_DATA
       - ADMIN_NAME
       - ADMIN_EMAIL
       - ADMIN_PASSWORD
@@ -113,11 +113,11 @@ services:
 
   db:
     image: mariadb:11.4
-    container_name: ${ONEK:-nys}-db
+    container_name: ${STACK_PREFIX:-nys}-db
     restart: unless-stopped
     # 0: dışarıdaki ya da platformun veritabanı kullanılıyor (DB_HOST).
     deploy:
-      replicas: ${VT_KOPYA:-1}
+      replicas: ${DB_REPLICAS:-1}
     # Docker'ın varsayılan 10 saniyesi InnoDB boşaltmasına yetmeyebilir
     # (boştayken bile); tavan, hedef değil.
     stop_grace_period: 2m
@@ -139,7 +139,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: ${ONEK:-nys}-redis
+    container_name: ${STACK_PREFIX:-nys}-redis
     restart: unless-stopped
     # Kalıcılık KAPALI: burada yalnız önbellek, oturum ve kuyruk durur.
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -155,12 +155,12 @@ networks:
     # merkezine (KYM) ve
     # dışarıya bağlanamaz (taşıma ya da deneme kurulumunda canlı cihazlara
     # yazılmasın diye). Port yayınları da o zaman dışarıdan erişilmez.
-    internal: ${AG_YALITIMI:-false}
+    internal: ${NETWORK_ISOLATED:-false}
 
 volumes:
   storage:
-    name: ${ONEK:-nys}_storage
+    name: ${STACK_PREFIX:-nys}_storage
   logs:
-    name: ${ONEK:-nys}_logs
+    name: ${STACK_PREFIX:-nys}_logs
   database:
-    name: ${ONEK:-nys}_database
+    name: ${STACK_PREFIX:-nys}_database

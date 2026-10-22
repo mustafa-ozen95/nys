@@ -46,40 +46,40 @@ use Throwable;
 class IdentityRefreshController extends Controller
 {
     /** Aynı kimlik için merkeze bu kadar saniye içinde ikinci kez sorulmaz. */
-    private const BEKLEME = 10;
+    private const WAIT = 10;
 
     public function __invoke(
         Request $request,
-        CenterClient $merkez,
-        IdentitySyncer $esitleyici,
+        CenterClient $center,
+        IdentitySyncer $syncer,
     ): JsonResponse {
         $subject = trim((string) $request->input('subject'));
-        $sir = (string) config('identity.bildirim_sirri');
+        $secret = (string) config('identity.notify_secret');
 
         /*
          * Sabit süreli karşılaştırma: doğru imzanın ne kadarının tuttuğu
          * ölçülebilmemeli.
          */
-        $imzali = $sir !== '' && hash_equals(
-            hash_hmac('sha256', $subject, $sir),
-            (string) $request->header('X-Kimlik-Imza'),
+        $signed = $secret !== '' && hash_equals(
+            hash_hmac('sha256', $subject, $secret),
+            (string) $request->header('X-Identity-Signature'),
         );
 
-        if ($imzali && $subject !== '' && $merkez->acikMi()) {
-            $this->tazele($subject, $merkez, $esitleyici);
+        if ($signed && $subject !== '' && $center->isOpen()) {
+            $this->refresh($subject, $center, $syncer);
         }
 
         /*
          * YANIT HER ZAMAN AYNI. "Bu kimlik burada var mı", "imza tuttu mu"
          * soruları bu uçtan öğrenilemez.
          */
-        return response()->json(['sonuc' => 'alındı']);
+        return response()->json(['result' => 'received']);
     }
 
-    private function tazele(string $subject, CenterClient $merkez, IdentitySyncer $esitleyici): void
+    private function refresh(string $subject, CenterClient $center, IdentitySyncer $syncer): void
     {
         $bag = UserIdentity::with('user')
-            ->where('provider', AccountMatcher::SAGLAYICI)
+            ->where('provider', AccountMatcher::PROVIDER)
             ->where('subject', $subject)
             ->first();
 
@@ -92,22 +92,22 @@ class IdentityRefreshController extends Controller
             return;
         }
 
-        $anahtar = 'kimlik:tazele:'.$subject;
+        $key = 'kimlik:tazele:'.$subject;
 
-        if (! Cache::add($anahtar, true, self::BEKLEME)) {
+        if (! Cache::add($key, true, self::WAIT)) {
             return;
         }
 
         try {
-            $durumlar = $merkez->kimlikDurumlari([$subject]);
+            $statuses = $center->identityStatuses([$subject]);
         } catch (Throwable $e) {
             report($e);
 
             return;
         }
 
-        if (isset($durumlar[$subject])) {
-            $esitleyici->uygula($bag->user, (array) $durumlar[$subject]);
+        if (isset($statuses[$subject])) {
+            $syncer->apply($bag->user, (array) $statuses[$subject]);
         }
     }
 }

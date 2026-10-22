@@ -16,7 +16,7 @@ class WriteLogin
     public function handle(Login $event): void
     {
         if (request()->hasSession()) {
-            request()->session()->put(SharedLogout::OTURUM_ANAHTARI, SharedLogout::simdiMs());
+            request()->session()->put(SharedLogout::SESSION_KEY, SharedLogout::nowMs());
         }
     }
 }

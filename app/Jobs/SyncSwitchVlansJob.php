@@ -133,10 +133,10 @@ class SyncSwitchVlansJob implements ShouldBeUnique, ShouldQueue
             ->keyBy(fn (Vlan $vlan): int => $vlan->vlan_tag);
 
         foreach ($switch->ports as $port) {
-            $uyelikler = $memberships[$port->if_index] ?? [];
+            $portMemberships = $memberships[$port->if_index] ?? [];
             $pivot = [];
 
-            foreach ($uyelikler as $vlanIndex => $untagged) {
+            foreach ($portMemberships as $vlanIndex => $untagged) {
                 $model = $models[$vlanIndex] ?? null;
 
                 if ($model !== null) {
@@ -167,8 +167,8 @@ class SyncSwitchVlansJob implements ShouldBeUnique, ShouldQueue
             return PortMode::Unconfigured;
         }
 
-        $etiketli = collect($pivot)->contains(fn (array $satir): bool => ! $satir['is_untagged']);
+        $tagged = collect($pivot)->contains(fn (array $row): bool => ! $row['is_untagged']);
 
-        return $etiketli || count($pivot) > 1 ? PortMode::Trunk : PortMode::Access;
+        return $tagged || count($pivot) > 1 ? PortMode::Trunk : PortMode::Access;
     }
 }

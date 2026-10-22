@@ -37,7 +37,7 @@ class BgpSynchronizer
         DB::transaction(function () use ($switch, $asn, $groups, $states): void {
             $switch->update(['autonomous_system' => $asn]);
 
-            $tutulan = [];
+            $kept = [];
 
             foreach ($groups as $group) {
                 $model = $switch->bgpGroups()->updateOrCreate(
@@ -70,13 +70,13 @@ class BgpSynchronizer
                     ],
                 );
 
-                $tutulan[] = $model->id;
+                $kept[] = $model->id;
 
                 $this->storeFamilies($model, $group['families']);
                 $this->storeNeighbors($switch, $model, $group['neighbors'], $states);
             }
 
-            $switch->bgpGroups()->whereNotIn('id', $tutulan)->delete();
+            $switch->bgpGroups()->whereNotIn('id', $kept)->delete();
         });
     }
 
@@ -99,10 +99,10 @@ class BgpSynchronizer
      */
     private function storeFamilies(BgpGroup $group, array $families): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($families as $family) {
-            $tutulan[] = $group->families()->updateOrCreate(
+            $kept[] = $group->families()->updateOrCreate(
                 ['family' => $family['family']],
                 [
                     'nlri' => $family['nlri'],
@@ -115,7 +115,7 @@ class BgpSynchronizer
             )->id;
         }
 
-        $group->families()->whereNotIn('id', $tutulan)->delete();
+        $group->families()->whereNotIn('id', $kept)->delete();
     }
 
     /**
@@ -124,7 +124,7 @@ class BgpSynchronizer
      */
     private function storeNeighbors(NetworkSwitch $switch, BgpGroup $group, array $neighbors, array $states): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($neighbors as $neighbor) {
             /*
@@ -166,9 +166,9 @@ class BgpSynchronizer
 
             $model->save();
 
-            $tutulan[] = $model->id;
+            $kept[] = $model->id;
         }
 
-        $group->neighbors()->whereNotIn('id', $tutulan)->delete();
+        $group->neighbors()->whereNotIn('id', $kept)->delete();
     }
 }

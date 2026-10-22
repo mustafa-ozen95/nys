@@ -37,15 +37,15 @@ class SecureInterfaceRequest extends SecureAccessRequest
      */
     public function rules(): array
     {
-        $mevcut = $this->route('secureInterface');
+        $current = $this->route('secureInterface');
 
         return [
             'interface_name' => [
-                Rule::requiredIf($mevcut === null),
+                Rule::requiredIf($current === null),
                 'string', 'max:64',
                 Rule::unique(SwitchSecureInterface::class, 'interface_name')
                     ->where('switch_id', $this->switch()->id)
-                    ->ignore($mevcut),
+                    ->ignore($current),
             ],
 
             /*
@@ -76,7 +76,7 @@ class SecureInterfaceRequest extends SecureAccessRequest
             'mac_limit_action' => [
                 'nullable',
                 Rule::in(array_map(
-                    static fn (SecureAccessAction $eylem): string => $eylem->value,
+                    static fn (SecureAccessAction $action): string => $action->value,
                     $this->dialect()->macLimitActions(),
                 )),
             ],
@@ -106,15 +106,15 @@ class SecureInterfaceRequest extends SecureAccessRequest
      */
     private function guardSwitchingPort(Validator $validator): void
     {
-        $ad = $this->name();
+        $name = $this->name();
 
-        if ($ad === '' || $ad === 'all') {
+        if ($name === '' || $name === 'all') {
             return;
         }
 
         $port = SwitchPort::query()
             ->where('switch_id', $this->switch()->id)
-            ->firstWhere('name', SwitchSecureInterface::basePortName($ad));
+            ->firstWhere('name', SwitchSecureInterface::basePortName($name));
 
         if ($port === null) {
             $validator->errors()->add('interface_name', 'Bu switchte böyle bir port yok.');
@@ -125,7 +125,7 @@ class SecureInterfaceRequest extends SecureAccessRequest
         if (! in_array($port->port_mode, [PortMode::Access, PortMode::Trunk], true)) {
             $validator->errors()->add(
                 'interface_name',
-                "{$ad} anahtarlama modunda değil; cihaz bu porta erişim güvenliği kuralı tanımlamayı reddediyor.",
+                "{$name} anahtarlama modunda değil; cihaz bu porta erişim güvenliği kuralı tanımlamayı reddediyor.",
             );
         }
     }
@@ -152,7 +152,7 @@ class SecureInterfaceRequest extends SecureAccessRequest
      */
     public function settings(): array
     {
-        $mevcut = $this->route('secureInterface');
+        $current = $this->route('secureInterface');
 
         return [
             // ELS'te VLAN kapsamlı alanların hangi VLAN'a yazılacağı.
@@ -163,7 +163,7 @@ class SecureInterfaceRequest extends SecureAccessRequest
                 ? $this->string('mac_limit_action')->toString()
                 : null,
             'allowed_macs' => $this->allowedMacs(),
-            'residual_xml' => $mevcut instanceof SwitchSecureInterface ? $mevcut->residual_xml : null,
+            'residual_xml' => $current instanceof SwitchSecureInterface ? $current->residual_xml : null,
         ];
     }
 
@@ -172,10 +172,10 @@ class SecureInterfaceRequest extends SecureAccessRequest
      */
     public function interfaceName(): string
     {
-        $mevcut = $this->route('secureInterface');
+        $current = $this->route('secureInterface');
 
-        return $mevcut instanceof SwitchSecureInterface
-            ? (string) $mevcut->interface_name
+        return $current instanceof SwitchSecureInterface
+            ? (string) $current->interface_name
             : $this->name();
     }
 

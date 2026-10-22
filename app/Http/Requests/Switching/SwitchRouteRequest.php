@@ -189,20 +189,20 @@ class SwitchRouteRequest extends FormRequest
                 return;
             }
 
-            $zatenVar = SwitchRoute::query()
+            $alreadyExists = SwitchRoute::query()
                 ->where('switch_id', $this->route('switch')->id)
                 ->where('destination', $cidr->network)
                 ->where('prefix_length', $cidr->prefixLength)
                 ->when($this->route('route'), fn ($query, $route) => $query->whereKeyNot($route->getKey()))
                 ->exists();
 
-            if ($zatenVar) {
+            if ($alreadyExists) {
                 $validator->errors()->add('cidr', 'Bu route zaten tanımlı.');
             }
 
             $this->guardConflictingFlags($validator);
             $this->guardHopFamily($validator, $cidr->isIpv6);
-            $this->guardBaskaCihazaAtanmis($validator, $cidr);
+            $this->guardAssignedToOtherDevice($validator, $cidr);
         });
     }
 
@@ -220,32 +220,32 @@ class SwitchRouteRequest extends FormRequest
      * Envanterde karşılığı OLMAYAN ağ serbesttir — kural yalnızca panelin
      * bildiği bloklar için geçerli; bilmediği bir ağ hakkında konuşamaz.
      */
-    private function guardBaskaCihazaAtanmis(Validator $validator, Cidr $cidr): void
+    private function guardAssignedToOtherDevice(Validator $validator, Cidr $cidr): void
     {
         $switch = $this->route('switch');
 
-        $blok = AddressBlock::query()
+        $block = AddressBlock::query()
             ->where('network', $cidr->network)
             ->where('prefix_length', $cidr->prefixLength)
             ->whereNotNull('connection_type')
             ->first();
 
-        if ($blok === null) {
+        if ($block === null) {
             return;
         }
 
-        $sahibi = $blok->access_switch_id ?? $blok->core_switch_id;
+        $owner = $block->access_switch_id ?? $block->core_switch_id;
 
-        if ($sahibi === null || $sahibi === $switch->getKey()) {
+        if ($owner === null || $owner === $switch->getKey()) {
             return;
         }
 
-        $blok->loadMissing(['accessSwitch', 'coreSwitch']);
-        $ad = $blok->accessSwitch?->hostname ?? $blok->coreSwitch?->hostname ?? 'başka bir cihaz';
+        $block->loadMissing(['accessSwitch', 'coreSwitch']);
+        $name = $block->accessSwitch?->hostname ?? $block->coreSwitch?->hostname ?? 'başka bir cihaz';
 
         $validator->errors()->add(
             'cidr',
-            "{$blok->cidr} zaten {$ad} üzerinde kullanılıyor; aynı ağ ikinci bir cihazdan route edilemez.",
+            "{$block->cidr} zaten {$name} üzerinde kullanılıyor; aynı ağ ikinci bir cihazdan route edilemez.",
         );
     }
 
@@ -255,15 +255,15 @@ class SwitchRouteRequest extends FormRequest
      */
     private function guardConflictingFlags(Validator $validator): void
     {
-        $secilen = (array) $this->input('flags', []);
-        $cakisma = RouteFlag::conflicts();
+        $selected = (array) $this->input('flags', []);
+        $conflict = RouteFlag::conflicts();
 
-        foreach ($secilen as $flag) {
-            foreach ($cakisma[$flag] ?? [] as $karsit) {
-                if (in_array($karsit, $secilen, true)) {
+        foreach ($selected as $flag) {
+            foreach ($conflict[$flag] ?? [] as $opposite) {
+                if (in_array($opposite, $selected, true)) {
                     $validator->errors()->add(
                         'flags',
-                        "“{$flag}” ile “{$karsit}” birlikte kullanılamaz; cihaz bu ikisini reddediyor.",
+                        "“{$flag}” ile “{$opposite}” birlikte kullanılamaz; cihaz bu ikisini reddediyor.",
                     );
 
                     return;

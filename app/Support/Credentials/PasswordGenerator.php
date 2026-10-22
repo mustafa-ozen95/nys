@@ -181,12 +181,12 @@ final class PasswordGenerator
             return 'Parola en az '.self::MINIMUM_LENGTH.' karakter olmalı.';
         }
 
-        $havuz = self::poolSizeFor($lower, $upper, $digits, $symbols);
+        $pool = self::poolSizeFor($lower, $upper, $digits, $symbols);
 
-        if (self::entropyBits($length, $havuz) < self::MINIMUM_ENTROPY_BITS) {
-            $gerekli = (int) ceil(self::MINIMUM_ENTROPY_BITS / log($havuz, 2));
+        if (self::entropyBits($length, $pool) < self::MINIMUM_ENTROPY_BITS) {
+            $required = (int) ceil(self::MINIMUM_ENTROPY_BITS / log($pool, 2));
 
-            return "Bu karakter sınıflarıyla parola çok zayıf kalır; uzunluk en az {$gerekli} olmalı ya da bir sınıf daha açılmalı.";
+            return "Bu karakter sınıflarıyla parola çok zayıf kalır; uzunluk en az {$required} olmalı ya da bir sınıf daha açılmalı.";
         }
 
         return null;
@@ -202,13 +202,13 @@ final class PasswordGenerator
     {
         $ambiguous = (bool) config('credentials.rotation.avoid_ambiguous');
 
-        $boyut = 0;
-        $boyut += $lower ? strlen(self::LOWER) + ($ambiguous ? 0 : strlen(self::LOWER_AMBIGUOUS)) : 0;
-        $boyut += $upper ? strlen(self::UPPER) + ($ambiguous ? 0 : strlen(self::UPPER_AMBIGUOUS)) : 0;
-        $boyut += $digits ? strlen(self::DIGITS) + ($ambiguous ? 0 : strlen(self::DIGITS_AMBIGUOUS)) : 0;
-        $boyut += $symbols ? strlen(self::SYMBOLS) : 0;
+        $size = 0;
+        $size += $lower ? strlen(self::LOWER) + ($ambiguous ? 0 : strlen(self::LOWER_AMBIGUOUS)) : 0;
+        $size += $upper ? strlen(self::UPPER) + ($ambiguous ? 0 : strlen(self::UPPER_AMBIGUOUS)) : 0;
+        $size += $digits ? strlen(self::DIGITS) + ($ambiguous ? 0 : strlen(self::DIGITS_AMBIGUOUS)) : 0;
+        $size += $symbols ? strlen(self::SYMBOLS) : 0;
 
-        return $boyut;
+        return $size;
     }
 
     /**
@@ -251,7 +251,7 @@ final class PasswordGenerator
      */
     private function guard(int $length, array $classes): void
     {
-        $sorun = self::problemWith(
+        $problem = self::problemWith(
             $length,
             (bool) config('credentials.rotation.lowercase'),
             (bool) config('credentials.rotation.uppercase'),
@@ -259,8 +259,8 @@ final class PasswordGenerator
             (bool) config('credentials.rotation.symbols'),
         );
 
-        if ($sorun !== null) {
-            throw new InvalidArgumentException($sorun);
+        if ($problem !== null) {
+            throw new InvalidArgumentException($problem);
         }
 
         // Sınıf listesi ile config ayrışmışsa (elle çağrı) yine de durulur.

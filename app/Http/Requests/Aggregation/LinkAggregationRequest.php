@@ -121,12 +121,12 @@ class LinkAggregationRequest extends FormRequest
             return;
         }
 
-        $uyeSayisi = count((array) $this->input('members', []));
+        $memberCount = count((array) $this->input('members', []));
 
-        if ((int) $minimum > $uyeSayisi) {
-            $validator->errors()->add('minimum_links', $uyeSayisi === 0
+        if ((int) $minimum > $memberCount) {
+            $validator->errors()->add('minimum_links', $memberCount === 0
                 ? 'Önce üye port seçilmeli; üyesi olmayan bir LAG’da en az bağlantı sayısı verilemez.'
-                : "En az bağlantı sayısı üye sayısını ({$uyeSayisi}) geçemez.");
+                : "En az bağlantı sayısı üye sayısını ({$memberCount}) geçemez.");
         }
     }
 
@@ -137,14 +137,14 @@ class LinkAggregationRequest extends FormRequest
     {
         $aggregate = $this->route('aggregate');
 
-        $baskasinda = SwitchPort::query()
+        $other = SwitchPort::query()
             ->whereIn('uuid', (array) $this->input('members', []))
             ->whereNotNull('aggregate_port_id')
             ->where('aggregate_port_id', '!=', $aggregate?->id)
             ->with('aggregate')
             ->get();
 
-        foreach ($baskasinda as $port) {
+        foreach ($other as $port) {
             $validator->errors()->add(
                 'members',
                 "{$port->name} zaten {$port->aggregate?->name} üyesi; önce oradan çıkarılmalı.",

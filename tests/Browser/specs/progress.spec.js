@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { girisYap } from '../support/login.js';
+import { performLogin } from '../support/login.js';
 
 /**
  * Süren parola turunun ilerleme çubuğu — cihaz satırında.
@@ -21,11 +21,11 @@ import { girisYap } from '../support/login.js';
 test('cihaz satırında çubuk çizilir ve düğme gizlenir', async ({ page }, testInfo) => {
     test.setTimeout(120000);
 
-    await girisYap(page);
-    await page.goto('/ayarlar/parolalar');
+    await performLogin(page);
+    await page.goto('/settings/passwords');
 
-    const cubuk = page.locator('[role="progressbar"]');
-    await expect(cubuk.first()).toBeVisible({ timeout: 15000 });
+    const bar = page.locator('[role="progressbar"]');
+    await expect(bar.first()).toBeVisible({ timeout: 15000 });
 
     /*
      * ÖZET ŞERİT KAYDIRMADAN GÖRÜNMELİ.
@@ -35,34 +35,34 @@ test('cihaz satırında çubuk çizilir ve düğme gizlenir', async ({ page }, t
      * görüntü alanına girmiyordu. Görünmeyen bir ilerleme göstergesinin
      * varlık sebebi yok.
      */
-    const ozet = page.locator('[data-ilerleme-ozet]');
-    await expect(ozet).toBeVisible();
-    await expect(ozet).toBeInViewport();
+    const summary = page.locator('[data-progress-summary]');
+    await expect(summary).toBeVisible();
+    await expect(summary).toBeInViewport();
 
     /* Satır içindeki çubuk da okunabilir genişlikte olmalı. */
-    const satirCubugu = page.locator('[data-ilerleme-cihaz] [role="progressbar"]').first();
-    const genislik = (await satirCubugu.boundingBox())?.width ?? 0;
-    expect(genislik).toBeGreaterThan(120);
+    const rowBar = page.locator('[data-progress-device] [role="progressbar"]').first();
+    const width = (await rowBar.boundingBox())?.width ?? 0;
+    expect(width).toBeGreaterThan(120);
 
     /* Çubuğun bulunduğu satırda "Değiştir" görünmemeli. */
-    const satir = page.locator('[data-ilerleme-cihaz]').filter({ has: cubuk });
-    await expect(satir.getByRole('button', { name: 'Değiştir' })).toHaveCount(0);
+    const row = page.locator('[data-progress-device]').filter({ has: bar });
+    await expect(row.getByRole('button', { name: 'Değiştir' })).toHaveCount(0);
 
     await page.screenshot({ path: testInfo.outputPath('nys-ilerleme.png'), fullPage: false });
 
     /* Yenilemede silinecek iz. */
     await page.evaluate(() => {
-        window.__nsmIsaret = 'duruyor';
+        window.__nsmMarker = 'duruyor';
     });
 
     /*
      * Tur dışarıdan bitirilince çubuk kaybolmalı — ve sayfa YERİNDE
      * tazelendiği için iz yerinde kalmalı.
      */
-    await expect(page.locator('[data-ilerleme-cihaz] [role="progressbar"]')).toHaveCount(0, { timeout: 90000 });
-    await expect(ozet).toHaveCount(0);
+    await expect(page.locator('[data-progress-device] [role="progressbar"]')).toHaveCount(0, { timeout: 90000 });
+    await expect(summary).toHaveCount(0);
 
     await page.screenshot({ path: testInfo.outputPath('nys-ilerleme-bitis.png'), fullPage: false });
 
-    expect(await page.evaluate(() => window.__nsmIsaret ?? null)).toBe('duruyor');
+    expect(await page.evaluate(() => window.__nsmMarker ?? null)).toBe('duruyor');
 });

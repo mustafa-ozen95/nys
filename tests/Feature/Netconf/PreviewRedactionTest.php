@@ -32,7 +32,7 @@ final class PreviewRedactionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const GIZLI_FARK = "[edit system login user admin authentication]\n"
+    private const HIDDEN_DIFF = "[edit system login user admin authentication]\n"
         ."-  encrypted-password \"\$9\$eskiGizliOzet\"; ## SECRET-DATA\n"
         ."+  encrypted-password \"\$9\$yeniGizliOzet\"; ## SECRET-DATA\n"
         ."[edit snmp]\n"
@@ -48,18 +48,18 @@ final class PreviewRedactionTest extends TestCase
             ->put(route('switches.commits.preview', [$switch, $commit]))
             ->assertRedirect();
 
-        $fark = session('rollbackPreview')['diff'] ?? '';
+        $diff = session('rollbackPreview')['diff'] ?? '';
 
         // Önizleme gerçekten üretilmiş olmalı; boş fark testi anlamsız kılardı.
-        $this->assertNotSame('', $fark);
+        $this->assertNotSame('', $diff);
 
-        $this->assertStringNotContainsString('eskiGizliOzet', $fark);
-        $this->assertStringNotContainsString('yeniGizliOzet', $fark);
-        $this->assertStringNotContainsString('gizlicommunity', $fark);
+        $this->assertStringNotContainsString('eskiGizliOzet', $diff);
+        $this->assertStringNotContainsString('yeniGizliOzet', $diff);
+        $this->assertStringNotContainsString('gizlicommunity', $diff);
 
         // Hangi satırın değiştiği görünmeye devam eder; yalnızca değer gizlenir.
-        $this->assertStringContainsString('encrypted-password', $fark);
-        $this->assertStringContainsString('••••', $fark);
+        $this->assertStringContainsString('encrypted-password', $diff);
+        $this->assertStringContainsString('••••', $diff);
     }
 
     public function test_geri_alma_ekrani_sir_basmaz(): void
@@ -91,14 +91,14 @@ final class PreviewRedactionTest extends TestCase
     {
         return SwitchCommit::factory()->for($switch, 'switch')->create([
             'sequence_number' => 1,
-            'committed_at' => $this->gecmis()[60],
+            'committed_at' => $this->history()[60],
         ]);
     }
 
     /**
      * @return array<int, Carbon>
      */
-    private function gecmis(): array
+    private function history(): array
     {
         return [
             0 => Carbon::parse('2026-01-01 12:00:00', 'UTC'),
@@ -109,21 +109,21 @@ final class PreviewRedactionTest extends TestCase
 
     private function device(): FakeJunosDevice
     {
-        $satirlar = '';
+        $rows = '';
 
-        foreach ([0 => 0, 1 => 60, 2 => 120] as $sequence => $dakika) {
-            $satirlar .= '<commit-history>'
+        foreach ([0 => 0, 1 => 60, 2 => 120] as $sequence => $minute) {
+            $rows .= '<commit-history>'
                 .'<sequence-number>'.$sequence.'</sequence-number>'
                 .'<user>admin</user><client>netconf</client>'
-                .'<date-time junos:seconds="'.$this->gecmis()[$dakika]->getTimestamp().'">x</date-time>'
+                .'<date-time junos:seconds="'.$this->history()[$minute]->getTimestamp().'">x</date-time>'
                 .'</commit-history>';
         }
 
         $device = new FakeJunosDevice(
-            diff: self::GIZLI_FARK,
+            diff: self::HIDDEN_DIFF,
             commitInformation: '<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"'
                 .' xmlns:junos="http://xml.juniper.net/junos/12.3R12/junos">'
-                .'<commit-information>'.$satirlar.'</commit-information>'
+                .'<commit-information>'.$rows.'</commit-information>'
                 ."</rpc-reply>\n]]>]]>",
         );
 

@@ -43,11 +43,11 @@ class SwitchArchivalController extends Controller implements HasMiddleware
          */
         $switch->fill($request->settings());
 
-        $sonuc = $this->writer->apply($switch);
+        $result = $this->writer->apply($switch);
 
         $switch->save();
 
-        if (! $sonuc['committed']) {
+        if (! $result['committed']) {
             return back()->with('status', "{$switch->hostname} zaten istenen yedek ayarını taşıyor.");
         }
 

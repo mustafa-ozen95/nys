@@ -93,7 +93,7 @@ class RotateSwitchPasswordJob implements ShouldBeEncrypted, ShouldBeUnique, Shou
      * İz kısa ömürlüdür ve YALNIZCA ekran içindir; turun kendisi için hiçbir
      * karar buna dayanmaz.
      */
-    private const BEKLEYEN = 'nsm:parola-bekleyen:';
+    private const PENDING = 'nsm:parola-bekleyen:';
 
     /**
      * İzin ömrü: kuyruk tıkalıysa çubuk sonsuza dek dönmemeli.
@@ -103,7 +103,7 @@ class RotateSwitchPasswordJob implements ShouldBeEncrypted, ShouldBeUnique, Shou
      * olmuyor" izlenimi verirdi. Sıralı kuyruklamada ömür sıranın uzunluğuna
      * göre hesaplanır.
      */
-    private const BEKLEME_OMRU = 900;
+    private const WAIT_LIFETIME = 900;
 
     /**
      * Kuyruğa alan TEK yol.
@@ -112,11 +112,11 @@ class RotateSwitchPasswordJob implements ShouldBeEncrypted, ShouldBeUnique, Shou
      * iz bırakmayı çağıranlara bırakmak, birini eklerken diğerini unutmaya
      * açık olurdu: o cihazda çubuk hiç görünmez, sebebi de belli olmazdı.
      */
-    public static function kuyrukla(int $switchId, ?int $userId = null, ?string $password = null): void
+    public static function enqueue(int $switchId, ?int $userId = null, ?string $password = null): void
     {
         self::dispatch($switchId, $userId, $password);
 
-        self::izBirak($switchId);
+        self::traceLeave($switchId);
     }
 
     /**
@@ -134,57 +134,57 @@ class RotateSwitchPasswordJob implements ShouldBeEncrypted, ShouldBeUnique, Shou
      *
      * @param  iterable<int>  $switchIds
      */
-    public static function sirayaAl(iterable $switchIds, ?int $userId = null): int
+    public static function enqueueChain(iterable $switchIds, ?int $userId = null): int
     {
-        $isler = [];
-        $bekleyenler = [];
+        $jobs = [];
+        $pending = [];
 
         foreach ($switchIds as $switchId) {
-            $isler[] = new self((int) $switchId, $userId);
+            $jobs[] = new self((int) $switchId, $userId);
 
             /*
              * İz HEPSİ için hemen bırakılır: zincirdeki iş kuyruğa ancak
              * sırası gelince girer, oysa ekran daha ilk saniyede "sıraya
              * alındı" demek zorunda — yoksa düğme işlememiş gibi görünür.
              */
-            $bekleyenler[] = (int) $switchId;
+            $pending[] = (int) $switchId;
         }
 
-        if ($isler === []) {
+        if ($jobs === []) {
             return 0;
         }
 
-        $omur = count($isler) * (int) config('credentials.rotation.job_timeout') + 300;
+        $lifetime = count($jobs) * (int) config('credentials.rotation.job_timeout') + 300;
 
-        foreach ($bekleyenler as $switchId) {
-            self::izBirak($switchId, $omur);
+        foreach ($pending as $switchId) {
+            self::traceLeave($switchId, $lifetime);
         }
 
-        Bus::chain($isler)
+        Bus::chain($jobs)
             ->onQueue((string) config('credentials.rotation.queue'))
             ->dispatch();
 
-        return count($isler);
+        return count($jobs);
     }
 
     /** "Sıraya alındı" izini bırakır. */
-    private static function izBirak(int $switchId, ?int $omur = null): void
+    private static function traceLeave(int $switchId, ?int $lifetime = null): void
     {
-        Cache::put(self::BEKLEYEN.$switchId, now()->timestamp, $omur ?? self::BEKLEME_OMRU);
+        Cache::put(self::PENDING.$switchId, now()->timestamp, $lifetime ?? self::WAIT_LIFETIME);
     }
 
     /** Bu cihaz için kuyrukta bekleyen bir tur var mı? Varsa ne zaman kuyruğa girdi? */
-    public static function bekleyen(int $switchId): ?int
+    public static function pending(int $switchId): ?int
     {
-        $an = Cache::get(self::BEKLEYEN.$switchId);
+        $moment = Cache::get(self::PENDING.$switchId);
 
-        return $an === null ? null : (int) $an;
+        return $moment === null ? null : (int) $moment;
     }
 
     /** İzi siler — tur kaydı görünür olunca işi biter. */
-    public static function iziSil(int $switchId): void
+    public static function traceDelete(int $switchId): void
     {
-        Cache::forget(self::BEKLEYEN.$switchId);
+        Cache::forget(self::PENDING.$switchId);
     }
 
     public function handle(SwitchPasswordRotator $rotator): void

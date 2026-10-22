@@ -32,7 +32,7 @@ final class PasswordRotationProgressTest extends TestCase
     public function test_suren_tur_asamayi_bildirir(): void
     {
         $switch = $this->switch();
-        $this->tur($switch, PasswordRotationStage::PasswordChanged);
+        $this->round($switch, PasswordRotationStage::PasswordChanged);
 
         $this->actingAs($this->admin())
             ->getJson(route('settings.passwords.progress'))
@@ -48,7 +48,7 @@ final class PasswordRotationProgressTest extends TestCase
     public function test_biten_tur_ilerlemede_gorunmez(): void
     {
         $switch = $this->switch();
-        $this->tur($switch, PasswordRotationStage::RecoveryRemoved, PasswordRotationStatus::Succeeded);
+        $this->round($switch, PasswordRotationStage::RecoveryRemoved, PasswordRotationStatus::Succeeded);
 
         $this->actingAs($this->admin())
             ->getJson(route('settings.passwords.progress'))
@@ -69,7 +69,7 @@ final class PasswordRotationProgressTest extends TestCase
 
         $switch = $this->switch();
 
-        RotateSwitchPasswordJob::kuyrukla($switch->id);
+        RotateSwitchPasswordJob::enqueue($switch->id);
 
         $this->actingAs($this->admin())
             ->getJson(route('settings.passwords.progress'))
@@ -92,25 +92,25 @@ final class PasswordRotationProgressTest extends TestCase
     {
         $switch = $this->switch();
 
-        $this->tur($switch, PasswordRotationStage::PasswordChanged)->forceFill([
+        $this->round($switch, PasswordRotationStage::PasswordChanged)->forceFill([
             'new_password' => 'yeni-gizli-parola',
             'recovery_password' => 'kurtarma-gizli-parola',
             'recovery_username' => 'nsm-kurtarma',
         ])->save();
 
-        $govde = $this->actingAs($this->admin())
+        $body = $this->actingAs($this->admin())
             ->getJson(route('settings.passwords.progress'))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringNotContainsString('yeni-gizli-parola', $govde);
-        $this->assertStringNotContainsString('kurtarma-gizli-parola', $govde);
+        $this->assertStringNotContainsString('yeni-gizli-parola', $body);
+        $this->assertStringNotContainsString('kurtarma-gizli-parola', $body);
     }
 
     /**
      * Ekranda çubuk çizilir ve o satırdaki düğmeler gizlenir.
      *
-     * YÜZDE `style` DEĞİL `data-baslangic` İLE BASILIR. Sunucu "width: 67%"
+     * YÜZDE `style` DEĞİL `data-start` İLE BASILIR. Sunucu "width: 67%"
      * gibi bir stil basarsa sunucu sınaması geçer ama TARAYICI onu
      * uygulamaz: içerik CSP'si satır içi stil özniteliklerini engeller
      * (Chromium: "Applying inline style violates ... style-src") ve çubuk
@@ -122,21 +122,21 @@ final class PasswordRotationProgressTest extends TestCase
     public function test_ekranda_cubuk_cizilir_ve_dugme_gizlenir(): void
     {
         $switch = $this->switch();
-        $this->tur($switch, PasswordRotationStage::PasswordChanged);
+        $this->round($switch, PasswordRotationStage::PasswordChanged);
 
-        $yanit = $this->actingAs($this->admin())
+        $response = $this->actingAs($this->admin())
             ->get(route('settings.passwords'))
             ->assertOk()
-            ->assertSee('data-ilerleme-cihaz="'.$switch->uuid.'"', false)
+            ->assertSee('data-progress-device="'.$switch->uuid.'"', false)
             ->assertSee('role="progressbar"', false)
-            ->assertSee('data-baslangic="67"', false)
+            ->assertSee('data-start="67"', false)
             ->assertSee('Yeni parola deneniyor', false);
 
         /*
          * Tur sürerken "Değiştir" gösterilmemeli: ikinci iş, işin tekilliğine
          * takılıp sessizce düşerdi ve kullanıcı bunu hata sanardı.
          */
-        $yanit->assertDontSee('form="parola-'.$switch->uuid.'"', false);
+        $response->assertDontSee('form="parola-'.$switch->uuid.'"', false);
     }
 
     /** Süren tur yoksa sayfa sunucuya hiç soru sormaz. */
@@ -147,7 +147,7 @@ final class PasswordRotationProgressTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('settings.passwords'))
             ->assertOk()
-            ->assertDontSee('data-ilerleme-adres', false);
+            ->assertDontSee('data-progress-address', false);
     }
 
     public function test_yetkisiz_kullanici_asamayi_goremez(): void
@@ -159,7 +159,7 @@ final class PasswordRotationProgressTest extends TestCase
             ->assertForbidden();
     }
 
-    private function tur(
+    private function round(
         NetworkSwitch $switch,
         PasswordRotationStage $stage,
         PasswordRotationStatus $status = PasswordRotationStatus::Running,

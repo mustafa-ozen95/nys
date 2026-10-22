@@ -94,11 +94,11 @@ final class PeerConfigurationTest extends TestCase
     {
         $neighbor = $this->neighbor(['passive' => true]);
 
-        $sonuc = $this->build($neighbor);
+        $result = $this->build($neighbor);
 
-        $this->assertNotContains('set protocols bgp group omurga passive', $sonuc['lines']);
+        $this->assertNotContains('set protocols bgp group omurga passive', $result['lines']);
         $this->assertNotEmpty(array_filter(
-            $sonuc['notes'],
+            $result['notes'],
             static fn (string $note): bool => str_contains($note, 'pasif'),
         ));
     }
@@ -150,13 +150,13 @@ final class PeerConfigurationTest extends TestCase
 
     public function test_prefix_bilinmiyorsa_anons_politikasi_uretilmez(): void
     {
-        $sonuc = $this->build($this->neighbor());
+        $result = $this->build($this->neighbor());
 
         $this->assertEmpty(array_filter(
-            $sonuc['lines'],
+            $result['lines'],
             static fn (string $line): bool => str_contains($line, 'policy-statement'),
         ));
-        $this->assertNotEmpty($sonuc['notes']);
+        $this->assertNotEmpty($result['notes']);
     }
 
     /**
@@ -170,15 +170,15 @@ final class PeerConfigurationTest extends TestCase
         $neighbor = BgpNeighbor::factory()->for($group, 'group')->for($switch, 'switch')
             ->create(['address' => '198.18.8.37', 'peer_asn' => null]);
 
-        $sonuc = $this->build($neighbor);
+        $result = $this->build($neighbor);
 
-        $this->assertFalse($sonuc['complete']);
+        $this->assertFalse($result['complete']);
         $this->assertCount(3, array_filter(
-            $sonuc['notes'],
+            $result['notes'],
             static fn (string $note): bool => str_contains($note, 'tanımlı değil'),
         ));
         $this->assertEmpty(array_filter(
-            $sonuc['lines'],
+            $result['lines'],
             static fn (string $line): bool => str_contains($line, 'peer-as')
                 || str_contains($line, 'autonomous-system')
                 || str_contains($line, 'neighbor'),
@@ -236,11 +236,11 @@ final class PeerConfigurationTest extends TestCase
     {
         $neighbor = $this->neighbor(['authentication_key' => '$9$cokGizli']);
 
-        $sonuc = $this->build($neighbor);
+        $result = $this->build($neighbor);
 
-        $this->assertStringNotContainsString('cokGizli', implode("\n", $sonuc['lines']));
+        $this->assertStringNotContainsString('cokGizli', implode("\n", $result['lines']));
         $this->assertNotEmpty(array_filter(
-            $sonuc['notes'],
+            $result['notes'],
             fn (string $note): bool => str_contains($note, 'MD5'),
         ));
     }
@@ -295,12 +295,12 @@ final class PeerConfigurationTest extends TestCase
     {
         $neighbor = $this->neighbor(['authentication_key' => '$9$cokGizli']);
 
-        $sonuc = app(PeerConfigurationBuilder::class)->ourSide($neighbor);
-        $metin = implode("\n", $sonuc['lines']);
+        $result = app(PeerConfigurationBuilder::class)->ourSide($neighbor);
+        $text = implode("\n", $result['lines']);
 
-        $this->assertStringNotContainsString('cokGizli', $metin);
-        $this->assertStringContainsString('authentication-key "<ANAHTAR>"', $metin);
-        $this->assertNotEmpty($sonuc['notes']);
+        $this->assertStringNotContainsString('cokGizli', $text);
+        $this->assertStringContainsString('authentication-key "<ANAHTAR>"', $text);
+        $this->assertNotEmpty($result['notes']);
     }
 
     /**

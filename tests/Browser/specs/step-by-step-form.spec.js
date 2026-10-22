@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { girisYap } from '../support/login.js';
+import { performLogin } from '../support/login.js';
 
 /**
  * Formların adım adım açıldığını doğrular.
@@ -10,110 +10,110 @@ import { girisYap } from '../support/login.js';
  * açık kalması ve port modunda trunk seçiminin çalışmaması böyle kaçtı.
  */
 
-async function blokPenceresi(page) {
-    await girisYap(page);
-    await page.goto('/adresleme');
-    await page.click('[data-modal-open="blok-ekle"]');
+async function blockDialog(page) {
+    await performLogin(page);
+    await page.goto('/addressing');
+    await page.click('[data-modal-open="block-add"]');
 
-    return page.locator('#blok-ekle');
+    return page.locator('#block-add');
 }
 
 test('adres bloğu: yöntem seçilmeden sonraki alanlar sorulmaz', async ({ page }) => {
-    const pencere = await blokPenceresi(page);
+    const window = await blockDialog(page);
 
     // Yöntem seçilmemişken omurga switch ve yönteme özel alanların hiçbiri açık olmamalı.
-    await expect(pencere.locator('[name="core_switch_id"]')).toBeHidden();
-    await expect(pencere.locator('[name="access_switch_id"]')).toBeHidden();
-    await expect(pencere.locator('[name="next_hop_source"]').first()).toBeHidden();
-    await expect(pencere.locator('[name="prefix_list_id"]')).toBeHidden();
+    await expect(window.locator('[name="core_switch_id"]')).toBeHidden();
+    await expect(window.locator('[name="access_switch_id"]')).toBeHidden();
+    await expect(window.locator('[name="next_hop_source"]').first()).toBeHidden();
+    await expect(window.locator('[name="prefix_list_id"]')).toBeHidden();
 });
 
 test('adres bloğu: VLAN seçilince uplink alanları açılmaz', async ({ page }) => {
-    const pencere = await blokPenceresi(page);
+    const window = await blockDialog(page);
 
-    await pencere.locator('[name="connection_type"]').selectOption('vlan');
+    await window.locator('[name="connection_type"]').selectOption('vlan');
 
-    await expect(pencere.locator('[name="core_switch_id"]')).toBeVisible();
-    await expect(pencere.locator('[name="access_switch_id"]')).toBeVisible();
+    await expect(window.locator('[name="core_switch_id"]')).toBeVisible();
+    await expect(window.locator('[name="access_switch_id"]')).toBeVisible();
 
     // Asıl hatalar: VLAN yöntemindeyken "Uplink IP" ve "Port" görünüyordu.
-    await expect(pencere.locator('[name="next_hop_switch"]')).toBeHidden();
-    await expect(pencere.locator('[name="next_hop"]')).toBeHidden();
-    await expect(pencere.locator('[name="port_name"]')).toBeHidden();
-    await expect(pencere.locator('[name="prefix_list_id"]')).toBeHidden();
+    await expect(window.locator('[name="next_hop_switch"]')).toBeHidden();
+    await expect(window.locator('[name="next_hop"]')).toBeHidden();
+    await expect(window.locator('[name="port_name"]')).toBeHidden();
+    await expect(window.locator('[name="prefix_list_id"]')).toBeHidden();
 });
 
 test('adres bloğu: static route seçilince kaynak sorulur, IP alanı sonra açılır', async ({ page }) => {
-    const pencere = await blokPenceresi(page);
+    const window = await blockDialog(page);
 
-    await pencere.locator('[name="connection_type"]').selectOption('next_hop');
+    await window.locator('[name="connection_type"]').selectOption('next_hop');
 
-    await expect(pencere.locator('[name="next_hop_source"]').first()).toBeVisible();
-    await expect(pencere.locator('[name="access_switch_id"]')).toBeHidden();
+    await expect(window.locator('[name="next_hop_source"]').first()).toBeVisible();
+    await expect(window.locator('[name="access_switch_id"]')).toBeHidden();
 
     // Kaynak seçilmeden IP alanlarının ikisi de kapalı.
-    await expect(pencere.locator('[name="next_hop_switch"]')).toBeHidden();
-    await expect(pencere.locator('[name="next_hop"]')).toBeHidden();
+    await expect(window.locator('[name="next_hop_switch"]')).toBeHidden();
+    await expect(window.locator('[name="next_hop"]')).toBeHidden();
 
-    await pencere.locator('[name="next_hop_source"][value="manual"]').check();
-    await expect(pencere.locator('[name="next_hop"]')).toBeVisible();
-    await expect(pencere.locator('[name="next_hop_switch"]')).toBeHidden();
+    await window.locator('[name="next_hop_source"][value="manual"]').check();
+    await expect(window.locator('[name="next_hop"]')).toBeVisible();
+    await expect(window.locator('[name="next_hop_switch"]')).toBeHidden();
 
-    await pencere.locator('[name="next_hop_source"][value="switch"]').check();
-    await expect(pencere.locator('[name="next_hop_switch"]')).toBeVisible();
-    await expect(pencere.locator('[name="next_hop"]')).toBeHidden();
+    await window.locator('[name="next_hop_source"][value="switch"]').check();
+    await expect(window.locator('[name="next_hop_switch"]')).toBeVisible();
+    await expect(window.locator('[name="next_hop"]')).toBeHidden();
 });
 
 test('adres bloğu: omurgada tiki erişim switchini kaldırır', async ({ page }) => {
-    const pencere = await blokPenceresi(page);
+    const window = await blockDialog(page);
 
-    await pencere.locator('[name="connection_type"]').selectOption('vlan');
-    await expect(pencere.locator('[name="access_switch_id"]')).toBeVisible();
+    await window.locator('[name="connection_type"]').selectOption('vlan');
+    await expect(window.locator('[name="access_switch_id"]')).toBeVisible();
 
     // Tik konunca erişim switchi hiç sorulmaz; hedefler omurgadan gelir.
-    await pencere.locator('[data-atama-omurgada]').check();
-    await expect(pencere.locator('[name="access_switch_id"]')).toBeHidden();
+    await window.locator('[data-assignment-backbone]').check();
+    await expect(window.locator('[name="access_switch_id"]')).toBeHidden();
 
-    await pencere.locator('[data-atama-omurgada]').uncheck();
-    await expect(pencere.locator('[name="access_switch_id"]')).toBeVisible();
+    await window.locator('[data-assignment-backbone]').uncheck();
+    await expect(window.locator('[name="access_switch_id"]')).toBeVisible();
 });
 
 test('adres bloğu: prefix list omurga seçilene kadar sorulmaz', async ({ page }) => {
-    const pencere = await blokPenceresi(page);
+    const window = await blockDialog(page);
 
-    await pencere.locator('[name="connection_type"]').selectOption('prefix_list');
+    await window.locator('[name="connection_type"]').selectOption('prefix_list');
 
     // Blok görünür ama içindeki tek alan omurga seçilene kadar kapalı; boş
     // blok sıfır yükseklikte olduğu için doğrudan alana bakılır.
-    await expect(pencere.locator('[name="prefix_list_id"]')).toBeHidden();
+    await expect(window.locator('[name="prefix_list_id"]')).toBeHidden();
 
-    const omurga = pencere.locator('[name="core_switch_id"]');
-    await omurga.selectOption({ index: 1 });
+    const backbone = window.locator('[name="core_switch_id"]');
+    await backbone.selectOption({ index: 1 });
 
-    await expect(pencere.locator('[name="prefix_list_id"]')).toBeVisible();
+    await expect(window.locator('[name="prefix_list_id"]')).toBeVisible();
 });
 
 test('port ayarları: trunk seçilince çoklu VLAN listesi açılır', async ({ page }) => {
-    await girisYap(page);
-    await page.goto('/switchler');
-    await page.locator('a[href*="/switchler/"]').first().click();
-    await page.locator('a[href$="/portlar"]').first().click();
+    await performLogin(page);
+    await page.goto('/switches');
+    await page.locator('a[href*="/switches/"]').first().click();
+    await page.locator('a[href$="/ports"]').first().click();
 
     await page.locator('.grid-row.port-row').first().click();
-    await page.locator('[data-port-duzenle]').click();
+    await page.locator('[data-port-edit]').click();
 
-    const pencere = page.locator('.modal:not([hidden])').first();
-    const mod = pencere.locator('[data-port-mode]');
+    const window = page.locator('.modal:not([hidden])').first();
+    const mode = window.locator('[data-port-mode]');
 
-    await mod.selectOption('access');
-    await expect(pencere.locator('[data-port-vlan="access"]')).toBeVisible();
-    await expect(pencere.locator('[data-port-vlan="trunk"]')).toBeHidden();
+    await mode.selectOption('access');
+    await expect(window.locator('[data-port-vlan="access"]')).toBeVisible();
+    await expect(window.locator('[data-port-vlan="trunk"]')).toBeHidden();
 
     // Asıl hata: trunk seçilince birden fazla VLAN seçilemiyordu.
-    await mod.selectOption('trunk');
-    await expect(pencere.locator('[data-port-vlan="trunk"]')).toBeVisible();
-    await expect(pencere.locator('[data-port-vlan="access"]')).toBeHidden();
-    expect(await pencere.locator('[data-port-vlan="trunk"] input[type="checkbox"]').count()).toBeGreaterThan(1);
+    await mode.selectOption('trunk');
+    await expect(window.locator('[data-port-vlan="trunk"]')).toBeVisible();
+    await expect(window.locator('[data-port-vlan="access"]')).toBeHidden();
+    expect(await window.locator('[data-port-vlan="trunk"] input[type="checkbox"]').count()).toBeGreaterThan(1);
 });
 
 /**
@@ -128,73 +128,73 @@ test('port ayarları: trunk seçilince çoklu VLAN listesi açılır', async ({ 
  * formu HİÇ çizilmez, çünkü cihaz AS numarası olmadan BGP'yi kabul etmiyor.
  * Genel bakıştaki bir komşudan gidilirse switchin BGP'si kurulu olduğu kesindir.
  */
-async function grupPenceresi(page) {
-    await girisYap(page);
+async function groupDialog(page) {
+    await performLogin(page);
     await page.goto('/bgp');
 
-    const satirlar = page.locator('a.bgp-row');
-    test.skip(await satirlar.count() === 0, 'envanterde BGP komşusu yok');
+    const rows = page.locator('a.bgp-row');
+    test.skip(await rows.count() === 0, 'envanterde BGP komşusu yok');
 
-    await satirlar.first().click();
+    await rows.first().click();
     await page.getByRole('link', { name: 'Switchte yönet' }).click();
     await page.waitForURL(/bgp$/);
 
-    const dugme = page.locator('[data-modal-open="grup-ekle"]');
-    await dugme.waitFor({ state: 'visible', timeout: 10000 });
-    await dugme.click();
+    const button = page.locator('[data-modal-open="group-add"]');
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+    await button.click();
 
-    return page.locator('#grup-ekle');
+    return page.locator('#group-add');
 }
 
 test('bgp grubu: iBGP seçilince karşı taraf AS sorulmaz', async ({ page }) => {
-    const pencere = await grupPenceresi(page);
+    const window = await groupDialog(page);
 
     // eBGP'de karşı tarafın AS'i zorunludur.
-    await pencere.locator('[name="type"]').selectOption('external');
-    await expect(pencere.locator('[name="peer_asn"]')).toBeVisible();
+    await window.locator('[name="type"]').selectOption('external');
+    await expect(window.locator('[name="peer_asn"]')).toBeVisible();
 
     // iBGP'de karşı taraf zaten kendi AS'imizdir.
-    await pencere.locator('[name="type"]').selectOption('internal');
-    await expect(pencere.locator('[name="peer_asn"]')).toBeHidden();
+    await window.locator('[name="type"]').selectOption('internal');
+    await expect(window.locator('[name="peer_asn"]')).toBeHidden();
 });
 
 test('bgp grubu: multihop kapalıyken TTL sorulmaz', async ({ page }) => {
-    const pencere = await grupPenceresi(page);
+    const window = await groupDialog(page);
 
-    await expect(pencere.locator('[name="multihop_ttl"]')).toBeHidden();
+    await expect(window.locator('[name="multihop_ttl"]')).toBeHidden();
 
-    await pencere.locator('[name="multihop"][type="checkbox"]').check();
-    await expect(pencere.locator('[name="multihop_ttl"]')).toBeVisible();
+    await window.locator('[name="multihop"][type="checkbox"]').check();
+    await expect(window.locator('[name="multihop_ttl"]')).toBeVisible();
 });
 
 test('bgp grubu: aile açılmadan prefix sınırı sorulmaz', async ({ page }) => {
-    const pencere = await grupPenceresi(page);
+    const window = await groupDialog(page);
 
-    const sinir = pencere.locator('[name="families[inet][prefix_limit_maximum]"]');
-    await expect(sinir).toBeHidden();
+    const limit = window.locator('[name="families[inet][prefix_limit_maximum]"]');
+    await expect(limit).toBeHidden();
 
-    await pencere.locator('[name="families[inet][enabled]"]').check();
-    await expect(sinir).toBeVisible();
+    await window.locator('[name="families[inet][enabled]"]').check();
+    await expect(limit).toBeVisible();
 });
 
 test('bgp grubu: süresiz bekleme seçiliyken dakika sorulmaz', async ({ page }) => {
-    const pencere = await grupPenceresi(page);
+    const window = await groupDialog(page);
 
-    await pencere.locator('[name="families[inet][enabled]"]').check();
+    await window.locator('[name="families[inet][enabled]"]').check();
 
     // Sınır aşılınca düşürme açılmadan eşik ve bekleme sorulmaz.
-    const esik = pencere.locator('[name="families[inet][teardown_threshold]"]');
-    await expect(esik).toBeHidden();
+    const threshold = window.locator('[name="families[inet][teardown_threshold]"]');
+    await expect(threshold).toBeHidden();
 
-    await pencere.locator('[name="families[inet][teardown]"]').check();
-    await expect(esik).toBeVisible();
+    await window.locator('[name="families[inet][teardown]"]').check();
+    await expect(threshold).toBeVisible();
 
-    const dakika = pencere.locator('[name="families[inet][idle_timeout_minutes]"]');
-    await expect(dakika).toBeVisible();
+    const minute = window.locator('[name="families[inet][idle_timeout_minutes]"]');
+    await expect(minute).toBeVisible();
 
     // Junos ikisini birden yazamaz: ya süresiz ya da verilen dakika.
-    await pencere.locator('[name="families[inet][idle_timeout_forever]"]').check();
-    await expect(dakika).toBeHidden();
+    await window.locator('[name="families[inet][idle_timeout_forever]"]').check();
+    await expect(minute).toBeHidden();
 });
 
 /**
@@ -203,24 +203,24 @@ test('bgp grubu: süresiz bekleme seçiliyken dakika sorulmaz', async ({ page })
  * ae arayüzleri panelde yaratılmaz; chassis'in device-count kadarını
  * oluşturmasıyla var olurlar. Bu yüzden test, ae'si OLAN bir switch arar.
  */
-async function toplamaPenceresi(page) {
-    await girisYap(page);
-    await page.goto('/switchler');
+async function aggregationDialog(page) {
+    await performLogin(page);
+    await page.goto('/switches');
 
-    const adresler = await page.locator('a.switch-row').evaluateAll(
-        (baglantilar) => baglantilar.map((b) => b.getAttribute('href')),
+    const addresses = await page.locator('a.switch-row').evaluateAll(
+        (connections) => connections.map((b) => b.getAttribute('href')),
     );
 
-    for (const adres of adresler) {
-        await page.goto(`${adres}/toplama`);
+    for (const address of addresses) {
+        await page.goto(`${address}/aggregation`);
 
-        // "ae-limiti" düğmesi de bu önekle başlıyor; o ayrı bir penceredir.
-        const dugme = page
-            .locator('[data-modal-open^="ae-"]:not([data-modal-open="ae-limiti"])')
+        // "ae-limit" düğmesi de bu önekle başlıyor; o ayrı bir penceredir.
+        const button = page
+            .locator('[data-modal-open^="ae-"]:not([data-modal-open="ae-limit"])')
             .first();
 
-        if (await dugme.count()) {
-            await dugme.click();
+        if (await button.count()) {
+            await button.click();
 
             return page.locator('.modal:not([hidden])').first();
         }
@@ -232,29 +232,29 @@ async function toplamaPenceresi(page) {
 }
 
 test('ae: LACP seçilmeden periyot sorulmaz', async ({ page }) => {
-    const pencere = await toplamaPenceresi(page);
+    const window = await aggregationDialog(page);
 
-    const lacp = pencere.locator('[name="lacp_mode"]');
-    const periyot = pencere.locator('[name="lacp_periodic"]');
+    const lacp = window.locator('[name="lacp_mode"]');
+    const period = window.locator('[name="lacp_periodic"]');
 
     await lacp.selectOption('');
-    await expect(periyot).toBeHidden();
+    await expect(period).toBeHidden();
 
     await lacp.selectOption('active');
-    await expect(periyot).toBeVisible();
+    await expect(period).toBeVisible();
 });
 
 test('ae: access modunda etiketsiz VLAN sorulmaz', async ({ page }) => {
-    const pencere = await toplamaPenceresi(page);
+    const window = await aggregationDialog(page);
 
-    const mod = pencere.locator('[name="port_mode"]');
-    const etiketsiz = pencere.locator('[name="untagged_vlan"]');
+    const mode = window.locator('[name="port_mode"]');
+    const untagged = window.locator('[name="untagged_vlan"]');
 
-    await mod.selectOption('access');
-    await expect(etiketsiz).toBeHidden();
+    await mode.selectOption('access');
+    await expect(untagged).toBeHidden();
 
-    await mod.selectOption('trunk');
-    await expect(etiketsiz).toBeVisible();
+    await mode.selectOption('trunk');
+    await expect(untagged).toBeVisible();
 });
 
 /**
@@ -263,36 +263,36 @@ test('ae: access modunda etiketsiz VLAN sorulmaz', async ({ page }) => {
  * komut bulunmalı. Bizim tarafın metninde sır bulunmamalı.
  */
 test('oturum configi iki tarafı da verir ve yalnızca komut içerir', async ({ page }) => {
-    await girisYap(page);
+    await performLogin(page);
     await page.goto('/bgp');
 
-    const satirlar = page.locator('a.bgp-row');
-    test.skip(await satirlar.count() === 0, 'envanterde BGP komşusu yok');
+    const rows = page.locator('a.bgp-row');
+    test.skip(await rows.count() === 0, 'envanterde BGP komşusu yok');
 
-    await satirlar.first().click();
+    await rows.first().click();
     await page.getByRole('link', { name: 'Switchte yönet' }).click();
     await page.waitForURL(/bgp$/);
 
     await page.locator('[data-modal-open^="peer-"]').first().click();
 
-    const pencere = page.locator('.modal:not([hidden])').first();
-    await expect(pencere).toBeVisible();
+    const window = page.locator('.modal:not([hidden])').first();
+    await expect(window).toBeVisible();
 
-    const karsi = await pencere.locator('[id^="peer-metin-"]').inputValue();
-    const bizim = await pencere.locator('[id^="bizim-metin-"]').inputValue();
+    const opposite = await window.locator('[id^="peer-config-"]').inputValue();
+    const ours = await window.locator('[id^="our-config-"]').inputValue();
 
-    for (const metin of [karsi, bizim]) {
-        expect(metin).toContain('set protocols bgp group');
-        metin.split('\n').filter(Boolean).forEach((satir) => {
-            expect(satir.startsWith('set ')).toBe(true);
+    for (const text of [opposite, ours]) {
+        expect(text).toContain('set protocols bgp group');
+        text.split('\n').filter(Boolean).forEach((row) => {
+            expect(row.startsWith('set ')).toBe(true);
         });
     }
 
     // Cihazdan okunan "$9$..." biçimi çözülebilir; ekrana basılmamalı.
-    expect(bizim).not.toContain('$9$');
+    expect(ours).not.toContain('$9$');
 
-    await expect(pencere.getByRole('button', { name: 'Karşı tarafı kopyala' })).toBeVisible();
-    await expect(pencere.getByRole('button', { name: 'Bizim tarafı kopyala' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Karşı tarafı kopyala' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Bizim tarafı kopyala' })).toBeVisible();
 });
 
 /**
@@ -306,39 +306,39 @@ test('oturum configi iki tarafı da verir ve yalnızca komut içerir', async ({ 
  * Bu sınıf hata sunucu testlerinden GEÇER: alanlar HTML'de vardır, yalnızca
  * yanlış anda görünürler.
  */
-async function filtrePenceresi(page) {
-    await girisYap(page);
-    await page.goto('/switchler');
-    await page.locator('a[href*="/switchler/"]').first().click();
+async function filterDialog(page) {
+    await performLogin(page);
+    await page.goto('/switches');
+    await page.locator('a[href*="/switches/"]').first().click();
     await page.locator('a[href$="/firewall"]').first().click();
 
-    const dugme = page.locator('[data-modal-open="filtre-ekle"]');
-    test.skip(await dugme.count() === 0, 'firewall yazma yetkisi yok');
+    const button = page.locator('[data-modal-open="filter-add"]');
+    test.skip(await button.count() === 0, 'firewall yazma yetkisi yok');
 
-    await dugme.click();
+    await button.click();
 
-    return page.locator('#filtre-ekle');
+    return page.locator('#filter-add');
 }
 
 test('firewall filtresi: aile değişince o aileye ait olmayan koşullar sorulmaz', async ({ page }) => {
-    const pencere = await filtrePenceresi(page);
-    const aile = pencere.locator('[name="family"]');
+    const window = await filterDialog(page);
+    const family = window.locator('[name="family"]');
 
     // IPv4: parça bayrakları var, next-header ve MAC yok.
-    await aile.selectOption('inet');
-    await expect(pencere.locator('[name="is_fragment"][type="checkbox"]')).toBeVisible();
-    await expect(pencere.locator('[name="next_headers[]"]').first()).toBeHidden();
-    await expect(pencere.locator('[name="source_mac_addresses"]')).toBeHidden();
+    await family.selectOption('inet');
+    await expect(window.locator('[name="is_fragment"][type="checkbox"]')).toBeVisible();
+    await expect(window.locator('[name="next_headers[]"]').first()).toBeHidden();
+    await expect(window.locator('[name="source_mac_addresses"]')).toBeHidden();
 
     // IPv6: next-header ve trafik sınıfı açılır, IPv4 başlık alanları kapanır.
-    await aile.selectOption('inet6');
-    await expect(pencere.locator('[name="next_headers[]"]').first()).toBeVisible();
-    await expect(pencere.locator('[name="traffic_classes"]')).toBeVisible();
-    await expect(pencere.locator('[name="is_fragment"][type="checkbox"]')).toBeHidden();
+    await family.selectOption('inet6');
+    await expect(window.locator('[name="next_headers[]"]').first()).toBeVisible();
+    await expect(window.locator('[name="traffic_classes"]')).toBeVisible();
+    await expect(window.locator('[name="is_fragment"][type="checkbox"]')).toBeHidden();
 
     // ethernet-switching: yalnızca ether-type ve MAC alanları açılır.
-    await aile.selectOption('ethernet-switching');
-    await expect(pencere.locator('[name="source_mac_addresses"]')).toBeVisible();
-    await expect(pencere.locator('[name="next_headers[]"]').first()).toBeHidden();
-    await expect(pencere.locator('[name="is_fragment"][type="checkbox"]')).toBeHidden();
+    await family.selectOption('ethernet-switching');
+    await expect(window.locator('[name="source_mac_addresses"]')).toBeVisible();
+    await expect(window.locator('[name="next_headers[]"]').first()).toBeHidden();
+    await expect(window.locator('[name="is_fragment"][type="checkbox"]')).toBeHidden();
 });

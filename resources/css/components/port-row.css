@@ -30,26 +30,26 @@ button.port-row {
     font: inherit;
 }
 
-.port-row__durum    { grid-area: durum; }
-.port-row__ad       { grid-area: ad; }
-.port-row__aciklama { grid-area: aciklama; }
-.port-row__mod {
+.port-row__status    { grid-area: durum; }
+.port-row__name       { grid-area: ad; }
+.port-row__description { grid-area: aciklama; }
+.port-row__mode {
     grid-area: mod;
     /* Uzun bir etiket komşu kolonun üstüne binmemeli. */
     min-width: 0;
     overflow: hidden;
 }
 
-.port-row__mod .badge {
+.port-row__mode .badge {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     display: inline-block;
 }
-.port-row__hiz      { grid-area: hiz; }
-.port-row__gelen    { grid-area: gelen; text-align: right; }
-.port-row__giden    { grid-area: giden; text-align: right; }
-.port-row__doluluk  { grid-area: doluluk; }
+.port-row__speed      { grid-area: hiz; }
+.port-row__incoming    { grid-area: gelen; text-align: right; }
+.port-row__outgoing    { grid-area: giden; text-align: right; }
+.port-row__fill  { grid-area: doluluk; }
 
 @media (max-width: 1400px) {
     .port-row {
@@ -57,7 +57,7 @@ button.port-row {
         grid-template-areas: 'durum ad aciklama mod hiz gelen giden';
     }
 
-    .port-row__doluluk { display: none; }
+    .port-row__fill { display: none; }
 }
 
 @media (max-width: 900px) {
@@ -66,8 +66,8 @@ button.port-row {
         grid-template-areas: 'durum ad aciklama gelen giden';
     }
 
-    .port-row__mod,
-    .port-row__hiz {
+    .port-row__mode,
+    .port-row__speed {
         display: none;
     }
 }
@@ -92,25 +92,25 @@ button.port-row {
     .port-row__head { display: none; }
 
     /* Boş açıklama telefonda satır kaplamasın: 24 portta 24 boş satır eder. */
-    .port-row__aciklama[data-bos] { display: none; }
+    .port-row__description[data-empty] { display: none; }
 
-    .port-row__doluluk {
+    .port-row__fill {
         grid-area: doluluk;
         justify-self: end;
     }
 
-    .port-row__gelen,
-    .port-row__giden {
+    .port-row__incoming,
+    .port-row__outgoing {
         grid-area: trafik;
         text-align: left;
     }
 
     /* İkisi tek satırda: gelen solda, giden sağda. */
-    .port-row__gelen { justify-self: start; }
-    .port-row__giden { justify-self: end; }
+    .port-row__incoming { justify-self: start; }
+    .port-row__outgoing { justify-self: end; }
 
-    .port-row__gelen::before,
-    .port-row__giden::before {
+    .port-row__incoming::before,
+    .port-row__outgoing::before {
         content: attr(data-label);
         margin-right: var(--space-2);
         font-family: var(--font-sans);
@@ -119,7 +119,7 @@ button.port-row {
     }
 
     /* Açıklaması olmayan port fazladan satır açmasın. */
-    .port-row__aciklama:empty {
+    .port-row__description:empty {
         display: none;
     }
 }

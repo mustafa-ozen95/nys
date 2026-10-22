@@ -78,7 +78,7 @@ class SwitchPortRequest extends FormRequest
              */
             'mtu' => [
                 'nullable', 'integer', 'min:256', 'max:9216',
-                Rule::prohibitedIf(fn (): bool => $this->uyePort()),
+                Rule::prohibitedIf(fn (): bool => $this->memberPort()),
             ],
 
             /*
@@ -92,8 +92,8 @@ class SwitchPortRequest extends FormRequest
              * gelmemeli.
              */
             'port_mode' => [
-                Rule::requiredIf(fn (): bool => ! $this->uyePort()),
-                Rule::prohibitedIf(fn (): bool => $this->uyePort()),
+                Rule::requiredIf(fn (): bool => ! $this->memberPort()),
+                Rule::prohibitedIf(fn (): bool => $this->memberPort()),
                 Rule::in([PortMode::Access->value, PortMode::Trunk->value, PortMode::Routed->value]),
             ],
 
@@ -169,7 +169,7 @@ class SwitchPortRequest extends FormRequest
             // Port VLAN'sız bırakılabilir; access portta en fazla bir VLAN.
             'vlans' => [
                 // ae ÜYESİNDE üyelik olamaz; ayar ae arayüzünde yapılır.
-                Rule::prohibitedIf(fn (): bool => $this->uyePort()),
+                Rule::prohibitedIf(fn (): bool => $this->memberPort()),
                 // YÖNLENDİRME modunda VLAN üyeliği olamaz: cihaz aynı
                 // arayüzde iki aileyi kabul etmiyor.
                 Rule::prohibitedIf(fn (): bool => $this->isRouted()),
@@ -223,26 +223,26 @@ class SwitchPortRequest extends FormRequest
 
         $switch = $this->route('switch');
         $port = $this->route('port');
-        $kullanici = $this->user();
+        $user = $this->user();
 
-        $adres = $this->string('ip_address')->toString();
+        $address = $this->string('ip_address')->toString();
 
-        if ($adres !== '' && $port !== null
-            && ! $port->ipAddresses->contains(fn ($kayit): bool => (string) $kayit->address === $adres)
-            && $kullanici->cannot('updateSwitchIpAddresses', $switch)) {
+        if ($address !== '' && $port !== null
+            && ! $port->ipAddresses->contains(fn ($record): bool => (string) $record->address === $address)
+            && $user->cannot('updateSwitchIpAddresses', $switch)) {
             $validator->errors()->add('ip_address', 'IP adresi vermek için IP adresleri yetkisi gerekir.');
         }
 
-        $bagli = $port === null ? [] : app(SwitchPortService::class)->boundFilters($switch, (string) $port->name);
+        $bound = $port === null ? [] : app(SwitchPortService::class)->boundFilters($switch, (string) $port->name);
 
-        foreach (['input' => 'input_filter', 'output' => 'output_filter'] as $yon => $alan) {
+        foreach (['input' => 'input_filter', 'output' => 'output_filter'] as $direction => $alan) {
             // Alan hiç gelmediyse cihazdaki bağlamaya dokunulmaz.
             if (! $this->has($alan)) {
                 continue;
             }
 
-            if ($this->string($alan)->toString() !== (string) ($bagli[$yon] ?? '')
-                && $kullanici->cannot('updateSwitchFirewall', $switch)) {
+            if ($this->string($alan)->toString() !== (string) ($bound[$direction] ?? '')
+                && $user->cannot('updateSwitchFirewall', $switch)) {
                 $validator->errors()->add($alan, 'Filtre bağlamak için firewall yetkisi gerekir.');
             }
         }
@@ -269,8 +269,8 @@ class SwitchPortRequest extends FormRequest
     private function allowedSpeeds(): array
     {
         $switch = $this->route('switch');
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
-        $hizlar = array_map(strval(...), array_keys($lehce->speedValues()));
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $speeds = array_map(strval(...), array_keys($dialect->speedValues()));
 
         /*
          * Kısıt PIC BAŞINA: yerleşik bakır port 1 Gbps'i zorla kabul etmezken
@@ -279,12 +279,12 @@ class SwitchPortRequest extends FormRequest
          */
         $port = $this->route('port');
 
-        $olculen = $port === null
+        $measured = $port === null
             ? null
             : app(DeviceCapabilities::class)->speedsFor($switch, (string) $port->name);
 
-        if ($olculen !== null) {
-            $hizlar = array_values(array_intersect($hizlar, $olculen));
+        if ($measured !== null) {
+            $speeds = array_values(array_intersect($speeds, $measured));
         }
 
         /*
@@ -292,13 +292,13 @@ class SwitchPortRequest extends FormRequest
          * Yoksa ölçüm daraldığında o port hiç kaydedilemez hâle gelirdi:
          * kullanıcı hıza dokunmasa bile form o değeri gönderir.
          */
-        $mevcut = $port?->speed_config;
+        $current = $port?->speed_config;
 
-        if ($mevcut !== null && ! in_array((string) $mevcut, $hizlar, true)) {
-            $hizlar[] = (string) $mevcut;
+        if ($current !== null && ! in_array((string) $current, $speeds, true)) {
+            $speeds[] = (string) $current;
         }
 
-        return $hizlar;
+        return $speeds;
     }
 
     private function validateDuplex(Validator $validator): void
@@ -307,12 +307,12 @@ class SwitchPortRequest extends FormRequest
             return;
         }
 
-        $izinli = (array) config('netconf.half_duplex_speeds');
+        $permitted = (array) config('netconf.half_duplex_speeds');
 
-        if (! in_array($this->string('speed_config')->toString(), $izinli, true)) {
+        if (! in_array($this->string('speed_config')->toString(), $permitted, true)) {
             $validator->errors()->add(
                 'duplex_config',
-                'Half-duplex yalnızca '.implode(' ya da ', $izinli).' Mbps hızla seçilebilir; '
+                'Half-duplex yalnızca '.implode(' ya da ', $permitted).' Mbps hızla seçilebilir; '
                 .'cihaz otomatik ve 1000 Mbps ile reddediyor.',
             );
         }
@@ -336,7 +336,7 @@ class SwitchPortRequest extends FormRequest
             return;
         }
 
-        $adres = $this->string('ip_address')->toString();
+        $address = $this->string('ip_address')->toString();
         $switch = $this->route('switch');
 
         if ($this->ipCidr() === null) {
@@ -348,13 +348,13 @@ class SwitchPortRequest extends FormRequest
             return;
         }
 
-        $baskaArayuzde = SwitchIpAddress::query()
+        $otherInterface = SwitchIpAddress::query()
             ->where('switch_id', $switch->id)
-            ->where('address', $adres)
+            ->where('address', $address)
             ->where('interface_name', '!=', $this->route('port')?->name.'.0')
             ->exists();
 
-        if ($baskaArayuzde) {
+        if ($otherInterface) {
             $validator->errors()->add('ip_address', 'Bu adres cihazda başka bir arayüzde tanımlı.');
         }
     }
@@ -393,7 +393,7 @@ class SwitchPortRequest extends FormRequest
      * Üye portun kendi birimi, VLAN üyeliği ve MTU'su olamaz; hepsi ae
      * arayüzünde durur.
      */
-    private function uyePort(): bool
+    private function memberPort(): bool
     {
         return $this->route('port')?->aggregate_port_id !== null;
     }

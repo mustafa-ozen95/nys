@@ -22,59 +22,59 @@ use Tests\TestCase;
 final class LinuxDriverRealTest extends TestCase
 {
     /** @var list<string> */
-    private array $komutlar = [];
+    private array $commands = [];
 
-    private ?string $isaret = null;
+    private ?string $mark = null;
 
     public function test_gecerli_ad_kabuga_gider_ve_tur_calisir(): void
     {
-        $surucu = new LinuxDriver(5);
+        $driver = new LinuxDriver(5);
 
-        $surucu->kurtarmaAc($this->oturum(), 'nys-kurtarma-ab12cd', 'Parola-1');
-        $surucu->kurtarmaSil($this->oturum(), 'nys-kurtarma-ab12cd');
+        $driver->recoveryOpen($this->makeSession(), 'nys-kurtarma-ab12cd', 'Parola-1');
+        $driver->recoveryDelete($this->makeSession(), 'nys-kurtarma-ab12cd');
 
-        $hepsi = implode("\n", $this->komutlar);
-        $this->assertStringContainsString('useradd -m -s /bin/sh nys-kurtarma-ab12cd', $hepsi);
-        $this->assertStringContainsString('chpasswd', $hepsi);
-        $this->assertStringContainsString('userdel -r -f nys-kurtarma-ab12cd', $hepsi);
+        $all = implode("\n", $this->commands);
+        $this->assertStringContainsString('useradd -m -s /bin/sh nys-kurtarma-ab12cd', $all);
+        $this->assertStringContainsString('chpasswd', $all);
+        $this->assertStringContainsString('userdel -r -f nys-kurtarma-ab12cd', $all);
     }
 
     public function test_kabugu_bozabilecek_ad_makineye_gitmeden_reddedilir(): void
     {
-        $surucu = new LinuxDriver(5);
+        $driver = new LinuxDriver(5);
 
         foreach ([
-            fn () => $surucu->kurtarmaAc($this->oturum(), 'x; rm -rf /', 'Parola-1'),
-            fn () => $surucu->parolaDegistir($this->oturum(), '$(reboot)', 'Parola-1'),
-            fn () => $surucu->kurtarmaSil($this->oturum(), 'ad`id`'),
-            fn () => $surucu->parolaDegistir($this->oturum(), 'Buyuk', 'Parola-1'),
-            fn () => $surucu->kurtarmaAc($this->oturum(), '', 'Parola-1'),
-        ] as $cagri) {
+            fn () => $driver->recoveryOpen($this->makeSession(), 'x; rm -rf /', 'Parola-1'),
+            fn () => $driver->passwordChange($this->makeSession(), '$(reboot)', 'Parola-1'),
+            fn () => $driver->recoveryDelete($this->makeSession(), 'ad`id`'),
+            fn () => $driver->passwordChange($this->makeSession(), 'Buyuk', 'Parola-1'),
+            fn () => $driver->recoveryOpen($this->makeSession(), '', 'Parola-1'),
+        ] as $call) {
             try {
-                $cagri();
+                $call();
                 $this->fail('Güvensiz hesap adı reddedilmeliydi.');
-            } catch (RotationError $hata) {
-                $this->assertStringContainsString('Hesap adı', $hata->getMessage());
+            } catch (RotationError $error) {
+                $this->assertStringContainsString('Hesap adı', $error->getMessage());
             }
         }
 
-        $this->assertSame([], $this->komutlar, 'Reddedilen ad makineye ulaşmamalıydı.');
+        $this->assertSame([], $this->commands, 'Reddedilen ad makineye ulaşmamalıydı.');
     }
 
     /** Root olarak bağlanan sahte bir SSH oturumu: her komut 0 koduyla biter. */
-    private function oturum(): ServerSession
+    private function makeSession(): ServerSession
     {
         $ssh = Mockery::mock(SSH2::class);
         $ssh->shouldReceive('isConnected')->andReturn(true);
         $ssh->shouldReceive('enablePTY', 'disablePTY', 'write')->andReturnNull();
-        $ssh->shouldReceive('exec')->andReturnUsing(function (string $komut): bool {
-            $this->komutlar[] = $komut;
-            preg_match('/(NYSRC[0-9a-f]+):/', $komut, $m);
-            $this->isaret = $m[1] ?? null;
+        $ssh->shouldReceive('exec')->andReturnUsing(function (string $command): bool {
+            $this->commands[] = $command;
+            preg_match('/(NYSRC[0-9a-f]+):/', $command, $m);
+            $this->mark = $m[1] ?? null;
 
             return true;
         });
-        $ssh->shouldReceive('read')->andReturnUsing(fn () => "\n{$this->isaret}:0\n");
+        $ssh->shouldReceive('read')->andReturnUsing(fn () => "\n{$this->mark}:0\n");
 
         return new ServerSession($ssh, 'root', 'gizli', static fn () => null);
     }

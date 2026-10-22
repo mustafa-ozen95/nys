@@ -22,18 +22,18 @@ class SettingsTest extends TestCase
             ->get(route('settings.index'))
             ->assertForbidden();
 
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
         // Giriş sayfası durum özetidir; bölümler ayrı sayfalardadır.
-        $this->actingAs($yonetici)
+        $this->actingAs($admin)
             ->get(route('settings.index'))
             ->assertOk()
             ->assertSee('Hangi kaynak konuşuyor')
             ->assertSee('Kuyrukta bekleyen')
             ->assertSee('Kullanan switch');
 
-        $this->actingAs($yonetici)
-            ->get(route('settings.show', 'cihaz'))
+        $this->actingAs($admin)
+            ->get(route('settings.show', 'device'))
             ->assertOk()
             ->assertSee('Geri alınabilir commit süresi');
     }
@@ -48,7 +48,7 @@ class SettingsTest extends TestCase
     public function test_yonetici_olmayan_ayar_kaydedemez(): void
     {
         $this->actingAs(User::factory()->create())
-            ->put(route('settings.update', 'cihaz'), $this->payload())
+            ->put(route('settings.update', 'device'), $this->payload())
             ->assertForbidden();
 
         $this->assertDatabaseCount('settings', 0);
@@ -57,7 +57,7 @@ class SettingsTest extends TestCase
     public function test_kaydedilen_ayar_config_uzerine_binder(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'cihaz'), $this->payload(['netconf__confirm_minutes' => 7]))
+            ->put(route('settings.update', 'device'), $this->payload(['netconf__confirm_minutes' => 7]))
             ->assertRedirect();
 
         $this->assertDatabaseHas('settings', ['key' => 'netconf.confirm_minutes']);
@@ -72,7 +72,7 @@ class SettingsTest extends TestCase
     public function test_degismeyen_ayar_icin_satir_yazilmaz(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'cihaz'), $this->payload())
+            ->put(route('settings.update', 'device'), $this->payload())
             ->assertRedirect();
 
         // Hepsi mevcut config değerleriyle aynı gönderildi.
@@ -85,7 +85,7 @@ class SettingsTest extends TestCase
         app(SettingsRepository::class)->forget();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'izleme'), $this->payload(['zabbix__api_token' => '']))
+            ->put(route('settings.update', 'monitoring'), $this->payload(['zabbix__api_token' => '']))
             ->assertRedirect();
 
         app(SettingsRepository::class)->forget();
@@ -106,7 +106,7 @@ class SettingsTest extends TestCase
         app(SettingsRepository::class)->apply();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'izleme'), $this->payload([
+            ->put(route('settings.update', 'monitoring'), $this->payload([
                 'zabbix__url' => 'https://toplayici.saldirgan.test',
                 'zabbix__api_token' => '',
             ]))
@@ -123,7 +123,7 @@ class SettingsTest extends TestCase
         app(SettingsRepository::class)->apply();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'izleme'), $this->payload([
+            ->put(route('settings.update', 'monitoring'), $this->payload([
                 'zabbix__url' => 'https://yeni-izleme.ornek.test',
                 'zabbix__api_token' => 'yeni-jeton',
             ]))
@@ -140,7 +140,7 @@ class SettingsTest extends TestCase
         app(SettingsRepository::class)->forget();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->get(route('settings.show', 'izleme'))
+            ->get(route('settings.show', 'monitoring'))
             ->assertOk()
             ->assertDontSee('cok-gizli-jeton');
     }
@@ -148,7 +148,7 @@ class SettingsTest extends TestCase
     public function test_araligin_disindaki_deger_reddedilir(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'cihaz'), $this->payload(['netconf__confirm_minutes' => 0]))
+            ->put(route('settings.update', 'device'), $this->payload(['netconf__confirm_minutes' => 0]))
             ->assertSessionHasErrors('netconf__confirm_minutes');
 
         $this->assertDatabaseCount('settings', 0);
@@ -157,14 +157,14 @@ class SettingsTest extends TestCase
     public function test_bilinmeyen_olcum_kaynagi_reddedilir(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'olcum'), $this->payload(['measurement__source' => 'sihirli-kure']))
+            ->put(route('settings.update', 'measurement'), $this->payload(['measurement__source' => 'sihirli-kure']))
             ->assertSessionHasErrors('measurement__source');
     }
 
     public function test_kaynak_degistirilince_kaydedilir(): void
     {
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'olcum'), $this->payload(['measurement__source' => MeasurementSource::Netconf->value]))
+            ->put(route('settings.update', 'measurement'), $this->payload(['measurement__source' => MeasurementSource::Netconf->value]))
             ->assertRedirect();
 
         app(SettingsRepository::class)->forget();
@@ -174,11 +174,11 @@ class SettingsTest extends TestCase
 
     public function test_bir_bolum_kaydedilince_digerleri_bozulmaz(): void
     {
-        $yonetici = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
 
         // Önce ölçüm bölümü değiştirilir.
-        $this->actingAs($yonetici)
-            ->put(route('settings.update', 'olcum'), [
+        $this->actingAs($admin)
+            ->put(route('settings.update', 'measurement'), [
                 'measurement__source' => MeasurementSource::Netconf->value,
                 'measurement__fallback' => '1',
                 'measurement__failure_ttl' => 90,
@@ -187,8 +187,8 @@ class SettingsTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Sonra bambaşka bir bölüm gönderilir; ölçüm alanları istekte yok.
-        $this->actingAs($yonetici)
-            ->put(route('settings.update', 'cihaz'), [
+        $this->actingAs($admin)
+            ->put(route('settings.update', 'device'), [
                 'netconf__port' => 830,
                 'netconf__timeout' => 25,
                 'netconf__confirm_minutes' => 5,
@@ -197,22 +197,22 @@ class SettingsTest extends TestCase
             ->assertSessionHasNoErrors();
 
         app(SettingsRepository::class)->forget();
-        $ayarlar = app(SettingsRepository::class);
+        $settings = app(SettingsRepository::class);
 
         /*
          * Gönderilmeyen ayar "boşaltıldı" sayılsaydı ilk bölüm silinirdi:
          * tek bir kaydetme bütün yapılandırmayı götürürdü.
          */
-        $this->assertSame(MeasurementSource::Netconf->value, $ayarlar->get('measurement.source'));
-        $this->assertSame(90, $ayarlar->get('measurement.failure_ttl'));
-        $this->assertSame(5, $ayarlar->get('netconf.confirm_minutes'));
+        $this->assertSame(MeasurementSource::Netconf->value, $settings->get('measurement.source'));
+        $this->assertSame(90, $settings->get('measurement.failure_ttl'));
+        $this->assertSame(5, $settings->get('netconf.confirm_minutes'));
     }
 
     public function test_isaretsiz_kutu_kapatildi_sayilir(): void
     {
         // Gizli "0" alanı sayesinde işaretsiz kutu da gönderilir.
         $this->actingAs(User::factory()->admin()->create())
-            ->put(route('settings.update', 'izleme'), [
+            ->put(route('settings.update', 'monitoring'), [
                 'zabbix__enabled' => '0',
                 'zabbix__url' => config('zabbix.url'),
                 'zabbix__timeout' => config('zabbix.timeout'),

@@ -65,7 +65,7 @@ final class SnmpSyncTest extends TestCase
      *
      * @return array<string, array<string, string>>
      */
-    private function kabinWalks(): array
+    private function cabinetWalks(): array
     {
         $oids = config('snmp.oids');
 
@@ -83,7 +83,7 @@ final class SnmpSyncTest extends TestCase
     public function test_it_stores_vlans_with_tag_name_and_l3_interface(): void
     {
         $switch = $this->switch();
-        $this->fakeSnmp($this->kabinWalks());
+        $this->fakeSnmp($this->cabinetWalks());
 
         (new SyncSwitchVlansJob($switch->id))->handle(app(VlanReader::class));
 
@@ -99,14 +99,14 @@ final class SnmpSyncTest extends TestCase
         // Panel fiziksel portu tutar: ifIndex 503, mantıksal 504 değil.
         $port = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ge-0/0/1', 'if_index' => 503]);
 
-        $this->fakeSnmp($this->kabinWalks());
+        $this->fakeSnmp($this->cabinetWalks());
         (new SyncSwitchVlansJob($switch->id))->handle(app(VlanReader::class));
 
-        $uyelik = $port->fresh()->vlans()->first();
+        $membership = $port->fresh()->vlans()->first();
 
-        $this->assertNotNull($uyelik, 'VLAN üyeliği fiziksel porta bağlanmadı');
-        $this->assertSame(1, $uyelik->vlan_tag);
-        $this->assertTrue((bool) $uyelik->pivot->is_untagged);
+        $this->assertNotNull($membership, 'VLAN üyeliği fiziksel porta bağlanmadı');
+        $this->assertSame(1, $membership->vlan_tag);
+        $this->assertTrue((bool) $membership->pivot->is_untagged);
         $this->assertSame(PortMode::Access, $port->fresh()->port_mode);
     }
 
@@ -115,7 +115,7 @@ final class SnmpSyncTest extends TestCase
         $switch = $this->switch();
         $port = SwitchPort::factory()->for($switch, 'switch')->create(['if_index' => 503]);
 
-        $walks = $this->kabinWalks();
+        $walks = $this->cabinetWalks();
         // Aynı port iki VLAN'da, biri etiketli.
         $walks[config('snmp.oids.vlan_port_tagness')] = ['2.514' => '2', '3.514' => '1'];
 
@@ -131,7 +131,7 @@ final class SnmpSyncTest extends TestCase
         $switch = $this->switch();
         Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 999, 'name' => 'ESKI']);
 
-        $this->fakeSnmp($this->kabinWalks());
+        $this->fakeSnmp($this->cabinetWalks());
         (new SyncSwitchVlansJob($switch->id))->handle(app(VlanReader::class));
 
         $this->assertDatabaseMissing('vlans', ['vlan_tag' => 999]);

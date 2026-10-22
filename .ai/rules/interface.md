@@ -224,7 +224,7 @@ EKLENİR (bkz. `x-form.ip-picker`), var olan dönüştürülmez.
 ilk hücre o dar sütuna sıkışır ve yanındaki rozetin altına girer (ör. SNMP
 community ve spanning tree listeleri).
 
-Sıralanmayan dört sütunlu listeler `.ayar-row` kullanır
+Sıralanmayan dört sütunlu listeler `.setting-row` kullanır
 (`200px 190px minmax(0,1fr) auto`): ad, durum rozeti, özet, eylem.
 Dar ekranda ikisi de tek sütuna iner.
 

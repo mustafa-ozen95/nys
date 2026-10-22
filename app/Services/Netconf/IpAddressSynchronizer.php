@@ -42,10 +42,10 @@ class IpAddressSynchronizer
         $vlans = $switch->vlans()->whereNotNull('l3_interface')->pluck('id', 'l3_interface');
 
         DB::transaction(function () use ($switch, $addresses, $ports, $vlans): void {
-            $tutulan = [];
+            $kept = [];
 
             foreach ($addresses as $address) {
-                $tutulan[] = $switch->ipAddresses()->updateOrCreate(
+                $kept[] = $switch->ipAddresses()->updateOrCreate(
                     [
                         'interface_name' => $address['interface_name'],
                         'address' => $address['address'],
@@ -59,7 +59,7 @@ class IpAddressSynchronizer
                 )->id;
             }
 
-            $switch->ipAddresses()->whereNotIn('id', $tutulan)->delete();
+            $switch->ipAddresses()->whereNotIn('id', $kept)->delete();
         });
     }
 

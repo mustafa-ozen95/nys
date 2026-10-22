@@ -23,22 +23,22 @@ class SecurityHeadersTest extends TestCase
     #[Test]
     public function panel_sayfasi_butun_basliklari_gonderir(): void
     {
-        $yanit = $this->get(route('login'));
+        $response = $this->get(route('login'));
 
-        $yanit->assertOk();
-        $yanit->assertHeader('X-Frame-Options', 'SAMEORIGIN');
-        $yanit->assertHeader('X-Content-Type-Options', 'nosniff');
-        $yanit->assertHeader('Referrer-Policy', 'same-origin');
-        $yanit->assertHeader('X-Permitted-Cross-Domain-Policies', 'none');
+        $response->assertOk();
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('Referrer-Policy', 'same-origin');
+        $response->assertHeader('X-Permitted-Cross-Domain-Policies', 'none');
         /*
          * HSTS SIFIR: sertifika düşerse tarayıcı uyarı ekranını bile
          * göstermiyor ve panele girilemiyor (bkz. HstsDisabledTest).
          */
-        $yanit->assertHeader('Strict-Transport-Security', 'max-age=0');
+        $response->assertHeader('Strict-Transport-Security', 'max-age=0');
 
         $this->assertStringContainsString(
             "frame-ancestors 'self'",
-            (string) $yanit->headers->get('Content-Security-Policy'),
+            (string) $response->headers->get('Content-Security-Policy'),
         );
     }
 }

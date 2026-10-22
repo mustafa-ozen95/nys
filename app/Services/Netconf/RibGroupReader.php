@@ -47,10 +47,10 @@ class RibGroupReader
             $ribs = [];
 
             foreach ($node->xpath('./*[local-name()="import-rib"]') ?: [] as $rib) {
-                $deger = trim((string) $rib);
+                $value = trim((string) $rib);
 
-                if ($deger !== '') {
-                    $ribs[] = $deger;
+                if ($value !== '') {
+                    $ribs[] = $value;
                 }
             }
 
@@ -72,10 +72,10 @@ class RibGroupReader
      */
     private function interfaceRoutes(SimpleXMLElement $reply): ?string
     {
-        $deger = trim((string) ($reply->xpath(
+        $value = trim((string) ($reply->xpath(
             '//*[local-name()="interface-routes"]/*[local-name()="rib-group"]/*[local-name()="inet"]'
         )[0] ?? ''));
 
-        return $deger === '' ? null : $deger;
+        return $value === '' ? null : $value;
     }
 }

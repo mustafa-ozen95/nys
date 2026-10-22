@@ -27,7 +27,7 @@ use Throwable;
 /**
  * Çalışma zamanı ayarlarının yönetimi.
  *
- * Her bölüm kendi sayfasıdır (/ayarlar/izleme, /ayarlar/cihaz...); giriş
+ * Her bölüm kendi sayfasıdır (/settings/monitoring, /settings/device...); giriş
  * sayfası durum özetidir. Kırk ayarın tek sayfada durması karışıklık
  * üretiyordu.
  *
@@ -68,7 +68,7 @@ class SettingController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function show(Request $request, string $section, SimpleModeView $basitMod): View
+    public function show(Request $request, string $section, SimpleModeView $simpleMode): View
     {
         $group = $this->group($section);
 
@@ -81,7 +81,7 @@ class SettingController extends Controller implements HasMiddleware
             'group' => $group,
             'values' => $values,
             'audit' => $this->auditFor($group),
-            'basitMod' => $group['slug'] === 'basit-mod' ? $basitMod->bolumler($group, $values) : [],
+            'basitMod' => $group['slug'] === 'simple-mode' ? $simpleMode->sections($group, $values) : [],
         ]);
     }
 

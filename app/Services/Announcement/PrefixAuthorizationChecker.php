@@ -150,6 +150,6 @@ class PrefixAuthorizationChecker
 
     private function cacheKey(PrefixAuthority $authority, Cidr $block, string $asn): string
     {
-        return 'anons-yetki:'.$authority->key().':'.Asn::digits($asn).':'.$block->toString();
+        return 'announce-permission:'.$authority->key().':'.Asn::digits($asn).':'.$block->toString();
     }
 }

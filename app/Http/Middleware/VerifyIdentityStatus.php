@@ -37,18 +37,18 @@ use Throwable;
 class VerifyIdentityStatus
 {
     /** Merkez yanıt vermediğinde bu kadar dakika yeniden sorulmaz. */
-    private const HATA_BEKLEMESI = 1;
+    private const ERROR_WAIT = 1;
 
     public function __construct(
-        private CenterClient $merkez,
-        private IdentitySyncer $esitleyici,
+        private CenterClient $center,
+        private IdentitySyncer $syncer,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
-        $kullanici = $request->user();
+        $user = $request->user();
 
-        if ($kullanici === null || ! $this->merkez->acikMi()) {
+        if ($user === null || ! $this->center->isOpen()) {
             return $next($request);
         }
 
@@ -57,9 +57,9 @@ class VerifyIdentityStatus
          * başka bir panelden çıkılınca bu oturum bir sonraki tıklamada
          * kapanır (bkz. SharedLogout). Tek satırlık bir sorgu.
          */
-        $ortak = SharedLogout::bag($kullanici);
+        $shared = SharedLogout::bag($user);
 
-        if ($ortak !== null && $request->hasSession() && SharedLogout::oturumEskiMi($ortak, $request->session())) {
+        if ($shared !== null && $request->hasSession() && SharedLogout::isSessionStale($shared, $request->session())) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -69,14 +69,14 @@ class VerifyIdentityStatus
             ]);
         }
 
-        $anahtar = 'kimlik:dogrulama:'.$kullanici->getKey();
+        $key = 'kimlik:dogrulama:'.$user->getKey();
 
-        if (Cache::has($anahtar)) {
+        if (Cache::has($key)) {
             return $next($request);
         }
 
-        $bag = UserIdentity::where('user_id', $kullanici->getKey())
-            ->where('provider', AccountMatcher::SAGLAYICI)
+        $bag = UserIdentity::where('user_id', $user->getKey())
+            ->where('provider', AccountMatcher::PROVIDER)
             ->first();
 
         /* Merkezle hiç bağlanmamış hesap buraya girmez: sorulacak bir kimlik yok. */
@@ -85,26 +85,26 @@ class VerifyIdentityStatus
         }
 
         try {
-            $durumlar = $this->merkez->kimlikDurumlari([$bag->subject]);
+            $statuses = $this->center->identityStatuses([$bag->subject]);
         } catch (Throwable $e) {
             report($e);
-            Cache::put($anahtar, true, now()->addMinutes(self::HATA_BEKLEMESI));
+            Cache::put($key, true, now()->addMinutes(self::ERROR_WAIT));
 
             return $next($request);
         }
 
-        if (isset($durumlar[$bag->subject])) {
-            $this->esitleyici->uygula($kullanici, (array) $durumlar[$bag->subject]);
+        if (isset($statuses[$bag->subject])) {
+            $this->syncer->apply($user, (array) $statuses[$bag->subject]);
         }
 
-        Cache::put($anahtar, true, now()->addMinutes((int) config('identity.dogrulama_dakika')));
+        Cache::put($key, true, now()->addMinutes((int) config('identity.verify_minutes')));
 
         /*
          * Erişimi kalkan kişi İSTEĞİN ORTASINDA dışarı alınır; bir sonraki
          * girişi beklemek, kapatılmış bir hesabın oturumunu açık bırakmak
          * olurdu.
          */
-        if (! $kullanici->fresh()?->isActive()) {
+        if (! $user->fresh()?->isActive()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

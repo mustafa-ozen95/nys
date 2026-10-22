@@ -52,13 +52,13 @@ class GroupFields extends Component
      */
     private function rows(): array
     {
-        $mevcut = $this->group?->families->keyBy(
+        $current = $this->group?->families->keyBy(
             fn (BgpGroupFamily $family): string => $family->family->value,
         );
 
         return [
-            ['key' => 'inet', 'label' => 'IPv4', 'current' => $mevcut?->get('inet')],
-            ['key' => 'inet6', 'label' => 'IPv6', 'current' => $mevcut?->get('inet6')],
+            ['key' => 'inet', 'label' => 'IPv4', 'current' => $current?->get('inet')],
+            ['key' => 'inet6', 'label' => 'IPv6', 'current' => $current?->get('inet6')],
         ];
     }
 

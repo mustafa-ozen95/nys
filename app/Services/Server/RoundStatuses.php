@@ -26,19 +26,19 @@ class RoundStatuses
      * @param  Collection<int, Server>  $sunucular
      * @return array<string, array<string, mixed>>
      */
-    public function icin(Collection $sunucular): array
+    public function for(Collection $servers): array
     {
-        $harita = [];
+        $map = [];
 
-        foreach ($sunucular as $sunucu) {
-            $durum = $this->durum($sunucu);
+        foreach ($servers as $server) {
+            $status = $this->status($server);
 
-            if ($durum !== null) {
-                $harita[(string) $sunucu->uuid] = $durum;
+            if ($status !== null) {
+                $map[(string) $server->uuid] = $status;
             }
         }
 
-        return $harita;
+        return $map;
     }
 
     /**
@@ -46,44 +46,44 @@ class RoundStatuses
      *
      * @return array<string, mixed>|null
      */
-    private function durum(Server $sunucu): ?array
+    private function status(Server $server): ?array
     {
-        $tur = $sunucu->latestPasswordRotation;
-        $bekleyen = ServerPasswordRotateJob::bekleyen((int) $sunucu->id);
+        $round = $server->latestPasswordRotation;
+        $pending = ServerPasswordRotateJob::pending((int) $server->id);
 
         /*
          * Kuyruğa alındı ama işçi henüz başlamadı: tur kaydı yok, iş var.
          * Kayıt izden SONRA açıldıysa iş başlamış demektir ve iz düşer.
          */
-        $baslamamis = $bekleyen !== null
-            && ($tur === null || $tur->created_at?->timestamp < $bekleyen);
+        $notStarted = $pending !== null
+            && ($round === null || $round->created_at?->timestamp < $pending);
 
-        if ($baslamamis) {
+        if ($notStarted) {
             return [
                 'yuzde' => 4,
                 'adim' => 0,
-                'toplam' => PasswordRotationStage::ADIM_SAYISI,
+                'toplam' => PasswordRotationStage::STEP_COUNT,
                 'metin' => 'Sıraya alındı, işçi bekleniyor…',
                 'durum' => PasswordRotationStatus::Pending->value,
             ];
         }
 
-        if ($tur === null
-            || ! in_array($tur->status, [PasswordRotationStatus::Pending, PasswordRotationStatus::Running], true)) {
+        if ($round === null
+            || ! in_array($round->status, [PasswordRotationStatus::Pending, PasswordRotationStatus::Running], true)) {
             return null;
         }
 
-        ServerPasswordRotateJob::iziSil((int) $sunucu->id);
+        ServerPasswordRotateJob::traceDelete((int) $server->id);
 
-        $asama = $tur->stage ?? PasswordRotationStage::Started;
-        $adim = $asama->step();
+        $stage = $round->stage ?? PasswordRotationStage::Started;
+        $step = $stage->step();
 
         return [
-            'yuzde' => (int) round($adim / PasswordRotationStage::ADIM_SAYISI * 100),
-            'adim' => $adim,
-            'toplam' => PasswordRotationStage::ADIM_SAYISI,
-            'metin' => $asama->running(),
-            'durum' => $tur->status->value,
+            'yuzde' => (int) round($step / PasswordRotationStage::STEP_COUNT * 100),
+            'adim' => $step,
+            'toplam' => PasswordRotationStage::STEP_COUNT,
+            'metin' => $stage->running(),
+            'durum' => $round->status->value,
         ];
     }
 }

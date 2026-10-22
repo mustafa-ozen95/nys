@@ -28,7 +28,7 @@ final class RemoteProxyGuardTest extends TestCase
     /**
      * @var array<int, array<string, mixed>>
      */
-    private array $baslatilanlar = [];
+    private array $started = [];
 
     protected function setUp(): void
     {
@@ -52,8 +52,8 @@ final class RemoteProxyGuardTest extends TestCase
         // Gerçek ttyd süreci başlatılmaz.
         $this->mock(TtydManager::class, function ($mock): void {
             $mock->shouldReceive('start')->andReturnUsing(function ($target, string $token): array {
-                $port = 7700 + count($this->baslatilanlar);
-                $this->baslatilanlar[] = ['port' => $port];
+                $port = 7700 + count($this->started);
+                $this->started[] = ['port' => $port];
 
                 // Gerçek yönetici portu oturuma ayırır; bekçi bu eşlemeyi okur.
                 app(RemoteSessionStore::class)->reservePort($port, $token);
@@ -84,18 +84,18 @@ final class RemoteProxyGuardTest extends TestCase
         return $switch;
     }
 
-    private function oturumAc(User $user, NetworkSwitch $switch): int
+    private function sessionOpen(User $user, NetworkSwitch $switch): int
     {
         $this->actingAs($user)
             ->postJson(route('ajax.remote.connect'), ['type' => 'switch', 'id' => $switch->uuid]);
 
-        return $this->baslatilanlar[count($this->baslatilanlar) - 1]['port'];
+        return $this->started[count($this->started) - 1]['port'];
     }
 
     public function test_the_owner_is_allowed_through(): void
     {
         $user = $this->operator();
-        $port = $this->oturumAc($user, $this->switch());
+        $port = $this->sessionOpen($user, $this->switch());
 
         $this->actingAs($user)
             ->get(route('ajax.remote.guard', ['port' => $port]))
@@ -111,7 +111,7 @@ final class RemoteProxyGuardTest extends TestCase
 
     public function test_another_user_cannot_reach_someone_elses_session(): void
     {
-        $port = $this->oturumAc($this->operator(), $this->switch());
+        $port = $this->sessionOpen($this->operator(), $this->switch());
 
         $this->actingAs($this->operator())
             ->get(route('ajax.remote.guard', ['port' => $port]))
@@ -129,7 +129,7 @@ final class RemoteProxyGuardTest extends TestCase
     {
         $user = $this->operator();
         $switch = $this->switch();
-        $port = $this->oturumAc($user, $switch);
+        $port = $this->sessionOpen($user, $switch);
 
         // Oturum açıkken yetki geri alınırsa proxy de kapanır.
         app(UserPermissionResolver::class)->syncResource($user, 'switches', ['view']);
@@ -151,7 +151,7 @@ final class RemoteProxyGuardTest extends TestCase
     public function test_pasif_hesap_acik_terminale_erisemez(): void
     {
         $user = $this->operator();
-        $port = $this->oturumAc($user, $this->switch());
+        $port = $this->sessionOpen($user, $this->switch());
 
         $user->forceFill(['status' => UserStatus::Inactive])->save();
 
@@ -163,7 +163,7 @@ final class RemoteProxyGuardTest extends TestCase
     public function test_the_port_is_read_from_the_original_uri(): void
     {
         $user = $this->operator();
-        $port = $this->oturumAc($user, $this->switch());
+        $port = $this->sessionOpen($user, $this->switch());
 
         // nginx alt isteği portu sorgu parametresiyle değil, istemcinin
         // özgün adresini taşıyan başlıkla bildirir.
@@ -200,36 +200,36 @@ final class RemoteProxyGuardTest extends TestCase
      */
     public function test_dot_segment_and_encoded_paths_never_authorise_another_port(): void
     {
-        $kurban = $this->operator();
-        $kurbanPort = $this->oturumAc($kurban, $this->switch());
-        $saldirgan = $this->operator();
-        $kendiPort = $this->oturumAc($saldirgan, $this->switch());
+        $victim = $this->operator();
+        $victimPort = $this->sessionOpen($victim, $this->switch());
+        $attacker = $this->operator();
+        $ownPort = $this->sessionOpen($attacker, $this->switch());
 
-        $this->assertNotSame($kurbanPort, $kendiPort);
+        $this->assertNotSame($victimPort, $ownPort);
 
         foreach ([
-            "/ssh-proxy/{$kendiPort}/../{$kurbanPort}/",
-            "/ssh-proxy/{$kendiPort}/..%2f{$kurbanPort}/",
-            "/ssh-proxy/{$kendiPort}/%2e%2e/{$kurbanPort}/",
-            "/ssh-proxy/{$kendiPort}//../{$kurbanPort}/",
-            "/ssh-proxy/{$kendiPort}/.\\..\\{$kurbanPort}/",
-            "/rdp-proxy/../ssh-proxy/{$kurbanPort}/",
-            "/ssh-proxy/{$kendiPort}/../../ssh-proxy/{$kurbanPort}/?x=1",
-        ] as $adres) {
-            $this->actingAs($saldirgan)
-                ->withHeader('X-Original-Uri', $adres)
+            "/ssh-proxy/{$ownPort}/../{$victimPort}/",
+            "/ssh-proxy/{$ownPort}/..%2f{$victimPort}/",
+            "/ssh-proxy/{$ownPort}/%2e%2e/{$victimPort}/",
+            "/ssh-proxy/{$ownPort}//../{$victimPort}/",
+            "/ssh-proxy/{$ownPort}/.\\..\\{$victimPort}/",
+            "/rdp-proxy/../ssh-proxy/{$victimPort}/",
+            "/ssh-proxy/{$ownPort}/../../ssh-proxy/{$victimPort}/?x=1",
+        ] as $address) {
+            $this->actingAs($attacker)
+                ->withHeader('X-Original-Uri', $address)
                 ->get(route('ajax.remote.guard'))
                 ->assertForbidden();
         }
 
         // Kurbanın portu doğrudan da saldırgana kapalı; kendi portu açık.
-        $this->actingAs($saldirgan)
-            ->withHeader('X-Original-Uri', "/ssh-proxy/{$kurbanPort}/")
+        $this->actingAs($attacker)
+            ->withHeader('X-Original-Uri', "/ssh-proxy/{$victimPort}/")
             ->get(route('ajax.remote.guard'))
             ->assertForbidden();
 
-        $this->actingAs($saldirgan)
-            ->withHeader('X-Original-Uri', "/ssh-proxy/{$kendiPort}/ws?arg=1")
+        $this->actingAs($attacker)
+            ->withHeader('X-Original-Uri', "/ssh-proxy/{$ownPort}/ws?arg=1")
             ->get(route('ajax.remote.guard'))
             ->assertNoContent();
     }

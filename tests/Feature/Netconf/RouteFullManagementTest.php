@@ -31,7 +31,7 @@ final class RouteFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->routeEkle('10.9.0.0/16', [
+        $this->routeAdd('10.9.0.0/16', [
             'action' => 'next-hop',
             'next_hops' => ['198.18.8.37', '198.18.8.38'],
         ])->assertSessionHasNoErrors();
@@ -46,7 +46,7 @@ final class RouteFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->routeEkle('10.9.1.0/24', [
+        $this->routeAdd('10.9.1.0/24', [
             'action' => 'next-hop',
             'next_hops' => ['198.18.8.37'],
             'qualified_next_hops' => [['name' => '198.18.8.38', 'preference' => 250, 'metric' => 5]],
@@ -62,7 +62,7 @@ final class RouteFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->routeEkle('10.9.2.0/24', [
+        $this->routeAdd('10.9.2.0/24', [
             'action' => 'next-hop',
             'next_hops' => ['198.18.8.37'],
             'preference' => 120,
@@ -88,7 +88,7 @@ final class RouteFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->routeEkle('2001:db8:1::/48', [
+        $this->routeAdd('2001:db8:1::/48', [
             'action' => 'next-hop',
             'next_hops' => ['2001:db8::1'],
         ])->assertSessionHasNoErrors();
@@ -106,7 +106,7 @@ final class RouteFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->routeEkle('2001:db8:2::/48', [
+        $this->routeAdd('2001:db8:2::/48', [
             'action' => 'next-hop',
             'next_hops' => ['198.18.8.37'],
         ])->assertSessionHasErrors('next_hops');
@@ -122,7 +122,7 @@ final class RouteFullManagementTest extends TestCase
     {
         $device = $this->device();
 
-        $this->routeEkle('10.9.3.0/24', [
+        $this->routeAdd('10.9.3.0/24', [
             'action' => 'next-hop',
             'next_hops' => ['198.18.8.37'],
             'flags' => ['retain', 'resolve'],
@@ -166,7 +166,7 @@ final class RouteFullManagementTest extends TestCase
         $this->assertStringContainsString('<uydurma-alan>x</uydurma-alan>', $payload, 'Korunan satır geri yazılmadı.');
     }
 
-    private function routeEkle(string $cidr, array $payload): TestResponse
+    private function routeAdd(string $cidr, array $payload): TestResponse
     {
         return $this->actingAs($this->operator())
             ->post(route('switches.routes.store', $this->switch()), ['cidr' => $cidr] + $payload);

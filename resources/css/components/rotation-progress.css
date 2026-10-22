@@ -9,31 +9,31 @@
  * ızgaranın içinde, kendi sütununa sığar.
  */
 
-.ilerleme {
+.progress {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
 }
 
-.ilerleme__ust {
+.progress__top {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--space-3);
 }
 
-.ilerleme__metin {
+.progress__text {
     font-size: var(--text-md);
     color: var(--color-text-secondary);
 }
 
-.ilerleme__adim {
+.progress__step {
     font-variant-numeric: tabular-nums;
     font-size: var(--text-sm);
     color: var(--color-text-muted);
 }
 
-.ilerleme__yol {
+.progress__path {
     display: block;
     position: relative;
     overflow: hidden;
@@ -42,7 +42,7 @@
     background: var(--color-sunken);
 }
 
-.ilerleme__cubuk {
+.progress__bar {
     display: block;
     height: 100%;
     border-radius: inherit;
@@ -60,27 +60,27 @@
  * boyunca duran bir çubuk "donmuş" diye okunuyor; hareket, işin sürdüğünü
  * söyleyen tek işaret.
  */
-.ilerleme__cubuk::after {
+.progress__bar::after {
     content: '';
     display: block;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / 35%), transparent);
-    animation: ilerleme-parilti 1.6s linear infinite;
+    animation: progress-shimmer 1.6s linear infinite;
 }
 
-@keyframes ilerleme-parilti {
+@keyframes progress-shimmer {
     from { transform: translateX(-100%); }
     to   { transform: translateX(100%); }
 }
 
 /* Hareketi azaltılmış arayüzde parıltı durur; çubuk yine dolar. */
 @media (prefers-reduced-motion: reduce) {
-    .ilerleme__cubuk::after { animation: none; }
-    .ilerleme__cubuk { transition: none; }
+    .progress__bar::after { animation: none; }
+    .progress__bar { transition: none; }
 }
 
 /* Cihaz satırında: metin ile çubuk yan yana sığsın. */
-.ayar-row .ilerleme {
+.setting-row .progress {
     gap: var(--space-1);
     min-width: 0;
 }
@@ -90,12 +90,12 @@
  * içeriğine göre daralıyor ve bir düğme kadar dar bir çubuk ilerlemeyi
  * göstermiyor.
  */
-.ayar-row__ilerleme {
+.setting-row__progress {
     min-width: 240px;
     text-align: left;
 }
 
-.ayar-row .ilerleme__metin {
+.setting-row .progress__text {
     font-size: var(--text-sm);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -108,7 +108,7 @@
  * alır ve tam genişliğe yayılır.
  */
 @media (max-width: 720px) {
-    .ayar-row__ilerleme {
+    .setting-row__progress {
         grid-column: 1 / -1;
         min-width: 0;
     }
@@ -118,7 +118,7 @@
  * Sayfanın başındaki özet şerit: süren turlar cihaz listesinden ÖNCE
  * görünmeli. Panel gibi kutulanır ki sayfanın geri kalanından ayrılsın.
  */
-.ilerleme--serit {
+.progress--strip {
     padding: var(--space-3) var(--space-4);
     border: 1px solid var(--color-line);
     border-radius: var(--radius);

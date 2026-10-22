@@ -29,18 +29,18 @@
         işlemler herkese görünür (bkz. NotificationFeed).
     --}}
     @auth
-        <div class="bildirim" data-bildirim>
+        <div class="notification" data-notification>
             <button type="button" class="btn btn--ghost btn--icon btn--sm"
-                    data-bildirim-ac aria-expanded="false" aria-label="Bildirimler">
+                    data-notification-open aria-expanded="false" aria-label="Bildirimler">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                     <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" stroke-linejoin="round" />
                     <path d="M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round" />
                 </svg>
-                <span class="bildirim__sayac" data-bildirim-sayac hidden>0</span>
+                <span class="notification__counter" data-notification-counter hidden>0</span>
             </button>
 
-            <div class="bildirim__panel" data-bildirim-panel hidden role="dialog" aria-label="Bildirimler">
-                <header class="bildirim__baslik">
+            <div class="notification__panel" data-notification-panel hidden role="dialog" aria-label="Bildirimler">
+                <header class="notification__header">
                     <span>Bildirimler</span>
 
                     {{--
@@ -51,17 +51,17 @@
                         "Okundu" kişiye özeldir; biri işaretledi diye
                         ötekinin sayacı sıfırlanmaz.
                     --}}
-                    <span class="bildirim__eylemler">
+                    <span class="notification__actions">
                         <button type="button" class="btn btn--ghost btn--sm"
-                                data-bildirim-okundu>Tümünü okundu işaretle</button>
+                                data-notification-read>Tümünü okundu işaretle</button>
 
                         <a href="{{ route('logs.device-operations') }}"
-                           class="text-sm" data-bildirim-tumu>Tümü</a>
+                           class="text-sm" data-notification-all>Tümü</a>
                     </span>
                 </header>
 
-                <div class="bildirim__liste" data-bildirim-liste>
-                    <p class="bildirim__bos">Yükleniyor…</p>
+                <div class="notification__list" data-notification-list>
+                    <p class="notification__empty">Yükleniyor…</p>
                 </div>
             </div>
         </div>
@@ -82,19 +82,19 @@
         üst menü, sık kullanılmayan ama yanlışlıkla basılması can sıkıcı bir
         düğme için fazla göze batan bir yerdir.
     --}}
-    <div class="kullanici-menu" data-menu>
-        <button type="button" class="kullanici-menu__dugme" data-menu-ac
+    <div class="user-menu" data-menu>
+        <button type="button" class="user-menu__button" data-menu-open
                 aria-haspopup="true" aria-expanded="false" aria-label="Hesap menüsü">
             <span class="topbar__avatar" aria-hidden="true">{{ $initials }}</span>
             <span class="topbar__name">{{ auth()->user()?->name }}</span>
-            <svg class="kullanici-menu__ok" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <svg class="user-menu__arrow" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
                 <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"
                       stroke-linecap="round" stroke-linejoin="round" />
             </svg>
         </button>
 
-        <div class="kullanici-menu__liste" data-menu-liste hidden>
-            <a href="{{ route('hesap.profil') }}" class="kullanici-menu__oge">Hesabım</a>
+        <div class="user-menu__list" data-menu-list hidden>
+            <a href="{{ route('account.profile') }}" class="user-menu__item">Hesabım</a>
 
             {{--
                 Merkezin hızlı erişim sayfası, YENİ SEKMEDE: panelde yapılan
@@ -103,7 +103,7 @@
                 ölü bir bağlantı göstermemek için yalnızca açıkken çizilir.
             --}}
             @if (config('identity.acik'))
-                <a href="{{ config('identity.adres') }}" class="kullanici-menu__oge" target="_blank" rel="noopener">Hızlı Erişim</a>
+                <a href="{{ config('identity.url') }}" class="user-menu__item" target="_blank" rel="noopener">Hızlı Erişim</a>
             @endif
 
             {{--
@@ -119,7 +119,7 @@
                 @csrf
                 {{-- Etiket EYLEMİ söyler; mevcut hâli söyleyen bir düğme
                      "şu an bu mu, yoksa buna mı geçecek?" diye okunur. --}}
-                <button type="submit" class="kullanici-menu__oge"
+                <button type="submit" class="user-menu__item"
                         title="{{ $panelMode->other()->description() }}">
                     {{ $panelMode->other()->label() }} moda geç
                 </button>
@@ -128,7 +128,7 @@
 
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="kullanici-menu__oge kullanici-menu__oge--cikis">Çıkış</button>
+                <button type="submit" class="user-menu__item user-menu__item--logout">Çıkış</button>
             </form>
         </div>
     </div>

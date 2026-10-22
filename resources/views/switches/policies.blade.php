@@ -9,9 +9,9 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchPolicies', $switch)
-                    <button type="button" class="btn btn--sm" data-modal-open="as-path-ekle">As-path ekle</button>
-                    <button type="button" class="btn btn--sm" data-modal-open="community-ekle">Community ekle</button>
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="politika-ekle">Politika ekle</button>
+                    <button type="button" class="btn btn--sm" data-modal-open="as-path-add">As-path ekle</button>
+                    <button type="button" class="btn btn--sm" data-modal-open="community-add">Community ekle</button>
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="policy-add">Politika ekle</button>
                 @endcan
             </div>
 
@@ -120,13 +120,13 @@
                                 Sıra politikanın kendisidir: ilk eşleşen terim
                                 kazanır. Satırlar sürüklenerek sıralanır.
                             --}}
-                            <div @can('updateSwitchPolicies', $switch) data-sira="{{ route('switches.policies.terms.order', [$switch, $policy]) }}" @endcan>
+                            <div @can('updateSwitchPolicies', $switch) data-order="{{ route('switches.policies.terms.order', [$switch, $policy]) }}" @endcan>
                             @foreach ($policy->terms as $term)
                                 <div class="grid-row term-row"
-                                     @can('updateSwitchPolicies', $switch) draggable="true" data-sira-kimlik="{{ $term->uuid }}" @endcan>
+                                     @can('updateSwitchPolicies', $switch) draggable="true" data-order-id="{{ $term->uuid }}" @endcan>
                                     <span class="term-row__grip" aria-hidden="true">⠿</span>
-                                    <span class="mono term-row__ad">{{ $loop->iteration }}. {{ $term->name }}</span>
-                                    <span class="text-sm text-muted term-row__ozet">{{ $term->summary }}</span>
+                                    <span class="mono term-row__name">{{ $loop->iteration }}. {{ $term->name }}</span>
+                                    <span class="text-sm text-muted term-row__summary">{{ $term->summary }}</span>
                                     <x-ui.inactive-badge :inactive="$term->is_inactive" />
 
                                     @can('updateSwitchPolicies', $switch)
@@ -157,21 +157,21 @@
     </div>
 
     @can('createSwitchPolicies', $switch)
-        <x-ui.modal id="community-ekle" title="Yeni community">
+        <x-ui.modal id="community-add" title="Yeni community">
             <form method="POST" action="{{ route('switches.communities.store', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar." data-confirm-title="Cihaza yaz">
                 @csrf
                 <div class="modal__body stack">
-                    <x-form.field name="name" label="Community adı" id="ce-ad">
-                        <x-form.input name="name" id="ce-ad" mono required placeholder="topluluk-a" />
+                    <x-form.field name="name" label="Community adı" id="ce-name">
+                        <x-form.input name="name" id="ce-name" mono required placeholder="topluluk-a" />
                     </x-form.field>
 
-                    <x-form.field name="members" label="Üyeler" id="ce-uye"
+                    <x-form.field name="members" label="Üyeler" id="ce-member"
                                   hint="Her satıra bir üye: 65000:666, *:666 ya da no-export.">
-                        <x-form.textarea name="members" id="ce-uye" rows="3" required />
+                        <x-form.textarea name="members" id="ce-member" rows="3" required />
                     </x-form.field>
 
-                    <x-form.field kural="switch_policies.politika:invert_match" name="invert_match" label="Ters eşleşme" id="ce-ters"
+                    <x-form.field rule="switch_policies.politika:invert_match" name="invert_match" label="Ters eşleşme" id="ce-ters"
                                   hint="invert-match: “üyelerden hiçbirini taşımayan” anlamına gelir.">
                         <label class="checkbox">
                             <input type="checkbox" name="invert_match" id="ce-ters" value="1">
@@ -183,18 +183,18 @@
             </form>
         </x-ui.modal>
 
-        <x-ui.modal id="as-path-ekle" title="Yeni as-path">
+        <x-ui.modal id="as-path-add" title="Yeni as-path">
             <form method="POST" action="{{ route('switches.as-paths.store', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar." data-confirm-title="Cihaza yaz">
                 @csrf
                 <div class="modal__body stack">
-                    <x-form.field name="name" label="As-path adı" id="ae-ad">
-                        <x-form.input name="name" id="ae-ad" mono required placeholder="musteri1-den" />
+                    <x-form.field name="name" label="As-path adı" id="ae-name">
+                        <x-form.input name="name" id="ae-name" mono required placeholder="musteri1-den" />
                     </x-form.field>
 
-                    <x-form.field name="path" label="İfade" id="ae-ifade"
+                    <x-form.field name="path" label="İfade" id="ae-expression"
                                   hint="Junos as-path düzenli ifadesi. “.* 65000” yolun sonu 65000 olanları, “65000 .*” başı 65000 olanları eşleştirir.">
-                        <x-form.input name="path" id="ae-ifade" mono required placeholder=".* 65000" />
+                        <x-form.input name="path" id="ae-expression" mono required placeholder=".* 65000" />
                     </x-form.field>
                 </div>
                 <x-ui.modal-actions submit="Cihaza yaz" />
@@ -221,7 +221,7 @@
                                              :value="implode(PHP_EOL, $community->members ?? [])" required />
                         </x-form.field>
 
-                        <x-form.field kural="switch_policies.politika:invert_match" name="invert_match" label="Ters eşleşme" :id="'ci-'.$community->uuid"
+                        <x-form.field rule="switch_policies.politika:invert_match" name="invert_match" label="Ters eşleşme" :id="'ci-'.$community->uuid"
                                       hint="invert-match: “üyelerden hiçbirini taşımayan”.">
                             <label class="checkbox">
                                 <input type="checkbox" name="invert_match" id="ci-{{ $community->uuid }}" value="1"
@@ -260,14 +260,14 @@
             </x-ui.modal>
         @endforeach
 
-        <x-ui.modal id="politika-ekle" title="Yeni politika" wide>
+        <x-ui.modal id="policy-add" title="Yeni politika" wide>
             <form method="POST" action="{{ route('switches.policies.store', $switch) }}"
                   data-confirm="Bu işlem cihaza commit atar." data-confirm-title="Cihaza yaz">
                 @csrf
                 <div class="modal__body stack">
-                    <x-form.field name="statement_name" label="Politika adı" id="pe-ad"
+                    <x-form.field name="statement_name" label="Politika adı" id="pe-name"
                                   hint="BGP grubunun içeri alma alanı bu adı kullanır.">
-                        <x-form.input name="statement_name" id="pe-ad" mono required
+                        <x-form.input name="statement_name" id="pe-name" mono required
                                       placeholder="prefixes-from-musteri1" />
                     </x-form.field>
 

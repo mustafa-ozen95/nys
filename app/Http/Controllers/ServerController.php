@@ -39,7 +39,7 @@ class ServerController extends Controller implements HasMiddleware
         ];
     }
 
-    public function index(Request $request, RoundStatuses $turlar): View
+    public function index(Request $request, RoundStatuses $types): View
     {
         $servers = Server::query()
             ->visibleTo($request->user())
@@ -62,7 +62,7 @@ class ServerController extends Controller implements HasMiddleware
              * ikisi ayrı yerde hesaplansaydı biri değiştiğinde diğeri sessizce
              * eskir ve çubuk sayfa yenilenince zıplardı.
              */
-            'suren' => $turlar->icin($servers),
+            'suren' => $types->for($servers),
 
             /*
              * Toplu parola penceresinde çizilecek sunucular. Süzme BURADA
@@ -72,7 +72,7 @@ class ServerController extends Controller implements HasMiddleware
              * yeniden sorulur (bkz. ServerPasswordController::toplu).
              */
             'parolaSunuculari' => $servers->filter(
-                fn (Server $sunucu): bool => $request->user()->can('rotate', $sunucu),
+                fn (Server $server): bool => $request->user()->can('rotate', $server),
             ),
 
             /*

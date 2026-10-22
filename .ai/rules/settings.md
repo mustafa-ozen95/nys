@@ -53,7 +53,7 @@ yokmuş gibi davranılır; uygulama durmaz.
 
 E-posta ayarları (`mail.*`) yalnızca `.env`'de dursaydı `MAIL_MAILER=log`
 kalmış bir kurulumda prefix anons talepleri kimseye gitmez, panelde
-görülebilir hiçbir işaret olmazdı. Bu yüzden `/ayarlar/eposta`
+görülebilir hiçbir işaret olmazdı. Bu yüzden `/settings/email`
 bölümünden yönetilir; parola şifreli saklanır.
 
 Kilit test `EmailSettingTest::test_kaydedilen_smtp_ayari_gonderime_geciyor`
@@ -175,7 +175,7 @@ düşürür ve php-fpm sonrasında log yazamaz hâle gelir.
 2. **`withoutOverlapping` kilidinin adı KOMUT METNİNDEN türetilir**,
    `->name()` ile verilen açıklamadan değil. Birden çok işçi aynı komutu
    çalıştırırsa hepsi aynı kilidi paylaşır ve yalnızca biri çalışır. Her
-   işçiye `--name=isci-N` verilir.
+   işçiye `--name=worker-N` verilir.
 
 İşçi sayısı `sync.workers` ayarındadır ve bir dakika içinde yürürlüğe girer.
 

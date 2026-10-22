@@ -50,18 +50,18 @@ final class ArchivalWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode('', $device->written);
+        $written = implode('', $device->written);
 
-        $this->assertStringContainsString('<transfer-on-commit/>', $yazilan);
-        $this->assertStringContainsString('192.0.2.51', $yazilan);
+        $this->assertStringContainsString('<transfer-on-commit/>', $written);
+        $this->assertStringContainsString('192.0.2.51', $written);
 
         /*
          * Adres değişince eskisi kalmasın diye düğüm KOMPLE değiştirilir.
          * Adsız "<archive-sites delete=\"delete\"/>" ile temizlemek cihazda
          * (12.3R12.4) "syntax error" veriyor; replace geçen tek biçim.
          */
-        $this->assertStringContainsString('<configuration replace="replace">', $yazilan);
-        $this->assertStringNotContainsString('<archive-sites delete="delete"/>', $yazilan);
+        $this->assertStringContainsString('<configuration replace="replace">', $written);
+        $this->assertStringNotContainsString('<archive-sites delete="delete"/>', $written);
 
         $this->assertSame('ftp://yedek:gizli@192.0.2.51/sw1/', $switch->fresh()->archival_site);
 
@@ -103,10 +103,10 @@ final class ArchivalWriteTest extends TestCase
             ->put(route('switches.archival', $switch), ['enabled' => 1])
             ->assertRedirect();
 
-        $yazilan = implode('', $device->written);
+        $written = implode('', $device->written);
 
-        $this->assertStringContainsString('10.7.7.7', $yazilan);
-        $this->assertStringNotContainsString('10.9.9.9', $yazilan);
+        $this->assertStringContainsString('10.7.7.7', $written);
+        $this->assertStringNotContainsString('10.9.9.9', $written);
     }
 
     public function test_kayitli_adres_silinince_varsayilana_donulur(): void

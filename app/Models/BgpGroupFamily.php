@@ -65,7 +65,7 @@ class BgpGroupFamily extends Model
                 return 'Sınırsız';
             }
 
-            $parcalar = ["en fazla {$this->prefix_limit_maximum} prefix"];
+            $fragments = ["en fazla {$this->prefix_limit_maximum} prefix"];
 
             if ($this->teardown) {
                 /*
@@ -78,7 +78,7 @@ class BgpGroupFamily extends Model
                  * Yüzdenin kaç prefixe denk geldiği de yazılır: "%90" tek
                  * başına kaç prefix olduğunu söylemiyordu.
                  */
-                $parcalar[] = $this->teardown_threshold === null
+                $fragments[] = $this->teardown_threshold === null
                     ? 'sınırda düşür'
                     : sprintf(
                         '%%%d (%d prefix) uyar, sınırda düşür',
@@ -88,12 +88,12 @@ class BgpGroupFamily extends Model
             }
 
             if ($this->idle_timeout_forever) {
-                $parcalar[] = 'kapalı kal';
+                $fragments[] = 'kapalı kal';
             } elseif ($this->idle_timeout_minutes !== null) {
-                $parcalar[] = "{$this->idle_timeout_minutes} dk sonra dene";
+                $fragments[] = "{$this->idle_timeout_minutes} dk sonra dene";
             }
 
-            return implode(' · ', $parcalar);
+            return implode(' · ', $fragments);
         });
     }
 }

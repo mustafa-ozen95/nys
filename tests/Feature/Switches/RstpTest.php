@@ -41,12 +41,12 @@ final class RstpTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<bridge-priority>8k</bridge-priority>', $yazilan);
-        $this->assertStringContainsString('<bpdu-block-on-edge/>', $yazilan);
+        $this->assertStringContainsString('<bridge-priority>8k</bridge-priority>', $written);
+        $this->assertStringContainsString('<bpdu-block-on-edge/>', $written);
         // Açıkken "disable" satırı SİLİNİR; yoksa kapalı kalırdı.
-        $this->assertStringContainsString('<disable delete="delete"/>', $yazilan);
+        $this->assertStringContainsString('<disable delete="delete"/>', $written);
     }
 
     /**
@@ -95,12 +95,12 @@ final class RstpTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<edge delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<edge/>', $yazilan);
-        $this->assertStringContainsString('<cost>20000</cost>', $yazilan);
-        $this->assertStringContainsString('<priority>128</priority>', $yazilan);
+        $this->assertStringContainsString('<edge delete="delete"/>', $written);
+        $this->assertStringContainsString('<edge/>', $written);
+        $this->assertStringContainsString('<cost>20000</cost>', $written);
+        $this->assertStringContainsString('<priority>128</priority>', $written);
     }
 
     /**
@@ -176,12 +176,12 @@ final class RstpTest extends TestCase
     public function test_baska_switchin_arayuzu_uzerinden_islem_yapilamaz(): void
     {
         $switch = $this->switch();
-        $digeri = $this->switch('198.18.20.196');
-        $yabanci = SwitchRstpInterface::factory()->for($digeri, 'switch')->create(['interface_name' => 'ge-0/0/1']);
+        $other = $this->switch('198.18.20.196');
+        $foreign = SwitchRstpInterface::factory()->for($other, 'switch')->create(['interface_name' => 'ge-0/0/1']);
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->delete(route('switches.rstp.destroy', [$switch, $yabanci]))
+            ->delete(route('switches.rstp.destroy', [$switch, $foreign]))
             ->assertNotFound();
 
         $this->assertNull($device->connection);

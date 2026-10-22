@@ -56,15 +56,15 @@ final class AddressBlockTest extends TestCase
         $root = AddressBlock::factory()->network('10.0.0.0/8')->create();
         AddressBlock::factory()->network('10.1.0.0/16')->create(['parent_id' => $root->id]);
 
-        $yanit = $this->actingAs($this->operator())
+        $response = $this->actingAs($this->operator())
             ->get(route('addressing.index'))
             ->assertOk()
             ->assertSee('10.0.0.0/8')
             ->assertSee('10.1.0.0/16');
 
         /* Dal KAPALI gelir: kök listesi tek bakışta okunabilir kalmalı. */
-        $this->assertStringContainsString('<details class="agac__dal"', $yanit->getContent());
-        $this->assertStringNotContainsString('<details class="agac__dal" open', $yanit->getContent());
+        $this->assertStringContainsString('<details class="agac__branch"', $response->getContent());
+        $this->assertStringNotContainsString('<details class="agac__branch" open', $response->getContent());
     }
 
     public function test_selecting_a_block_shows_its_subnets_and_range(): void
@@ -107,9 +107,9 @@ final class AddressBlockTest extends TestCase
 
     public function test_reserved_ranges_are_rejected(): void
     {
-        foreach ([['127.0.0.0', 8], ['169.254.0.0', 16], ['224.0.0.0', 4], ['0.0.0.0', 8]] as [$adres, $maske]) {
+        foreach ([['127.0.0.0', 8], ['169.254.0.0', 16], ['224.0.0.0', 4], ['0.0.0.0', 8]] as [$address, $mask]) {
             $this->actingAs($this->operator())
-                ->post(route('addressing.store'), ['network' => $adres, 'prefix_length' => $maske])
+                ->post(route('addressing.store'), ['network' => $address, 'prefix_length' => $mask])
                 ->assertSessionHasErrors('network');
         }
 
@@ -339,19 +339,19 @@ final class AddressBlockTest extends TestCase
 
     public function test_a_block_keeps_a_long_note_and_shows_it_on_the_detail_panel(): void
     {
-        $aciklama = "Kamera ağı.\nDVR 198.18.21.9 üzerinde, kayıt 30 gün.\nSwitch portu değişirse NOC'a haber verilecek.";
+        $description = "Kamera ağı.\nDVR 198.18.21.9 üzerinde, kayıt 30 gün.\nSwitch portu değişirse NOC'a haber verilecek.";
 
         $this->actingAs($this->operator())
             ->post(route('addressing.store'), [
                 'network' => '198.18.21.0', 'prefix_length' => 24,
                 'description' => 'Kamera',
-                'notes' => $aciklama,
+                'notes' => $description,
             ])
             ->assertRedirect();
 
         $block = AddressBlock::query()->firstWhere('network', '198.18.21.0');
 
-        $this->assertSame($aciklama, $block->notes);
+        $this->assertSame($description, $block->notes);
 
         $this->actingAs($this->operator())
             ->get(route('addressing.index', ['block' => $block->uuid]))

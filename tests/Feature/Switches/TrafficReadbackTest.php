@@ -50,11 +50,11 @@ final class TrafficReadbackTest extends TestCase
 
         $device = $this->device();
 
-        $oranlar = app(SwitchTrafficService::class)->current($switch);
+        $ratios = app(SwitchTrafficService::class)->current($switch);
 
         $this->assertSame(
             [505 => ['in' => 1500000.0, 'out' => 250000.0]],
-            $oranlar,
+            $ratios,
         );
 
         $this->assertNull($device->connection, 'Trafik okumak için cihaza bağlanıldı.');
@@ -87,10 +87,10 @@ final class TrafficReadbackTest extends TestCase
         $switch = $this->switch();
         $port = $this->port($switch, 'ge-0/0/5', 505);
 
-        foreach ([[100, 5], [900, 45]] as $sira => [$in, $out]) {
+        foreach ([[100, 5], [900, 45]] as $order => [$in, $out]) {
             SwitchPortSample::create([
                 'switch_port_id' => $port->id,
-                'sampled_at' => now()->subMinutes(2 - $sira),
+                'sampled_at' => now()->subMinutes(2 - $order),
                 'in_bps' => $in,
                 'out_bps' => $out,
             ]);
@@ -108,10 +108,10 @@ final class TrafficReadbackTest extends TestCase
     public function test_baska_switchin_ornegi_sizmaz(): void
     {
         $switch = $this->switch();
-        $digeri = $this->switch('198.18.20.196');
+        $other = $this->switch('198.18.20.196');
 
         SwitchPortSample::create([
-            'switch_port_id' => $this->port($digeri, 'ge-0/0/1', 501)->id,
+            'switch_port_id' => $this->port($other, 'ge-0/0/1', 501)->id,
             'sampled_at' => now(),
             'in_bps' => 42,
             'out_bps' => 42,

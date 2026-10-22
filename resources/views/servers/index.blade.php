@@ -36,23 +36,23 @@
                 --}}
                 @if ($parolaSunuculari->isNotEmpty())
                     <button type="button" class="btn btn--sm"
-                            data-modal-open="parola-toplu">Parolaları değiştir…</button>
+                            data-modal-open="password-bulk">Parolaları değiştir…</button>
                 @endif
 
                 @can('create', App\Models\Server::class)
                     <button type="button" class="btn btn--primary btn--sm"
-                            data-modal-open="sunucu-ekle">Yeni sunucu</button>
+                            data-modal-open="server-add">Yeni sunucu</button>
                 @endcan
             </div>
 
             <div class="column__body"
-                 @if ($suren !== []) data-ilerleme-adres="{{ route('servers.password.progress') }}" @endif>
+                 @if ($suren !== []) data-progress-address="{{ route('servers.password.progress') }}" @endif>
                 <div class="grid-row__head server-row server-row__head">
-                    <span class="server-row__ad">Sunucu</span>
-                    <span class="server-row__adres">Adres</span>
+                    <span class="server-row__name">Sunucu</span>
+                    <span class="server-row__address">Adres</span>
                     <span class="server-row__os">İşletim sistemi</span>
-                    <span class="server-row__erisim">Erişim</span>
-                    <span class="server-row__durum">Durum</span>
+                    <span class="server-row__access">Erişim</span>
+                    <span class="server-row__status">Durum</span>
                 </div>
 
                 @forelse ($servers as $server)
@@ -66,34 +66,34 @@
                     --}}
                     <a href="{{ route('servers.index', ['q' => $query ?: null, 'server' => $server->uuid]) }}"
                        class="grid-row server-row"
-                       data-ilerleme-cihaz="{{ $server->uuid }}"
+                       data-progress-device="{{ $server->uuid }}"
                        @if ($selected?->is($server)) aria-selected="true" @endif>
-                        <span class="server-row__ad">
+                        <span class="server-row__name">
                             <span class="mono">{{ $server->short_name }}</span>
                             @if ($server->long_name)
                                 <span class="text-sm text-muted truncate">{{ $server->long_name }}</span>
                             @endif
                         </span>
-                        <span class="mono text-muted server-row__adres truncate">{{ $server->ip_address }}</span>
+                        <span class="mono text-muted server-row__address truncate">{{ $server->ip_address }}</span>
                         <span class="server-row__os">
                             <x-ui.badge :variant="$server->os_type->badge()">{{ $server->os_type->label() }}</x-ui.badge>
                             <span class="text-sm text-muted truncate">{{ $server->os_version }}</span>
                         </span>
-                        <span class="mono text-muted server-row__erisim">
+                        <span class="mono text-muted server-row__access">
                             {{ $server->connection_protocol->label() }}:{{ $server->connection_port }}
                         </span>
-                        <span class="server-row__durum">
+                        <span class="server-row__status">
                             @if (($suren[$server->uuid] ?? null) !== null)
-                                <span class="ilerleme">
-                                    <span class="ilerleme__metin" data-ilerleme-metin>{{ $suren[$server->uuid]['metin'] }}</span>
+                                <span class="progress">
+                                    <span class="progress__text" data-progress-text>{{ $suren[$server->uuid]['metin'] }}</span>
 
-                                    <span class="ilerleme__yol"
+                                    <span class="progress__path"
                                           role="progressbar"
                                           aria-label="{{ $server->short_name }} parola güncelleme ilerlemesi"
                                           aria-valuemin="0"
                                           aria-valuemax="100"
                                           aria-valuenow="{{ $suren[$server->uuid]['yuzde'] }}">
-                                        <span class="ilerleme__cubuk" data-ilerleme-cubuk data-baslangic="{{ $suren[$server->uuid]['yuzde'] }}"></span>
+                                        <span class="progress__bar" data-progress-bar data-start="{{ $suren[$server->uuid]['yuzde'] }}"></span>
                                     </span>
                                 </span>
                             @else
@@ -163,7 +163,7 @@
                             @can('rotate', $selected)
                                 <form method="POST"
                                       action="{{ route('servers.password.repair', $selected->latestPasswordRotation) }}"
-                                      data-yerinde
+                                      data-in-place
                                       data-confirm="Makineye bağlanılıp kurtarma hesabı silinecek."
                                       data-confirm-title="Yarıda kalan turu kapat">
                                     @csrf
@@ -177,14 +177,14 @@
                 <div class="detail__foot">
                     @can('connect', $selected)
                         <button type="button" class="btn btn--primary btn--sm"
-                                data-uzak-baglan="{{ route('ajax.remote.connect') }}"
-                                data-uzak-tur="server"
-                                data-uzak-kimlik="{{ $selected->uuid }}">Bağlan</button>
+                                data-remote-connect="{{ route('ajax.remote.connect') }}"
+                                data-remote-type="server"
+                                data-remote-id="{{ $selected->uuid }}">Bağlan</button>
                     @endcan
 
                     @can('update', $selected)
                         <button type="button" class="btn btn--sm"
-                                data-modal-open="sunucu-duzenle">Düzenle</button>
+                                data-modal-open="server-edit">Düzenle</button>
                     @endcan
 
                     {{--
@@ -196,7 +196,7 @@
                     --}}
                     @can('rotate', $selected)
                         <form method="POST" action="{{ route('servers.password', $selected) }}"
-                              data-yerinde
+                              data-in-place
                               data-confirm="{{ $selected->short_name }} makinesindeki {{ $selected->connection_username }} hesabına YENİ ve rastgele bir parola verilecek. Eski parola artık çalışmayacak."
                               data-confirm-title="Sunucu parolasını değiştir"
                               data-confirm-variant="danger">
@@ -221,7 +221,7 @@
                     sayfasıyla PAYLAŞILIR (servers/fields.blade.php); iki
                     kopya olsaydı biri değiştiğinde öteki sessizce ayrışırdı.
                 --}}
-                <x-ui.modal id="sunucu-duzenle" :title="$selected->short_name.' ayarları'"
+                <x-ui.modal id="server-edit" :title="$selected->short_name.' ayarları'"
                             :open="request()->boolean('duzenle')">
                     <form method="POST" action="{{ route('servers.update', $selected) }}"
                           data-confirm="Sunucu kaydı güncellenecek."
@@ -251,9 +251,9 @@
             Turlar SIRAYLA koşar: aynı anda koşan turlar işçilerin tamamını
             meşgul edip hepsi birden zaman aşımına girebilir.
         --}}
-        <x-ui.modal id="parola-toplu" title="Seçilenlerin parolasını değiştir">
+        <x-ui.modal id="password-bulk" title="Seçilenlerin parolasını değiştir">
             <form method="POST" action="{{ route('servers.password.bulk') }}"
-                  data-yerinde
+                  data-in-place
                   data-confirm="Seçilen sunuculardaki hesaplara YENİ ve rastgele parolalar verilecek. Eski parolalar artık çalışmayacak."
                   data-confirm-title="Toplu parola değişimi"
                   data-confirm-variant="danger">
@@ -265,9 +265,9 @@
                         biri başarısız olsa da diğerleri devam eder. İlerleme listede görünür.
                     </p>
 
-                    <div class="stack" data-secim-grubu>
+                    <div class="stack" data-selection-group>
                         <label class="checkbox">
-                            <input type="checkbox" data-tumunu-sec>
+                            <input type="checkbox" data-select-all>
                             <span>Tümü</span>
                         </label>
 
@@ -294,7 +294,7 @@
 
             Seçili sunucudan BAĞIMSIZ: liste boşken de açılabilmeli.
         --}}
-        <x-ui.modal id="sunucu-ekle" title="Yeni sunucu" :open="request()->boolean('ekle')">
+        <x-ui.modal id="server-add" title="Yeni sunucu" :open="request()->boolean('ekle')">
             <form method="POST" action="{{ route('servers.store') }}"
                   data-confirm="Sunucu kaydı eklenecek."
                   data-confirm-title="Sunucuyu kaydet">

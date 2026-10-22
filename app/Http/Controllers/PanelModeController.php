@@ -19,12 +19,12 @@ class PanelModeController extends Controller
     public function __invoke(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $hedef = $user->etkinPanelModu()->other();
+        $target = $user->activePanelMode()->other();
 
         /* Gelişmiş moda yalnızca yetkisi olan geçer; düğme gizli olsa da istek elle atılabilir. */
-        abort_if($hedef->isAdvanced() && ! $user->gelismisModaGecebilir(), 403, 'Gelişmiş moda geçme yetkiniz yok.');
+        abort_if($target->isAdvanced() && ! $user->advancedModeCanPass(), 403, 'Gelişmiş moda geçme yetkiniz yok.');
 
-        $user->update(['panel_mode' => $hedef]);
+        $user->update(['panel_mode' => $target]);
 
         return back()->with('status', $user->panel_mode->label().' moda geçildi.');
     }

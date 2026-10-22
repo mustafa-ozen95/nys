@@ -29,7 +29,7 @@ return [
     |
     */
 
-    'aciklama' => env('APP_ACIKLAMA', 'Network Yönetim Sistemi'),
+    'description' => env('APP_DESCRIPTION', 'Network Yönetim Sistemi'),
 
     /*
     |--------------------------------------------------------------------------
@@ -175,7 +175,7 @@ return [
     /*
     | İlk yönetici. VARSAYILANI YOKTUR: bir varsayılan adres, kurulumu yapan
     | kişinin sahip olmadığı bir hesabın açılması demek olurdu. Üçü birden
-    | verilmezse hesap HİÇ açılmaz; yönetici `*:yonetici-ekle` komutuyla
+    | verilmezse hesap HİÇ açılmaz; yönetici `admin:add` komutuyla
     | eklenir.
     */
 
@@ -187,7 +187,7 @@ return [
     | yapısını yazmak yanlış olurdu.
     */
 
-    'ornek_veri' => filter_var(env('ORNEK_VERI', true), FILTER_VALIDATE_BOOLEAN),
+    'sample_data' => filter_var(env('SAMPLE_DATA', true), FILTER_VALIDATE_BOOLEAN),
 
     'admin_name' => env('ADMIN_NAME', 'Sistem Yöneticisi'),
 

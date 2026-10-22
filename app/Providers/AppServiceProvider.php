@@ -118,20 +118,20 @@ class AppServiceProvider extends ServiceProvider
          * ve sonucu aynı sertifikayı paylaşan bütün panelleri etkileyebilir.
          * Ayarların bölüm bölüm devredilmesi bunu kapsamaz.
          */
-        Gate::define('manageSertifika', fn (User $user): bool => $user->isAdmin());
+        Gate::define('manageCertificate', fn (User $user): bool => $user->isAdmin());
 
         /*
          * Veritabanı taşıması yalnızca yöneticidedir: konteyneri yeniden
          * başlatıyor ve panelin bütün verisini başka bir sunucuya
          * kopyalıyor. Ayarların bölüm bölüm devredilmesi bunu kapsamaz.
          */
-        Gate::define('manageVeritabani', fn (User $user): bool => $user->isAdmin());
+        Gate::define('manageDatabase', fn (User $user): bool => $user->isAdmin());
 
         /*
          * Güncelleme kontrolü yalnızca bakar ama sonucu güncellemeyi başlatacak
          * kişiyi ilgilendirir: yönetici. Ayar bölümleriyle devredilmez.
          */
-        Gate::define('manageGuncelleme', fn (User $user): bool => $user->isAdmin());
+        Gate::define('manageUpdate', fn (User $user): bool => $user->isAdmin());
 
         /*
          * Cihaz parolaları ekranı: en az bir switchte parolayı görme ya da

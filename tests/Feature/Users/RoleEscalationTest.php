@@ -24,10 +24,10 @@ final class RoleEscalationTest extends TestCase
         parent::setUp();
 
         /* Bu sınıf yetki düzeneğini sınıyor; üretimde kapalı (bkz. TestCase). */
-        $this->yetkiDagitimiAc();
+        $this->permissionDistributionOpen();
     }
 
-    private function rol(string $slug): Role
+    private function role(string $slug): Role
     {
         return Role::query()->where('slug', $slug)->firstOrFail();
     }
@@ -61,7 +61,7 @@ final class RoleEscalationTest extends TestCase
         $this->actingAs($editor)
             ->put(route('users.update', $editor), $this->payload([
                 'email' => $editor->email,
-                'role' => $this->rol('admin')->uuid,
+                'role' => $this->role('admin')->uuid,
             ]))
             ->assertSessionHasErrors('role');
 
@@ -70,16 +70,16 @@ final class RoleEscalationTest extends TestCase
 
     public function test_an_editor_cannot_promote_someone_else(): void
     {
-        $hedef = User::factory()->role('teknik')->create();
+        $target = User::factory()->role('teknik')->create();
 
         $this->actingAs($this->editor())
-            ->put(route('users.update', $hedef), $this->payload([
-                'email' => $hedef->email,
-                'role' => $this->rol('admin')->uuid,
+            ->put(route('users.update', $target), $this->payload([
+                'email' => $target->email,
+                'role' => $this->role('admin')->uuid,
             ]))
             ->assertSessionHasErrors('role');
 
-        $this->assertSame('teknik', $hedef->fresh()->role->slug);
+        $this->assertSame('teknik', $target->fresh()->role->slug);
     }
 
     public function test_a_user_created_by_an_editor_gets_the_lowest_role(): void
@@ -117,7 +117,7 @@ final class RoleEscalationTest extends TestCase
     public function test_an_editor_cannot_reset_an_admins_password(): void
     {
         $admin = User::factory()->create([
-            'role_id' => $this->rol('admin')->id,
+            'role_id' => $this->role('admin')->id,
             'password' => Hash::make('EskiParola123'),
         ]);
 
@@ -139,7 +139,7 @@ final class RoleEscalationTest extends TestCase
      */
     public function test_an_editor_cannot_suspend_an_admin(): void
     {
-        $admin = User::factory()->create(['role_id' => $this->rol('admin')->id]);
+        $admin = User::factory()->create(['role_id' => $this->role('admin')->id]);
 
         $this->actingAs($this->editor())
             ->put(route('users.update', $admin), $this->payload([
@@ -154,7 +154,7 @@ final class RoleEscalationTest extends TestCase
 
     public function test_an_editor_cannot_delete_an_admin(): void
     {
-        $admin = User::factory()->create(['role_id' => $this->rol('admin')->id]);
+        $admin = User::factory()->create(['role_id' => $this->role('admin')->id]);
 
         $this->actingAs($this->editor())
             ->delete(route('users.destroy', $admin))
@@ -180,30 +180,30 @@ final class RoleEscalationTest extends TestCase
      */
     public function test_an_editor_can_still_edit_a_regular_user(): void
     {
-        $hedef = User::factory()->create();
+        $target = User::factory()->create();
 
         $this->actingAs($this->editor())
-            ->put(route('users.update', $hedef), $this->payload([
+            ->put(route('users.update', $target), $this->payload([
                 'name' => 'Yeni Ad',
-                'email' => $hedef->email,
+                'email' => $target->email,
             ]))
             ->assertRedirect();
 
-        $this->assertSame('Yeni Ad', $hedef->fresh()->name);
+        $this->assertSame('Yeni Ad', $target->fresh()->name);
     }
 
     public function test_an_admin_can_still_set_roles(): void
     {
         $admin = User::factory()->admin()->create();
-        $hedef = User::factory()->create();
+        $target = User::factory()->create();
 
         $this->actingAs($admin)
-            ->put(route('users.update', $hedef), $this->payload([
-                'email' => $hedef->email,
-                'role' => $this->rol('network')->uuid,
+            ->put(route('users.update', $target), $this->payload([
+                'email' => $target->email,
+                'role' => $this->role('network')->uuid,
             ]))
             ->assertRedirect();
 
-        $this->assertSame('network', $hedef->fresh()->role->slug);
+        $this->assertSame('network', $target->fresh()->role->slug);
     }
 }

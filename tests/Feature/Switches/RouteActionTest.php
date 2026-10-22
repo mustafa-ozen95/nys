@@ -24,7 +24,7 @@ final class RouteActionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public static function eylemler(): array
+    public static function actions(): array
     {
         return [
             'discard' => ['Discard', 'discard', []],
@@ -39,16 +39,16 @@ final class RouteActionTest extends TestCase
     /**
      * @param  list<string>  $beklenenAtlamalar
      */
-    #[DataProvider('eylemler')]
+    #[DataProvider('actions')]
     public function test_next_hop_degeri_eylemi_soyler(
         ?string $nextHop,
-        string $beklenenEylem,
-        array $beklenenAtlamalar,
+        string $expectedAction,
+        array $expectedHops,
     ): void {
         $route = $this->route(['next_hop' => $nextHop, 'next_hops' => $nextHop === null ? [] : [$nextHop]]);
 
-        $this->assertSame($beklenenEylem, $route->action);
-        $this->assertSame($beklenenAtlamalar, $route->editable_next_hops);
+        $this->assertSame($expectedAction, $route->action);
+        $this->assertSame($expectedHops, $route->editable_next_hops);
     }
 
     /**
@@ -87,10 +87,10 @@ final class RouteActionTest extends TestCase
     }
 
     /** @param array<string, mixed> $nitelikler */
-    private function route(array $nitelikler): SwitchRoute
+    private function route(array $attributes): SwitchRoute
     {
         return SwitchRoute::factory()
             ->for(NetworkSwitch::factory(), 'switch')
-            ->create($nitelikler);
+            ->create($attributes);
     }
 }

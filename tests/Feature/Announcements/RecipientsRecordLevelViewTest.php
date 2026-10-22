@@ -31,10 +31,10 @@ final class RecipientsRecordLevelViewTest extends TestCase
 
     public function test_yasakli_alici_listede_ve_formda_gorunmez(): void
     {
-        $yasakli = AnnouncementRecipient::factory()->create(['label' => 'Yasakli Esle', 'email' => 'yasakli@ornek.test']);
+        $forbidden = AnnouncementRecipient::factory()->create(['label' => 'Yasakli Esle', 'email' => 'yasakli@ornek.test']);
         AnnouncementRecipient::factory()->create(['label' => 'Acik Esle', 'email' => 'acik@ornek.test']);
 
-        $user = $this->operator($yasakli->id);
+        $user = $this->operator($forbidden->id);
 
         $this->actingAs($user)->get(route('announcements.create'))
             ->assertOk()
@@ -49,14 +49,14 @@ final class RecipientsRecordLevelViewTest extends TestCase
 
     public function test_yasakli_aliciya_gonderim_reddedilir(): void
     {
-        $yasakli = AnnouncementRecipient::factory()->create();
+        $forbidden = AnnouncementRecipient::factory()->create();
 
-        $this->actingAs($this->operator($yasakli->id))
+        $this->actingAs($this->operator($forbidden->id))
             ->post(route('announcements.send'), [
                 'prefixes' => '192.0.2.0/24',
                 'asn' => 'AS64496',
                 'downstream' => '',
-                'recipients' => [$yasakli->uuid],
+                'recipients' => [$forbidden->uuid],
             ])
             ->assertSessionHasErrors('recipients.0');
 
@@ -64,11 +64,11 @@ final class RecipientsRecordLevelViewTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    private function operator(int $yasakliId): User
+    private function operator(int $forbiddenId): User
     {
         $user = User::factory()->create();
         app(UserPermissionResolver::class)
-            ->syncResource($user, 'announcements', ['view', 'create'], [], ['view' => [$yasakliId]]);
+            ->syncResource($user, 'announcements', ['view', 'create'], [], ['view' => [$forbiddenId]]);
 
         return $user->fresh();
     }

@@ -55,12 +55,12 @@ final class FirewallWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<firewall><family><inet>', $yazilan);
-        $this->assertStringContainsString('<filter><name>koruma</name>', $yazilan);
-        $this->assertStringContainsString('<source-address><name>10.0.0.0/8</name></source-address>', $yazilan);
-        $this->assertStringContainsString('<then><accept/></then>', $yazilan);
+        $this->assertStringContainsString('<firewall><family><inet>', $written);
+        $this->assertStringContainsString('<filter><name>koruma</name>', $written);
+        $this->assertStringContainsString('<source-address><name>10.0.0.0/8</name></source-address>', $written);
+        $this->assertStringContainsString('<then><accept/></then>', $written);
     }
 
     /**
@@ -96,10 +96,10 @@ final class FirewallWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<protocol>tcp</protocol>', $yazilan);
-        $this->assertStringContainsString('<port>179</port>', $yazilan);
+        $this->assertStringContainsString('<protocol>tcp</protocol>', $written);
+        $this->assertStringContainsString('<port>179</port>', $written);
     }
 
     public function test_sayac_ve_gunluk_yazilir(): void
@@ -118,11 +118,11 @@ final class FirewallWriteTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<count>dusenler</count>', $yazilan);
-        $this->assertStringContainsString('<log/>', $yazilan);
-        $this->assertStringContainsString('<discard/>', $yazilan);
+        $this->assertStringContainsString('<count>dusenler</count>', $written);
+        $this->assertStringContainsString('<log/>', $written);
+        $this->assertStringContainsString('<discard/>', $written);
     }
 
     /**
@@ -164,10 +164,10 @@ final class FirewallWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<filter delete="delete"><name>koruma</name>', $yazilan);
-        $this->assertTrue(strpos($yazilan, '<name>list</name>') < strpos($yazilan, '<name>deny</name>'));
+        $this->assertStringContainsString('<filter delete="delete"><name>koruma</name>', $written);
+        $this->assertTrue(strpos($written, '<name>list</name>') < strpos($written, '<name>deny</name>'));
     }
 
     public function test_son_terim_silinemez(): void
@@ -225,12 +225,12 @@ final class FirewallWriteTest extends TestCase
     public function test_baska_switchin_filtresi_kullanilamaz(): void
     {
         $switch = $this->switch();
-        $digeri = $this->switch('198.18.20.196');
-        $yabanci = SwitchFirewallFilter::factory()->for($digeri, 'switch')->create();
+        $other = $this->switch('198.18.20.196');
+        $foreign = SwitchFirewallFilter::factory()->for($other, 'switch')->create();
         $device = $this->device();
 
         $this->actingAs($this->admin())
-            ->delete(route('switches.firewall.destroy', [$switch, $yabanci]))
+            ->delete(route('switches.firewall.destroy', [$switch, $foreign]))
             ->assertNotFound();
 
         $this->assertNull($device->connection);
@@ -241,12 +241,12 @@ final class FirewallWriteTest extends TestCase
         $switch = $this->switch();
         $filter = SwitchFirewallFilter::factory()->for($switch, 'switch')->create(['name' => 'koruma']);
         SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['name' => 'list', 'position' => 0]);
-        $son = SwitchFirewallTerm::factory()->for($filter, 'filter')
+        $last = SwitchFirewallTerm::factory()->for($filter, 'filter')
             ->create(['name' => 'deny', 'position' => 1, 'action' => FirewallAction::Discard]);
         $device = $this->device();
 
         $this->actingAs($this->admin())
-            ->put(route('switches.firewall.terms.update', [$switch, $filter, $son]), [
+            ->put(route('switches.firewall.terms.update', [$switch, $filter, $last]), [
                 'name' => 'deny',
                 'action' => 'reject',
                 'position' => 1,
@@ -254,12 +254,12 @@ final class FirewallWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
         // Aynı terim iki kez yazılmaz ve sıra korunur.
-        $this->assertSame(1, substr_count($yazilan, '<name>deny</name>'));
-        $this->assertStringContainsString('<reject/>', $yazilan);
-        $this->assertTrue(strpos($yazilan, '<name>list</name>') < strpos($yazilan, '<name>deny</name>'));
+        $this->assertSame(1, substr_count($written, '<name>deny</name>'));
+        $this->assertStringContainsString('<reject/>', $written);
+        $this->assertTrue(strpos($written, '<name>list</name>') < strpos($written, '<name>deny</name>'));
     }
 
     /**
@@ -272,21 +272,21 @@ final class FirewallWriteTest extends TestCase
         $filter = SwitchFirewallFilter::factory()->for($switch, 'switch')->create(['name' => 'koruma']);
         SwitchFirewallTerm::factory()->for($filter, 'filter')
             ->create(['name' => 'deny', 'position' => 0, 'action' => FirewallAction::Discard]);
-        $kabul = SwitchFirewallTerm::factory()->for($filter, 'filter')
+        $accept = SwitchFirewallTerm::factory()->for($filter, 'filter')
             ->create(['name' => 'kabul', 'position' => 1]);
         $device = $this->device();
 
         $this->actingAs($this->admin())
-            ->put(route('switches.firewall.terms.update', [$switch, $filter, $kabul]), [
+            ->put(route('switches.firewall.terms.update', [$switch, $filter, $accept]), [
                 'name' => 'kabul',
                 'action' => 'accept',
                 'position' => 0,
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertTrue(strpos($yazilan, '<name>kabul</name>') < strpos($yazilan, '<name>deny</name>'));
+        $this->assertTrue(strpos($written, '<name>kabul</name>') < strpos($written, '<name>deny</name>'));
     }
 
     /**
@@ -305,11 +305,11 @@ final class FirewallWriteTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<name>yeni</name>', $yazilan);
+        $this->assertStringContainsString('<name>yeni</name>', $written);
         // "eski" yalnızca filtre silme satırında geçebilir, terim olarak değil.
-        $this->assertStringNotContainsString('<term><name>eski</name>', $yazilan);
+        $this->assertStringNotContainsString('<term><name>eski</name>', $written);
     }
 
     public function test_terim_guncellemek_firewall_yetkisi_ister(): void
@@ -335,20 +335,20 @@ final class FirewallWriteTest extends TestCase
     {
         $switch = $this->switch();
         $filter = SwitchFirewallFilter::factory()->for($switch, 'switch')->create(['name' => 'koruma']);
-        $ilk = SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['name' => 'deny', 'position' => 0]);
-        $ikinci = SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['name' => 'kabul', 'position' => 1]);
+        $first = SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['name' => 'deny', 'position' => 0]);
+        $second = SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['name' => 'kabul', 'position' => 1]);
         $device = $this->device();
 
         $this->actingAs($this->admin())
             ->put(route('switches.firewall.terms.order', [$switch, $filter]), [
-                'terms' => [$ikinci->uuid, $ilk->uuid],
+                'terms' => [$second->uuid, $first->uuid],
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertTrue(strpos($yazilan, '<name>kabul</name>') < strpos($yazilan, '<name>deny</name>'));
+        $this->assertTrue(strpos($written, '<name>kabul</name>') < strpos($written, '<name>deny</name>'));
     }
 
     /**
@@ -359,12 +359,12 @@ final class FirewallWriteTest extends TestCase
     {
         $switch = $this->switch();
         $filter = SwitchFirewallFilter::factory()->for($switch, 'switch')->create();
-        $ilk = SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['position' => 0]);
+        $first = SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['position' => 0]);
         SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['position' => 1]);
         $device = $this->device();
 
         $this->actingAs($this->admin())
-            ->put(route('switches.firewall.terms.order', [$switch, $filter]), ['terms' => [$ilk->uuid]])
+            ->put(route('switches.firewall.terms.order', [$switch, $filter]), ['terms' => [$first->uuid]])
             ->assertStatus(422);
 
         $this->assertNull($device->connection);
@@ -379,12 +379,12 @@ final class FirewallWriteTest extends TestCase
         $filter = SwitchFirewallFilter::factory()->for($switch, 'switch')->create();
         SwitchFirewallTerm::factory()->for($filter, 'filter')->create(['position' => 0]);
 
-        $digeri = SwitchFirewallFilter::factory()->for($switch, 'switch')->create();
-        $yabanci = SwitchFirewallTerm::factory()->for($digeri, 'filter')->create();
+        $other = SwitchFirewallFilter::factory()->for($switch, 'switch')->create();
+        $foreign = SwitchFirewallTerm::factory()->for($other, 'filter')->create();
         $device = $this->device();
 
         $this->actingAs($this->admin())
-            ->put(route('switches.firewall.terms.order', [$switch, $filter]), ['terms' => [$yabanci->uuid]])
+            ->put(route('switches.firewall.terms.order', [$switch, $filter]), ['terms' => [$foreign->uuid]])
             ->assertStatus(422);
 
         $this->assertNull($device->connection);

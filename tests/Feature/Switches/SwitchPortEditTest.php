@@ -44,33 +44,33 @@ final class SwitchPortEditTest extends TestCase
         $port = SwitchPort::factory()->for($switch, 'switch')
             ->create(['name' => 'ge-0/0/5', 'port_mode' => PortMode::Access]);
 
-        $eski = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 132, 'name' => 'V32']);
-        $yeni = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 140, 'name' => 'V40']);
+        $old = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 132, 'name' => 'V32']);
+        $new = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 140, 'name' => 'V40']);
 
         // Port cihazda V32'ye üye; üyelik vlans tarafında bildirilmiş.
-        $port->vlans()->attach($eski, ['is_untagged' => true]);
+        $port->vlans()->attach($old, ['is_untagged' => true]);
 
         $transport = $this->fakeTransport();
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->put(route('switches.ports.update', [$switch, $port]), [
                 'port_mode' => 'access',
-                'vlans' => [$yeni->uuid],
+                'vlans' => [$new->uuid],
             ])
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
         $this->assertStringContainsString(
             '<vlan><name>V32</name><interface delete="delete"><name>ge-0/0/5.0</name></interface></vlan>',
-            $yazilan,
+            $written,
         );
         $this->assertStringContainsString(
             '<vlan><name>V40</name><interface delete="delete"><name>ge-0/0/5.0</name></interface></vlan>',
-            $yazilan,
+            $written,
         );
-        $this->assertStringContainsString('<members>V40</members>', $yazilan);
+        $this->assertStringContainsString('<members>V40</members>', $written);
     }
 
     /**
@@ -104,12 +104,12 @@ final class SwitchPortEditTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
-        $this->assertStringContainsString('<speed>100m</speed>', $yazilan);
-        $this->assertStringNotContainsString('<ethernet-100m/>', $yazilan);
+        $this->assertStringContainsString('<speed>100m</speed>', $written);
+        $this->assertStringNotContainsString('<ethernet-100m/>', $written);
         // Mod da ELS adıyla gitmeli.
-        $this->assertStringContainsString('<interface-mode>access</interface-mode>', $yazilan);
+        $this->assertStringContainsString('<interface-mode>access</interface-mode>', $written);
     }
 
     /**
@@ -135,10 +135,10 @@ final class SwitchPortEditTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
-        $this->assertStringContainsString('<ether-options><auto-negotiation/></ether-options>', $yazilan);
-        $this->assertStringContainsString('<speed delete="delete"/>', $yazilan);
+        $this->assertStringContainsString('<ether-options><auto-negotiation/></ether-options>', $written);
+        $this->assertStringContainsString('<speed delete="delete"/>', $written);
     }
 
     public function test_port_ayarlari_cihaza_yazilir(): void
@@ -161,17 +161,17 @@ final class SwitchPortEditTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
-        $this->assertStringContainsString('<description>sunucu odasi</description>', $yazilan);
-        $this->assertStringContainsString('<disable delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<port-mode>access</port-mode>', $yazilan);
-        $this->assertStringContainsString('<ethernet-1g/>', $yazilan);
+        $this->assertStringContainsString('<description>sunucu odasi</description>', $written);
+        $this->assertStringContainsString('<disable delete="delete"/>', $written);
+        $this->assertStringContainsString('<port-mode>access</port-mode>', $written);
+        $this->assertStringContainsString('<ethernet-1g/>', $written);
 
         // Üyelik değiştiğinde önce eski liste silinir, sonra yenisi yazılır:
         // Junos "merge" listeyi değiştirmez, üstüne ekler.
-        $this->assertStringContainsString('<vlan delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<members>V30</members>', $yazilan);
+        $this->assertStringContainsString('<vlan delete="delete"/>', $written);
+        $this->assertStringContainsString('<members>V30</members>', $written);
     }
 
     /**
@@ -204,14 +204,14 @@ final class SwitchPortEditTest extends TestCase
         $switch = $this->switch();
         $port = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ge-0/0/5']);
         $bir = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 30]);
-        $iki = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 31]);
+        $two = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 31]);
 
         $transport = $this->fakeTransport();
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->put(route('switches.ports.update', [$switch, $port]), [
                 'port_mode' => 'access',
-                'vlans' => [$bir->uuid, $iki->uuid],
+                'vlans' => [$bir->uuid, $two->uuid],
             ])
             ->assertSessionHasErrors('vlans');
 
@@ -257,10 +257,10 @@ final class SwitchPortEditTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = implode('', $transport->written);
+        $written = implode('', $transport->written);
 
-        $this->assertStringContainsString('<port-mode>trunk</port-mode>', $yazilan);
-        $this->assertSame(1, substr_count($yazilan, '<members>V30</members>'));
+        $this->assertStringContainsString('<port-mode>trunk</port-mode>', $written);
+        $this->assertSame(1, substr_count($written, '<members>V30</members>'));
     }
 
     /**
@@ -346,15 +346,15 @@ final class SwitchPortEditTest extends TestCase
     {
         $switch = $this->switch();
         $port = SwitchPort::factory()->for($switch, 'switch')->create();
-        $secili = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 10]);
-        $secilmeyen = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 20]);
+        $selected = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 10]);
+        $unselected = Vlan::factory()->for($switch, 'switch')->create(['vlan_tag' => 20]);
         $transport = $this->fakeTransport();
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->put(route('switches.ports.update', [$switch, $port]), [
                 'port_mode' => 'access',
-                'vlans' => [$secili->uuid],
-                'untagged_vlan' => $secilmeyen->uuid,
+                'vlans' => [$selected->uuid],
+                'untagged_vlan' => $unselected->uuid,
             ])
             ->assertSessionHasErrors('untagged_vlan');
 
@@ -512,13 +512,13 @@ final class SwitchPortEditTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
-        $this->assertStringContainsString('<ether-options>', $yazilan);
-        $this->assertStringContainsString('<ethernet-100m/>', $yazilan);
-        $this->assertStringContainsString('<link-mode>full-duplex</link-mode>', $yazilan);
+        $this->assertStringContainsString('<ether-options>', $written);
+        $this->assertStringContainsString('<ethernet-100m/>', $written);
+        $this->assertStringContainsString('<link-mode>full-duplex</link-mode>', $written);
         // Tek eleman: iki ayrı ether-options bloğu yazılmamalı.
-        $this->assertSame(1, substr_count($yazilan, '<ether-options>'));
+        $this->assertSame(1, substr_count($written, '<ether-options>'));
     }
 
     /**
@@ -576,16 +576,16 @@ final class SwitchPortEditTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
-        $this->assertStringContainsString('<link-mode>half-duplex</link-mode>', $yazilan);
+        $this->assertStringContainsString('<link-mode>half-duplex</link-mode>', $written);
 
         /*
          * Cihaz: "Half duplex and flow control enable is an invalid
          * configuration." 802.3x duraklatma zaten yalnızca full-duplex'te
          * anlamlıdır; half seçilince akış kontrolü aynı belgede kapatılır.
          */
-        $this->assertStringContainsString('<no-flow-control/>', $yazilan);
+        $this->assertStringContainsString('<no-flow-control/>', $written);
     }
 
     /**

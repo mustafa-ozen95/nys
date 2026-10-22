@@ -18,15 +18,15 @@
     grid-template-areas: 'durum ad ip rol konum cpu bellek sure isi';
 }
 
-.switch-row__durum  { grid-area: durum; }
-.switch-row__ad     { grid-area: ad; }
+.switch-row__status  { grid-area: durum; }
+.switch-row__name     { grid-area: ad; }
 .switch-row__ip     { grid-area: ip; }
-.switch-row__rol    { grid-area: rol; }
-.switch-row__konum  { grid-area: konum; }
+.switch-row__role    { grid-area: rol; }
+.switch-row__location  { grid-area: konum; }
 .switch-row__cpu    { grid-area: cpu; }
-.switch-row__bellek { grid-area: bellek; }
-.switch-row__sure   { grid-area: sure; text-align: right; }
-.switch-row__isi    { grid-area: isi; text-align: right; }
+.switch-row__memory { grid-area: bellek; }
+.switch-row__duration   { grid-area: sure; text-align: right; }
+.switch-row__job    { grid-area: isi; text-align: right; }
 
 @media (max-width: 1200px) {
     .switch-row {
@@ -34,8 +34,8 @@
         grid-template-areas: 'durum ad ip cpu bellek sure isi';
     }
 
-    .switch-row__rol,
-    .switch-row__konum {
+    .switch-row__role,
+    .switch-row__location {
         display: none;
     }
 }
@@ -60,8 +60,8 @@
     }
 
     .switch-row__cpu::before,
-    .switch-row__bellek::before,
-    .switch-row__sure::before {
+    .switch-row__memory::before,
+    .switch-row__duration::before {
         content: attr(data-label);
         margin-right: var(--space-3);
         min-width: 46px;
@@ -69,12 +69,12 @@
         color: var(--color-text-muted);
     }
 
-    .switch-row__sure {
+    .switch-row__duration {
         text-align: left;
     }
 
     .switch-row__cpu,
-    .switch-row__bellek {
+    .switch-row__memory {
         display: flex;
         align-items: center;
     }
@@ -94,7 +94,7 @@
     grid-template-columns: 14px 110px 110px minmax(0, 1fr) 110px 118px;
 }
 
-.busy-row__hiz {
+.busy-row__speed {
     text-align: right;
 }
 
@@ -103,8 +103,8 @@
         grid-template-columns: 14px 100px minmax(0, 1fr) 100px;
     }
 
-    .busy-row__aciklama,
-    .busy-row__doluluk {
+    .busy-row__description,
+    .busy-row__fill {
         display: none;
     }
 }

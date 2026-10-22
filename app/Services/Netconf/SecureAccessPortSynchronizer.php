@@ -43,15 +43,15 @@ class SecureAccessPortSynchronizer
      */
     private function store(Closure $relation, array $rows, string $key): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($rows as $row) {
-            $tutulan[] = $relation()->updateOrCreate(
+            $kept[] = $relation()->updateOrCreate(
                 [$key => $row[$key]],
                 collect($row)->except($key)->all(),
             )->id;
         }
 
-        $relation()->whereNotIn('id', $tutulan)->delete();
+        $relation()->whereNotIn('id', $kept)->delete();
     }
 }

@@ -49,15 +49,15 @@ class SwitchArchivalRequest extends FormRequest
      */
     public function settings(): array
     {
-        $ayarlar = ['archival_enabled' => $this->boolean('enabled')];
+        $settings = ['archival_enabled' => $this->boolean('enabled')];
 
         if ($this->boolean('reset_site')) {
-            $ayarlar['archival_site'] = null;
+            $settings['archival_site'] = null;
         } elseif ($this->filled('site')) {
-            $ayarlar['archival_site'] = $this->string('site')->trim()->toString();
+            $settings['archival_site'] = $this->string('site')->trim()->toString();
         }
 
-        return $ayarlar;
+        return $settings;
     }
 
     /**

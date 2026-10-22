@@ -35,9 +35,9 @@ class TermOrderRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $gonderilen = (array) $this->input('terms', []);
+            $sent = (array) $this->input('terms', []);
 
-            if (count($gonderilen) !== count(array_unique($gonderilen))) {
+            if (count($sent) !== count(array_unique($sent))) {
                 $validator->errors()->add('terms', 'Aynı terim listede iki kez geçiyor.');
             }
         });

@@ -9,7 +9,7 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchVlans', $switch)
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="vlan-ekle">
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="vlan-add">
                         VLAN ekle
                     </button>
                 @endcan
@@ -17,23 +17,23 @@
 
             <div class="column__body">
                 <div class="grid-row__head vlan-row vlan-row__head">
-                    <span class="vlan-row__etiket">Etiket</span>
-                    <span class="vlan-row__ad">Ad</span>
+                    <span class="vlan-row__tag">Etiket</span>
+                    <span class="vlan-row__name">Ad</span>
                     <span class="vlan-row__l3">L3 arayüzü</span>
-                    <span class="vlan-row__adet">Adet</span>
+                    <span class="vlan-row__count">Adet</span>
                     <span class="vlan-row__port">Portlar</span>
-                    <span class="vlan-row__eylem"></span>
+                    <span class="vlan-row__action"></span>
                 </div>
 
                 @forelse ($vlans as $vlan)
                     <div class="grid-row grid-row--static vlan-row">
-                        <span class="mono vlan-row__etiket">{{ $vlan->vlan_tag ?? '—' }}</span>
-                        <span class="vlan-row__ad truncate">{{ $vlan->name }}</span>
+                        <span class="mono vlan-row__tag">{{ $vlan->vlan_tag ?? '—' }}</span>
+                        <span class="vlan-row__name truncate">{{ $vlan->name }}</span>
                         <span class="mono text-muted vlan-row__l3">{{ $vlan->l3_interface ?: '—' }}</span>
-                        <span class="mono text-muted vlan-row__adet">{{ $vlan->ports_count }}</span>
+                        <span class="mono text-muted vlan-row__count">{{ $vlan->ports_count }}</span>
                         <span class="mono text-muted truncate vlan-row__port">{{ $vlan->port_list ?: '—' }}</span>
 
-                        <span class="vlan-row__eylem">
+                        <span class="vlan-row__action">
                             @can('updateSwitchVlans', $switch)
                                 <button type="button" class="btn btn--sm"
                                         data-modal-open="vlan-{{ $vlan->uuid }}">Düzenle</button>
@@ -49,7 +49,7 @@
     </div>
 
     @can('createSwitchVlans', $switch)
-        <x-ui.modal id="vlan-ekle" title="Yeni VLAN">
+        <x-ui.modal id="vlan-add" title="Yeni VLAN">
             <form method="POST" action="{{ route('switches.vlans.store', $switch) }}"
                   data-confirm="VLAN cihaza commit edilecek. Geri alınabilir commit kullanılır."
                   data-confirm-title="Cihaza yaz">
@@ -81,12 +81,12 @@
 
                     <x-ui.modal-actions submit="Cihaza yaz">
                         {{-- Silme ayrı bir form; iç içe form geçersizdir. --}}
-                        <button type="submit" form="vlan-sil-{{ $vlan->uuid }}" class="btn btn--danger btn--sm">Sil</button>
+                        <button type="submit" form="vlan-delete-{{ $vlan->uuid }}" class="btn btn--danger btn--sm">Sil</button>
                         <span class="spacer"></span>
                     </x-ui.modal-actions>
                 </form>
 
-                <form method="POST" id="vlan-sil-{{ $vlan->uuid }}" hidden
+                <form method="POST" id="vlan-delete-{{ $vlan->uuid }}" hidden
                       action="{{ route('switches.vlans.destroy', [$switch, $vlan]) }}"
                       data-confirm="VLAN {{ $vlan->name }} CİHAZDAN silinecek; üye portlardan da çıkarılır."
                       data-confirm-title="VLAN’ı sil"

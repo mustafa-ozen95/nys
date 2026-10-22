@@ -158,9 +158,9 @@ final class SyncSwitchNetconfJobTest extends TestCase
 
         SyncSwitchNetconfJob::dispatchSync($switch->id);
 
-        $ilkTur = $device->written;
+        $firstRound = $device->written;
         $this->assertTrue(
-            collect($ilkTur)->contains(fn (string $rpc): bool => str_contains($rpc, 'get-interface-information')),
+            collect($firstRound)->contains(fn (string $rpc): bool => str_contains($rpc, 'get-interface-information')),
             'İlk turda envanter okunmalı.',
         );
 
@@ -177,7 +177,7 @@ final class SyncSwitchNetconfJobTest extends TestCase
             'Commit değişmediği hâlde envanter yeniden okundu.',
         );
 
-        $this->assertLessThan(count($ilkTur), count($device->written));
+        $this->assertLessThan(count($firstRound), count($device->written));
     }
 
     public function test_degisim_algisi_kapaliyken_her_turda_okunur(): void

@@ -44,12 +44,12 @@ trait ClosesSessions
                 return;
             }
 
-            $model->oturumlariKapat();
+            $model->sessionsClose();
         });
     }
 
     /** Bu kullanıcının açık oturumlarını siler; kaç oturum kapandığını döndürür. */
-    public function oturumlariKapat(): int
+    public function sessionsClose(): int
     {
         if (config('session.driver') !== 'database') {
             return 0;

@@ -61,9 +61,9 @@ class SwitchPortController extends Controller implements HasMiddleware
          * Portlar ÖNCE hazırlanır: hız seçenekleri, cihazda zaten yazılı
          * değerleri bu listeden okur ve ayrı bir sorgu açmaz.
          */
-        $portlar = $this->ports->forNetworkSwitch($switch, $filter, $selectedPort);
-        $portlar['ports'] = $this->withSpeedOptions($switch, $portlar['ports']);
-        $portlar['ports'] = $this->withPendingWrites($switch, $portlar['ports']);
+        $ports = $this->ports->forNetworkSwitch($switch, $filter, $selectedPort);
+        $ports['ports'] = $this->withSpeedOptions($switch, $ports['ports']);
+        $ports['ports'] = $this->withPendingWrites($switch, $ports['ports']);
 
         return view('switches.ports', [
             'switch' => $switch,
@@ -104,7 +104,7 @@ class SwitchPortController extends Controller implements HasMiddleware
                 ->all(),
             'duplexOptions' => $this->duplexOptions(),
             'halfDuplexSpeeds' => (array) config('netconf.half_duplex_speeds'),
-        ] + $portlar);
+        ] + $ports);
     }
 
     /**
@@ -142,8 +142,8 @@ class SwitchPortController extends Controller implements HasMiddleware
      */
     private function settings(SwitchPortRequest $request, NetworkSwitch $switch, SwitchPort $port): array
     {
-        $secilen = $switch->vlans()->whereIn('uuid', $request->input('vlans', []))->get();
-        $names = $secilen->pluck('name', 'uuid');
+        $selected = $switch->vlans()->whereIn('uuid', $request->input('vlans', []))->get();
+        $names = $selected->pluck('name', 'uuid');
         $speed = $request->string('speed_config')->toString() ?: null;
         $native = $request->isAccess() ? null : $this->nativeVlan($request, $switch);
 
@@ -291,14 +291,14 @@ class SwitchPortController extends Controller implements HasMiddleware
      */
     private function speedOptions(NetworkSwitch $switch, SwitchPort $port): array
     {
-        $lehce = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
+        $dialect = ($switch->schema_profile ?? JunosSchemaProfile::PreEls)->dialect();
 
-        $hizlar = collect($lehce->speedValues())
+        $speeds = collect($dialect->speedValues())
             ->keys()
             ->mapWithKeys(fn (string $mbps): array => [$mbps => $mbps.' Mbps'])
             ->all();
 
-        $daraltilmis = $this->capabilities->filterSpeeds($switch, (string) $port->name, $hizlar);
+        $narrowed = $this->capabilities->filterSpeeds($switch, (string) $port->name, $speeds);
 
         /*
          * CİHAZDA ZATEN YAZILI bir hız listeden düşerse seçili değer boşa
@@ -306,13 +306,13 @@ class SwitchPortController extends Controller implements HasMiddleware
          * geçerdi. Daraltma bir seçeneği gizleyebilir, var olan bir ayarı
          * silemez.
          */
-        $yazili = (string) ($port->speed_config ?? '');
+        $written = (string) ($port->speed_config ?? '');
 
-        if ($yazili !== '' && ! array_key_exists($yazili, $daraltilmis)) {
-            $daraltilmis[$yazili] = $yazili.' Mbps (cihazda tanımlı)';
+        if ($written !== '' && ! array_key_exists($written, $narrowed)) {
+            $narrowed[$written] = $written.' Mbps (cihazda tanımlı)';
         }
 
-        return ['' => 'Otomatik'] + $daraltilmis;
+        return ['' => 'Otomatik'] + $narrowed;
     }
 
     /**
@@ -335,14 +335,14 @@ class SwitchPortController extends Controller implements HasMiddleware
      */
     private function withPendingWrites(NetworkSwitch $switch, Collection $ports): Collection
     {
-        $suren = SwitchWriteJob::query()
+        $lasting = SwitchWriteJob::query()
             ->pending()
             ->where('switch_id', $switch->id)
             ->where('subject_type', (new SwitchPort)->getMorphClass())
             ->pluck('summary', 'subject_id');
 
         return $ports->map(fn (array $port): array => $port + [
-            'pending_write' => $suren[$port['model']->id] ?? null,
+            'pending_write' => $lasting[$port['model']->id] ?? null,
         ]);
     }
 
@@ -359,11 +359,11 @@ class SwitchPortController extends Controller implements HasMiddleware
     private function withSpeedOptions(NetworkSwitch $switch, Collection $ports): Collection
     {
         return $ports->map(function (array $port) use ($switch): array {
-            $secenekler = $this->speedOptions($switch, $port['model']);
+            $options = $this->speedOptions($switch, $port['model']);
 
             return $port + [
-                'speed_options' => $secenekler,
-                'speed_hint' => $this->speedHint($secenekler),
+                'speed_options' => $options,
+                'speed_hint' => $this->speedHint($options),
             ];
         });
     }
@@ -381,13 +381,13 @@ class SwitchPortController extends Controller implements HasMiddleware
      */
     private function speedHint(array $options): string
     {
-        $temel = 'Otomatik seçilirse auto-negotiation kullanılır.';
+        $base = 'Otomatik seçilirse auto-negotiation kullanılır.';
 
         if (array_key_exists('1000', $options)) {
-            return $temel;
+            return $base;
         }
 
-        return $temel.' Bu port 1000 Mbps’i zorla kabul etmiyor;'
+        return $base.' Bu port 1000 Mbps’i zorla kabul etmiyor;'
             .' gigabit bağlantı otomatik anlaşmayla kurulur.';
     }
 

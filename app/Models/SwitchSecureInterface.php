@@ -132,12 +132,12 @@ class SwitchSecureInterface extends Model
     protected function summary(): Attribute
     {
         return Attribute::get(function (): string {
-            $parcalar = array_filter([
+            $fragments = array_filter([
                 $this->limit_label === null ? null : 'MAC sınırı: '.$this->limit_label,
                 empty($this->allowed_macs) ? null : count($this->allowed_macs).' izinli MAC',
             ]);
 
-            return $parcalar === [] ? '—' : implode(' · ', $parcalar);
+            return $fragments === [] ? '—' : implode(' · ', $fragments);
         });
     }
 

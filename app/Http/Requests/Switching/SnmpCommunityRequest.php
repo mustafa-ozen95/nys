@@ -36,7 +36,7 @@ class SnmpCommunityRequest extends FormRequest
      */
     public function rules(): array
     {
-        $yeni = $this->route('snmpCommunity') === null;
+        $new = $this->route('snmpCommunity') === null;
 
         return [
             /*
@@ -44,7 +44,7 @@ class SnmpCommunityRequest extends FormRequest
              * oluştururken sorulur.
              */
             'name' => [
-                Rule::requiredIf($yeni),
+                Rule::requiredIf($new),
                 'prohibited_if:_duzenleme,1',
                 'string', 'max:63',
                 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*$/',
@@ -85,14 +85,14 @@ class SnmpCommunityRequest extends FormRequest
      */
     public function clientList(): array
     {
-        $ham = $this->input('clients');
+        $raw = $this->input('clients');
 
-        if (is_array($ham)) {
-            return array_values(array_filter(array_map('trim', $ham), 'filled'));
+        if (is_array($raw)) {
+            return array_values(array_filter(array_map('trim', $raw), 'filled'));
         }
 
         return array_values(array_filter(
-            array_map('trim', preg_split('/[\r\n,]+/', (string) $ham) ?: []),
+            array_map('trim', preg_split('/[\r\n,]+/', (string) $raw) ?: []),
             'filled',
         ));
     }

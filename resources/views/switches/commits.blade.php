@@ -50,23 +50,23 @@
                 @endif
 
                 <div class="grid-row__head commit-row commit-row__head">
-                    <span class="commit-row__sira">#</span>
-                    <span class="commit-row__zaman">Zaman</span>
-                    <span class="commit-row__kim">Yapan</span>
-                    <span class="commit-row__not">Açıklama</span>
-                    <span class="commit-row__eylem"></span>
+                    <span class="commit-row__order">#</span>
+                    <span class="commit-row__time">Zaman</span>
+                    <span class="commit-row__who">Yapan</span>
+                    <span class="commit-row__note">Açıklama</span>
+                    <span class="commit-row__action"></span>
                 </div>
 
                 @forelse ($commits as $commit)
                     <div class="grid-row grid-row--static commit-row">
-                        <span class="mono commit-row__sira">{{ $commit->sequence_number }}</span>
-                        <span class="mono text-muted commit-row__zaman">
+                        <span class="mono commit-row__order">{{ $commit->sequence_number }}</span>
+                        <span class="mono text-muted commit-row__time">
                             <x-ui.time :at="$commit->committed_at" format="d.m.Y H:i" />
                         </span>
-                        <span class="mono commit-row__kim">{{ $commit->committed_by ?: '—' }}</span>
-                        <span class="text-muted commit-row__not">{{ $commit->comment ?: '—' }}</span>
+                        <span class="mono commit-row__who">{{ $commit->committed_by ?: '—' }}</span>
+                        <span class="text-muted commit-row__note">{{ $commit->comment ?: '—' }}</span>
 
-                        <span class="commit-row__eylem">
+                        <span class="commit-row__action">
                             @can('provision', $switch)
                                 @if ($commit->sequence_number > 0)
                                     <form method="POST"

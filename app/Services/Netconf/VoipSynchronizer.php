@@ -26,16 +26,16 @@ class VoipSynchronizer
         $interfaces = $this->reader->voip($session, $switch);
 
         DB::transaction(function () use ($switch, $interfaces): void {
-            $tutulan = [];
+            $kept = [];
 
             foreach ($interfaces as $interface) {
-                $tutulan[] = $switch->voipInterfaces()->updateOrCreate(
+                $kept[] = $switch->voipInterfaces()->updateOrCreate(
                     ['interface_name' => $interface['interface_name']],
                     collect($interface)->except('interface_name')->all(),
                 )->id;
             }
 
-            $switch->voipInterfaces()->whereNotIn('id', $tutulan)->delete();
+            $switch->voipInterfaces()->whereNotIn('id', $kept)->delete();
         });
     }
 }

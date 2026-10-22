@@ -21,45 +21,45 @@ final class SortedKeyTest extends TestCase
 {
     public function test_gorunumler_sirali_anahtar_basmaz(): void
     {
-        $bulunan = [];
+        $found = [];
 
-        foreach ($this->gorunumler() as $dosya) {
-            foreach (file($dosya) ?: [] as $no => $satir) {
-                if (preg_match('/->id\b(?!entity)/', $satir) !== 1) {
+        foreach ($this->views() as $file) {
+            foreach (file($file) ?: [] as $no => $row) {
+                if (preg_match('/->id\b(?!entity)/', $row) !== 1) {
                     continue;
                 }
 
                 /* Oturumdaki kişinin kendi kimliği karşılaştırmadır, çıktı değil. */
-                if (str_contains($satir, 'user()->id') || str_contains($satir, 'auth()->id')) {
+                if (str_contains($row, 'user()->id') || str_contains($row, 'auth()->id')) {
                     continue;
                 }
 
-                if (str_contains($satir, 'sirali-anahtar-istisna')) {
+                if (str_contains($row, 'sirali-anahtar-istisna')) {
                     continue;
                 }
 
-                $bulunan[] = str_replace(base_path().'/', '', $dosya).':'.($no + 1);
+                $found[] = str_replace(base_path().'/', '', $file).':'.($no + 1);
             }
         }
 
-        $this->assertSame([], $bulunan, 'Görünümde model anahtarı basılıyor; uuid kullanın.');
+        $this->assertSame([], $found, 'Görünümde model anahtarı basılıyor; uuid kullanın.');
     }
 
     /** @return array<int, string> */
-    private function gorunumler(): array
+    private function views(): array
     {
-        $dosyalar = [];
+        $files = [];
 
-        $gezgin = new \RecursiveIteratorIterator(
+        $browser = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS),
         );
 
-        foreach ($gezgin as $dosya) {
-            if (str_ends_with($dosya->getFilename(), '.blade.php')) {
-                $dosyalar[] = $dosya->getPathname();
+        foreach ($browser as $file) {
+            if (str_ends_with($file->getFilename(), '.blade.php')) {
+                $files[] = $file->getPathname();
             }
         }
 
-        return $dosyalar;
+        return $files;
     }
 }

@@ -38,7 +38,7 @@ class LoginUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $yeni = $this->loginUser() === null;
+        $new = $this->loginUser() === null;
 
         return [
             /*
@@ -46,7 +46,7 @@ class LoginUserRequest extends FormRequest
              * eder. Yalnızca oluştururken sorulur.
              */
             'name' => [
-                Rule::requiredIf($yeni),
+                Rule::requiredIf($new),
                 'prohibited_if:_duzenleme,1',
                 'string', 'max:64',
                 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*$/',
@@ -82,31 +82,31 @@ class LoginUserRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $this->kimlikCakismasi($validator);
-            $this->panelHesabiKorumasi($validator);
+            $this->identityConflict($validator);
+            $this->panelAccountProtection($validator);
         });
     }
 
     /**
      * Aynı ad ya da aynı uid cihazda ikinci kez yazılırsa ilkini ezer.
      */
-    private function kimlikCakismasi(Validator $validator): void
+    private function identityConflict(Validator $validator): void
     {
         if ($this->loginUser() !== null) {
             return;
         }
 
-        $hesaplar = $this->route('switch')->loginUsers();
+        $accounts = $this->route('switch')->loginUsers();
 
         if (! $validator->errors()->has('name')
-            && (clone $hesaplar)->whereRaw('LOWER(name) = ?', [mb_strtolower($this->string('name')->toString())])->exists()) {
+            && (clone $accounts)->whereRaw('LOWER(name) = ?', [mb_strtolower($this->string('name')->toString())])->exists()) {
             $validator->errors()->add('name', 'Bu hesap cihazda zaten tanımlı.');
         }
 
         $uid = $this->input('uid');
 
         if (! $validator->errors()->has('uid') && filled($uid)
-            && (clone $hesaplar)->where('uid', (int) $uid)->exists()) {
+            && (clone $accounts)->where('uid', (int) $uid)->exists()) {
             $validator->errors()->add('uid', 'Bu uid cihazda başka bir hesapta kullanılıyor.');
         }
     }
@@ -124,11 +124,11 @@ class LoginUserRequest extends FormRequest
      * oturumunu parolası değişmeyen bir hesapla atıyor. Bu hesabın parolası
      * yalnızca oradan değişir.
      */
-    private function panelHesabiKorumasi(Validator $validator): void
+    private function panelAccountProtection(Validator $validator): void
     {
-        $hesap = $this->loginUser();
+        $account = $this->loginUser();
 
-        if ($hesap === null || ! $hesap->is_panel_account) {
+        if ($account === null || ! $account->is_panel_account) {
             return;
         }
 
@@ -142,9 +142,9 @@ class LoginUserRequest extends FormRequest
             );
         }
 
-        $sinif = JunosUserClass::tryFrom($this->string('class')->toString());
+        $class = JunosUserClass::tryFrom($this->string('class')->toString());
 
-        if ($sinif === null || $sinif->canConfigure()) {
+        if ($class === null || $class->canConfigure()) {
             return;
         }
 
@@ -156,9 +156,9 @@ class LoginUserRequest extends FormRequest
 
     private function loginUser(): ?SwitchLoginUser
     {
-        $hesap = $this->route('loginUser');
+        $account = $this->route('loginUser');
 
-        return $hesap instanceof SwitchLoginUser ? $hesap : null;
+        return $account instanceof SwitchLoginUser ? $account : null;
     }
 
     /**

@@ -16,7 +16,7 @@ use App\Enums\SyncInterval;
 | Form Request ve servis sağlayıcı kendiliğinden uyar.
 |
 | Her bölüm kendi alt sayfasıdır; "slug" o sayfanın adres parçasıdır
-| (/ayarlar/izleme). Bütün ayarların tek sayfada durması karışıklık üretir.
+| (/settings/monitoring). Bütün ayarların tek sayfada durması karışıklık üretir.
 |
 | Anahtar, üzerine bindirilecek config yolunun kendisidir: "zabbix.url"
 | yazınca config('zabbix.url') değişir. Böylece config() diyen çağrı yerleri
@@ -40,7 +40,7 @@ use App\Enums\SyncInterval;
  * bir liste güncel kalmazdı. config:cache bunu diziye çevirip dosyaya yazar,
  * yani çalışma anında maliyeti yoktur.
  */
-$saatDilimleri = array_combine(
+$timeZones = array_combine(
     DateTimeZone::listIdentifiers(),
     DateTimeZone::listIdentifiers(),
 );
@@ -50,18 +50,18 @@ $saatDilimleri = array_combine(
  * listeye eklenen bölüm Ayarlar ekranına kendiliğinden gelir. Etiketler yetki
  * kataloğundan okunur; aynı ad iki yerde yazılı kalmaz.
  */
-$basitModKaynaklari = (require __DIR__.'/permissions.php')['resources'];
-$basitMod = require __DIR__.'/simple_mode.php';
-$basitModAnahtarlari = [];
-$basitModAyarlari = [];
-foreach (array_keys($basitMod['bolumler']) as $bolum) {
-    $ad = $basitModKaynaklari[$bolum]['label'] ?? $bolum;
-    foreach (['goruntule' => 'görüntülenir', 'yonet' => 'yönetilir'] as $eylem => $fiil) {
-        $anahtar = "simple_mode.bolumler.{$bolum}.{$eylem}";
-        $basitModAnahtarlari[] = $anahtar;
-        $basitModAyarlari[$anahtar] = [
-            'label' => "{$ad} — {$fiil}",
-            'hint' => $eylem === 'goruntule'
+$simpleModeSources = (require __DIR__.'/permissions.php')['resources'];
+$simpleMode = require __DIR__.'/simple_mode.php';
+$simpleModeKeys = [];
+$simpleModeSettings = [];
+foreach (array_keys($simpleMode['bolumler']) as $section) {
+    $name = $simpleModeSources[$section]['label'] ?? $section;
+    foreach (['goruntule' => 'görüntülenir', 'yonet' => 'yönetilir'] as $action => $verb) {
+        $key = "simple_mode.bolumler.{$section}.{$action}";
+        $simpleModeKeys[] = $key;
+        $simpleModeSettings[$key] = [
+            'label' => "{$name} — {$verb}",
+            'hint' => $action === 'goruntule'
                 ? 'Kapalıysa bölüm basit modda menüden kalkar ve açılmaz.'
                 : 'Kapalıysa basit modda ekleme, düzenleme ve silme yapılamaz; yalnızca görülür.',
             'type' => 'boolean',
@@ -69,11 +69,11 @@ foreach (array_keys($basitMod['bolumler']) as $bolum) {
     }
 
     /* Bölümün alanları: basit modda görünsün mü (bkz. config/simple_mode.php · alanlar). */
-    foreach ($basitMod['alanlar'][$bolum] ?? [] as $alan => $tanim) {
-        $anahtar = "simple_mode.alanlar.{$bolum}.{$alan}.acik";
-        $basitModAnahtarlari[] = $anahtar;
-        $basitModAyarlari[$anahtar] = [
-            'label' => $tanim['etiket'],
+    foreach ($simpleMode['alanlar'][$section] ?? [] as $alan => $definition) {
+        $key = "simple_mode.alanlar.{$section}.{$alan}.acik";
+        $simpleModeKeys[] = $key;
+        $simpleModeSettings[$key] = [
+            'label' => $definition['etiket'],
             'hint' => 'Kapalıysa basit modda görünmez; cihazdaki değeri korunur.',
             'type' => 'boolean',
         ];
@@ -91,17 +91,17 @@ return [
          */
         'basit_mod' => [
             'permission_id' => 16,
-            'slug' => 'basit-mod',
+            'slug' => 'simple-mode',
             'label' => 'Basit mod',
             'description' => 'Basit moddaki kullanıcının hangi switch bölümlerini görebileceği ve yönetebileceği. '
                 .'Rol yetkisini genişletmez, yalnızca daraltır. Gelişmiş moda kimin geçebileceği rol ayarlarındaki '
                 .'“Gelişmiş mod” yetkisidir.',
-            'keys' => $basitModAnahtarlari,
+            'keys' => $simpleModeKeys,
         ],
 
         'panel' => [
             'permission_id' => 15,
-            'slug' => 'bolge',
+            'slug' => 'timezone',
             'label' => 'Saat dilimi',
             'description' => 'Kayıtların, zamanlayıcının ve ekranlardaki bütün tarih/saatlerin '
                 .'hangi dilime göre gösterileceği. Denetim kaydı takibi için doğru olması şart: '
@@ -113,7 +113,7 @@ return [
 
         'measurement' => [
             'permission_id' => 1,
-            'slug' => 'olcum',
+            'slug' => 'measurement',
             'label' => 'Ölçüm kaynağı',
             'description' => 'Çevrimiçilik, uptime, CPU, sıcaklık ve trafik nereden okunsun. '
                 .'Cihaz yapılandırması (port, VLAN, BGP, firewall) bundan etkilenmez; o daima NETCONF’tan gelir.',
@@ -127,7 +127,7 @@ return [
 
         'zabbix' => [
             'permission_id' => 2,
-            'slug' => 'izleme',
+            'slug' => 'monitoring',
             'label' => 'İzleme sistemi (Zabbix)',
             'description' => 'Yalnızca okuma yapılır; Zabbix’e hiçbir şey yazılmaz.',
             'keys' => [
@@ -144,7 +144,7 @@ return [
 
         'mail' => [
             'permission_id' => 12,
-            'slug' => 'eposta',
+            'slug' => 'email',
             'label' => 'E-posta (SMTP)',
             'description' => 'Prefix anons talepleri buradan gider. '
                 .'“Gönderme, günlüğe yaz” seçiliyken hiçbir mail çıkmaz; '
@@ -163,7 +163,7 @@ return [
 
         'netconf' => [
             'permission_id' => 3,
-            'slug' => 'cihaz',
+            'slug' => 'device',
             'label' => 'Cihaz erişimi (NETCONF)',
             'description' => 'Cihaza yazan tek yol. Geri alınabilir commit süresi güvenlik ağıdır; sıfırlanamaz.',
             'keys' => [
@@ -188,7 +188,7 @@ return [
 
         'sync' => [
             'permission_id' => 5,
-            'slug' => 'takvim',
+            'slug' => 'calendar',
             'label' => 'Eşitleme takvimi',
             'description' => 'Değişiklik bir dakika içinde yürürlüğe girer; zamanlayıcı bu değerleri her turda okur.',
             'keys' => [
@@ -203,7 +203,7 @@ return [
 
         'thresholds' => [
             'permission_id' => 6,
-            'slug' => 'esikler',
+            'slug' => 'thresholds',
             'label' => 'Uyarı eşikleri',
             'description' => 'Bir switchin ne zaman “uyarı” sayılacağı ve göstergelerin ne zaman renk değiştireceği. '
                 .'Tehlike eşiği aşılırsa switch listede uyarı durumuna geçer.',
@@ -222,7 +222,7 @@ return [
 
         'remote' => [
             'permission_id' => 7,
-            'slug' => 'uzak-oturum',
+            'slug' => 'remote-session',
             'label' => 'Uzak oturum',
             'description' => 'SSH ve RDP pencerelerinin ömrü. Jeton kısa ömürlüdür; uzatmak açık bırakılmış bir pencerenin '
                 .'ne kadar süre kullanılabilir kalacağını da uzatır.',
@@ -234,7 +234,7 @@ return [
 
         'session' => [
             'permission_id' => 8,
-            'slug' => 'oturum',
+            'slug' => 'session',
             'label' => 'Panel oturumu ve kayıt',
             'description' => 'Panele girişin ne kadar açık kalacağı ve etkinlik kaydının nasıl tutulacağı.',
             'keys' => [
@@ -245,7 +245,7 @@ return [
 
         'announcements' => [
             'permission_id' => 9,
-            'slug' => 'anons',
+            'slug' => 'announcement',
             'label' => 'Prefix anonsu',
             'description' => 'Anons metninde kullanılan varsayılanlar.',
             'keys' => [
@@ -261,7 +261,7 @@ return [
          */
         'credentials' => [
             'permission_id' => 11,
-            'slug' => 'cihaz-parolasi',
+            'slug' => 'device-password',
 
             /*
              * Şeritte AYRI SEKME olarak görünmez: alanları "Cihaz parolaları"
@@ -288,7 +288,7 @@ return [
 
         'kimlik' => [
             'permission_id' => 13,
-            'slug' => 'kimlik',
+            'slug' => 'identity',
             'label' => 'Kimlik Yönetim Merkezi',
             'description' => 'Kullanıcılar parolalarını buraya değil, Kimlik Yönetim Merkezi’ne yazar. '
                 .'Panelin kendi parola girişi kapanmaz; merkez erişilemez olduğunda tek yol odur.',
@@ -300,7 +300,7 @@ return [
 
         'maintenance' => [
             'permission_id' => 10,
-            'slug' => 'bakim',
+            'slug' => 'maintenance',
             'label' => 'Bakım',
             'description' => 'Sınırsız büyüyen kayıtların saklama süresi.',
             'keys' => [
@@ -320,7 +320,7 @@ return [
     'actions' => [
 
         'roles' => [
-            'slug' => 'roller',
+            'slug' => 'roles',
             'label' => 'Roller',
             'route' => 'settings.roles',
             'gate' => 'manageRoles',
@@ -334,7 +334,7 @@ return [
         ],
 
         'passwords' => [
-            'slug' => 'parolalar',
+            'slug' => 'passwords',
             'label' => 'Cihaz parolaları',
             'route' => 'settings.passwords',
             'gate' => 'viewDevicePasswords',
@@ -345,36 +345,36 @@ return [
          * arkasındaki panelleri birlikte kapsayabiliyor.
          */
         'sertifika' => [
-            'slug' => 'sertifika',
+            'slug' => 'certificate',
             'label' => 'Sertifika',
-            'route' => 'settings.sertifika',
-            'gate' => 'manageSertifika',
+            'route' => 'settings.certificate',
+            'gate' => 'manageCertificate',
         ],
 
         /*
          * Veritabanı: panelin veritabanını uzak bir sunucuya taşır.
          */
         'veritabani' => [
-            'slug' => 'veritabani',
+            'slug' => 'database',
             'label' => 'Veritabanı',
-            'route' => 'settings.veritabani',
-            'gate' => 'manageVeritabani',
+            'route' => 'settings.database',
+            'gate' => 'manageDatabase',
         ],
 
         /*
          * Güncelleme: yeni sürüm var mı (yalnızca bakar, kurmaz).
          */
         'guncelleme' => [
-            'slug' => 'guncelleme',
+            'slug' => 'update',
             'label' => 'Güncelleme',
-            'route' => 'settings.guncelleme',
-            'gate' => 'manageGuncelleme',
+            'route' => 'settings.updates',
+            'gate' => 'manageUpdate',
         ],
     ],
 
     'items' => [
 
-        ...$basitModAyarlari,
+        ...$simpleModeSettings,
 
         /*
          * Merkez ile giriş.
@@ -535,7 +535,7 @@ return [
             'hint' => 'Türkiye için Europe/Istanbul. Değişiklik yeni kayıtların yazılışını değil, '
                 .'saklanan anın gösterimini etkiler: kayıtlar UTC saklanır, ekranda bu dilime çevrilir.',
             'type' => 'select',
-            'options' => $saatDilimleri,
+            'options' => $timeZones,
             'rules' => ['required'],
         ],
 

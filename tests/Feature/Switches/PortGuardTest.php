@@ -39,13 +39,13 @@ final class PortGuardTest extends TestCase
         [$switch, $device] = $this->switchWithDevice();
 
         $ae = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ae0']);
-        $uye = SwitchPort::factory()->for($switch, 'switch')->create([
+        $member = SwitchPort::factory()->for($switch, 'switch')->create([
             'name' => 'ge-0/0/20',
             'aggregate_port_id' => $ae->id,
         ]);
 
         $this->actingAs($this->operator())
-            ->put(route('switches.ports.update', [$switch, $uye]), [
+            ->put(route('switches.ports.update', [$switch, $member]), [
                 'port_mode' => PortMode::Access->value,
                 'enabled' => '1',
             ])
@@ -59,7 +59,7 @@ final class PortGuardTest extends TestCase
         [$switch, $device] = $this->switchWithDevice();
 
         $ae = SwitchPort::factory()->for($switch, 'switch')->create(['name' => 'ae0']);
-        $uye = SwitchPort::factory()->for($switch, 'switch')->create([
+        $member = SwitchPort::factory()->for($switch, 'switch')->create([
             'name' => 'ge-0/0/21',
             'aggregate_port_id' => $ae->id,
         ]);
@@ -67,7 +67,7 @@ final class PortGuardTest extends TestCase
         $vlan = Vlan::factory()->for($switch, 'switch')->create();
 
         $this->actingAs($this->operator())
-            ->put(route('switches.ports.update', [$switch, $uye]), [
+            ->put(route('switches.ports.update', [$switch, $member]), [
                 'vlans' => [$vlan->uuid],
                 'enabled' => '1',
             ])

@@ -126,9 +126,9 @@ class ApiToken extends Model
      */
     public function allowsIp(?string $ip): bool
     {
-        $izinli = $this->allowed_ips ?? [];
+        $permitted = $this->allowed_ips ?? [];
 
-        if ($izinli === []) {
+        if ($permitted === []) {
             return true;
         }
 
@@ -136,8 +136,8 @@ class ApiToken extends Model
             return false;
         }
 
-        foreach ($izinli as $kural) {
-            if ($this->matches((string) $kural, $ip)) {
+        foreach ($permitted as $rule) {
+            if ($this->matches((string) $rule, $ip)) {
                 return true;
             }
         }
@@ -161,17 +161,17 @@ class ApiToken extends Model
      */
     public function rotate(): string
     {
-        $yeni = self::mint();
+        $new = self::mint();
 
         $this->forceFill([
-            'token_hash' => $yeni['hash'],
-            'prefix' => $yeni['prefix'],
+            'token_hash' => $new['hash'],
+            'prefix' => $new['prefix'],
             'revoked_at' => null,
             'last_used_at' => null,
             'last_used_ip' => null,
         ])->save();
 
-        return $yeni['plain'];
+        return $new['plain'];
     }
 
     /** @param  Builder<$this>  $query */

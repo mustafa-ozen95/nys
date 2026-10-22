@@ -53,8 +53,8 @@ final class BgpPermissionTest extends TestCase
 
     public function test_bgp_yetkisi_switch_bazinda_reddedilebilir(): void
     {
-        $izinli = $this->switch('izinli', '198.18.20.195');
-        $yasakli = $this->switch('yasakli', '198.18.20.196');
+        $permitted = $this->switch('izinli', '198.18.20.195');
+        $forbidden = $this->switch('yasakli', '198.18.20.196');
 
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'switches', ['view']);
@@ -62,17 +62,17 @@ final class BgpPermissionTest extends TestCase
             $user,
             'switch_bgp',
             ['view', 'create', 'update', 'delete'],
-            deniedRecords: ['create' => [$yasakli->id]],
+            deniedRecords: ['create' => [$forbidden->id]],
         );
 
         $user = $user->fresh();
 
         $this->actingAs($user)
-            ->post(route('switches.bgp.groups.store', $yasakli), [])
+            ->post(route('switches.bgp.groups.store', $forbidden), [])
             ->assertForbidden();
 
         $this->actingAs($user)
-            ->post(route('switches.bgp.groups.store', $izinli), [])
+            ->post(route('switches.bgp.groups.store', $permitted), [])
             ->assertSessionHasErrors();
     }
 

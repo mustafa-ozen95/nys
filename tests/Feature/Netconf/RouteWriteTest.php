@@ -37,10 +37,10 @@ final class RouteWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $yazilan = implode("\n", $transport->written);
-        $this->assertStringContainsString('<routing-options><static>', $yazilan);
-        $this->assertStringContainsString('<name>192.168.77.0/24</name>', $yazilan);
-        $this->assertStringContainsString('<next-hop>198.18.8.37</next-hop>', $yazilan);
+        $written = implode("\n", $transport->written);
+        $this->assertStringContainsString('<routing-options><static>', $written);
+        $this->assertStringContainsString('<name>192.168.77.0/24</name>', $written);
+        $this->assertStringContainsString('<next-hop>198.18.8.37</next-hop>', $written);
 
         // Envanter cihazdan geri okunanla dolar, formdaki değerle değil.
         $this->assertDatabaseHas('switch_routes', [

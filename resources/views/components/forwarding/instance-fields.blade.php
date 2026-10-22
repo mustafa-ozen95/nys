@@ -7,21 +7,21 @@
     Ad cihazda KİMLİKTİR: düzenlemede gösterilir ama değiştirilemez.
 --}}
 @if ($instance === null)
-    <x-form.field name="name" label="Tablo adı" :id="$prefix.'-ad'"
+    <x-form.field name="name" label="Tablo adı" :id="$prefix.'-name'"
                   hint="Harf, rakam, nokta, tire ve alt çizgi. Firewall terimi bu adla atıf yapar.">
-        <x-form.input name="name" :id="$prefix.'-ad'" mono required placeholder="musteri" />
+        <x-form.input name="name" :id="$prefix.'-name'" mono required placeholder="musteri" />
     </x-form.field>
 @else
     <x-ui.facts :rows="['Tablo adı' => $instance->name]" />
 @endif
 
-<x-form.field kural="switch_forwarding.ornek:instance_type" name="instance_type" label="Tür" :id="$prefix.'-tur'"
+<x-form.field rule="switch_forwarding.ornek:instance_type" name="instance_type" label="Tür" :id="$prefix.'-type'"
               hint="Filtre tabanlı yönlendirme için “forwarding” kullanılır. Listede yoksa cihaz onu kabul etmiyor demektir.">
-    <x-form.select name="instance_type" :id="$prefix.'-tur'"
+    <x-form.select name="instance_type" :id="$prefix.'-type'"
                    :options="$typeOptions" :selected="$instance?->instance_type?->value" />
 </x-form.field>
 
-<x-form.field kural="switch_forwarding.ornek:description" name="description" label="Açıklama" :id="$prefix.'-aciklama'"
+<x-form.field rule="switch_forwarding.ornek:description" name="description" label="Açıklama" :id="$prefix.'-description'"
               hint="Boş bırakılırsa cihazdaki açıklama silinir.">
-    <x-form.input name="description" :id="$prefix.'-aciklama'" :value="$instance?->description" />
+    <x-form.input name="description" :id="$prefix.'-description'" :value="$instance?->description" />
 </x-form.field>

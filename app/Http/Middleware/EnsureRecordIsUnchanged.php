@@ -52,7 +52,7 @@ class EnsureRecordIsUnchanged
      * Düzenlenen kayıt: rotadaki EN İÇTEKİ modeldir.
      *
      * İç içe rotalarda ilk parametre üst kayıttır (switch), asıl hedef
-     * sondadır — "switchler/{switch}/firewall/{filter}" isteğinde konu
+     * sondadır — "switches/{switch}/firewall/{filter}" isteğinde konu
      * filtredir, switch değil.
      */
     private function target(Request $request): ?Model

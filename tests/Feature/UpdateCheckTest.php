@@ -20,206 +20,206 @@ use Tests\TestCase;
  */
 class UpdateCheckTest extends TestCase
 {
-    private const JETON = 'github_pat_SINAMA_JETONU_123';
+    private const TOKEN = 'github_pat_SINAMA_JETONU_123';
 
-    private const CALISAN = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    private const RUNNING = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
-    private const SON = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    private const LAST = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
-    private string $dizin;
+    private string $directory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->dizin = sys_get_temp_dir().'/guncelleme-'.bin2hex(random_bytes(4));
+        $this->directory = sys_get_temp_dir().'/guncelleme-'.bin2hex(random_bytes(4));
         config([
-            'update.depo' => 'mustafa-ozen95/ornek',
-            'update.jeton' => self::JETON,
-            'update.surum' => self::CALISAN,
+            'update.repo' => 'mustafa-ozen95/ornek',
+            'update.token' => self::TOKEN,
+            'update.version' => self::RUNNING,
         ]);
     }
 
     protected function tearDown(): void
     {
-        @unlink($this->dizin.'/state.json');
-        @rmdir($this->dizin);
+        @unlink($this->directory.'/state.json');
+        @rmdir($this->directory);
 
         parent::tearDown();
     }
 
-    private function denetim(): UpdateCheck
+    private function audit(): UpdateCheck
     {
-        return new UpdateCheck($this->dizin);
+        return new UpdateCheck($this->directory);
     }
 
     /**
      * @param  array<string, mixed>|null  $karsilastirma  compare yanıtı; null ise istenmemeli
      */
-    private function sahte(string $son = self::SON, ?array $karsilastirma = null, int $kod = 200, string $mesaj = 'Bad credentials'): void
+    private function fake(string $last = self::LAST, ?array $comparison = null, int $code = 200, string $message = 'Bad credentials'): void
     {
         Http::fake([
             'api.github.com/repos/mustafa-ozen95/ornek/actions/workflows/image.yml/runs*' => Http::response(
-                $kod === 200 ? ['workflow_runs' => [['head_sha' => $son, 'updated_at' => '2026-10-20T10:00:00Z']]] : ['message' => $mesaj],
-                $kod,
+                $code === 200 ? ['workflow_runs' => [['head_sha' => $last, 'updated_at' => '2026-10-20T10:00:00Z']]] : ['message' => $message],
+                $code,
             ),
-            'api.github.com/repos/mustafa-ozen95/ornek/compare/*' => Http::response($karsilastirma ?? ['status' => 'identical']),
+            'api.github.com/repos/mustafa-ozen95/ornek/compare/*' => Http::response($comparison ?? ['status' => 'identical']),
         ]);
     }
 
     /** @return array<string, mixed> */
-    private function commit(string $sha, string $mesaj, string $tarih): array
+    private function commit(string $sha, string $message, string $date): array
     {
-        return ['sha' => $sha, 'commit' => ['message' => $mesaj, 'committer' => ['date' => $tarih]]];
+        return ['sha' => $sha, 'commit' => ['message' => $message, 'committer' => ['date' => $date]]];
     }
 
     public function test_jeton_yoksa_acik_depoya_jetonsuz_sorulur(): void
     {
-        config(['update.jeton' => '']);
-        $this->sahte(son: self::CALISAN);
+        config(['update.token' => '']);
+        $this->fake(last: self::RUNNING);
 
-        $sonuc = $this->denetim()->denetle('sınama');
+        $result = $this->audit()->check('sınama');
 
-        $this->assertSame('guncel', $sonuc['durum']);
+        $this->assertSame('guncel', $result['durum']);
         Http::assertSentCount(1);
         Http::assertSent(fn (Request $r): bool => ! $r->hasHeader('Authorization'));
     }
 
     public function test_jetonsuz_sorulan_ozel_ya_da_olmayan_depo_anlasilir_hata_verir(): void
     {
-        config(['update.jeton' => '']);
-        $this->sahte(kod: 404, mesaj: 'Not Found');
+        config(['update.token' => '']);
+        $this->fake(code: 404, message: 'Not Found');
 
-        $sonuc = $this->denetim()->denetle('sınama');
+        $result = $this->audit()->check('sınama');
 
-        $this->assertSame('hata', $sonuc['durum']);
-        $this->assertStringContainsString('404', $sonuc['aciklama']);
-        $this->assertStringContainsString('GUNCELLEME_JETONU', $sonuc['aciklama']);
+        $this->assertSame('hata', $result['durum']);
+        $this->assertStringContainsString('404', $result['aciklama']);
+        $this->assertStringContainsString('UPDATE_TOKEN', $result['aciklama']);
     }
 
     /** Ayrı ref dosyası, packed-refs, bozuk HEAD ve hiç .git olmaması. */
     public function test_calisan_surum_derleme_baglamindaki_git_ten_okunur(): void
     {
-        $kok = sys_get_temp_dir().'/surum-'.bin2hex(random_bytes(4));
-        $oku = fn (): string => trim(Process::run(['sh', base_path('docker/version-read.sh'), $kok])->throw()->output());
+        $root = sys_get_temp_dir().'/surum-'.bin2hex(random_bytes(4));
+        $read = fn (): string => trim(Process::run(['sh', base_path('docker/version-read.sh'), $root])->throw()->output());
 
         try {
-            $this->assertSame('', $oku());
+            $this->assertSame('', $read());
 
-            mkdir($kok.'/.git/refs/heads', 0o700, true);
-            file_put_contents($kok.'/.git/HEAD', "ref: refs/heads/main\n");
-            file_put_contents($kok.'/.git/packed-refs', "# pack-refs with: peeled fully-peeled sorted\n".self::SON." refs/heads/main\n");
-            $this->assertSame(self::SON, $oku());
+            mkdir($root.'/.git/refs/heads', 0o700, true);
+            file_put_contents($root.'/.git/HEAD', "ref: refs/heads/main\n");
+            file_put_contents($root.'/.git/packed-refs', "# pack-refs with: peeled fully-peeled sorted\n".self::LAST." refs/heads/main\n");
+            $this->assertSame(self::LAST, $read());
 
-            file_put_contents($kok.'/.git/refs/heads/main', self::CALISAN."\n");
-            $this->assertSame(self::CALISAN, $oku());
+            file_put_contents($root.'/.git/refs/heads/main', self::RUNNING."\n");
+            $this->assertSame(self::RUNNING, $read());
 
-            file_put_contents($kok.'/.git/HEAD', "bozuk\n");
-            $this->assertSame('', $oku());
+            file_put_contents($root.'/.git/HEAD', "bozuk\n");
+            $this->assertSame('', $read());
         } finally {
-            Process::run(['rm', '-rf', $kok]);
+            Process::run(['rm', '-rf', $root]);
         }
     }
 
     public function test_son_basarili_derlemeyle_ayniysa_guncel(): void
     {
-        $this->sahte(son: self::CALISAN);
+        $this->fake(last: self::RUNNING);
 
-        $sonuc = $this->denetim()->denetle('sınama');
+        $result = $this->audit()->check('sınama');
 
-        $this->assertSame('guncel', $sonuc['durum']);
+        $this->assertSame('guncel', $result['durum']);
         Http::assertSentCount(1);
-        Http::assertSent(fn (Request $r): bool => $r->hasHeader('Authorization', 'Bearer '.self::JETON)
+        Http::assertSent(fn (Request $r): bool => $r->hasHeader('Authorization', 'Bearer '.self::TOKEN)
             && str_contains($r->url(), 'branch=main')
             && str_contains($r->url(), 'status=success'));
     }
 
     public function test_geride_ise_yeni_surum_ve_commitler_yeniden_eskiye(): void
     {
-        $this->sahte(karsilastirma: [
+        $this->fake(comparison: [
             'status' => 'ahead', 'ahead_by' => 2, 'behind_by' => 0,
             'commits' => [
                 $this->commit('c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1', "Eski düzeltme\n\nayrıntı", '2026-10-19T08:00:00Z'),
-                $this->commit(self::SON, 'Yeni özellik', '2026-10-20T09:00:00Z'),
+                $this->commit(self::LAST, 'Yeni özellik', '2026-10-20T09:00:00Z'),
             ],
         ]);
 
-        $denetim = $this->denetim();
-        $sonuc = $denetim->denetle('sınama');
+        $audit = $this->audit();
+        $result = $audit->check('sınama');
 
-        $this->assertSame('yeni', $sonuc['durum']);
-        $this->assertSame(2, $sonuc['geride']);
-        $this->assertSame(['Yeni özellik', 'Eski düzeltme'], array_column($sonuc['commitler'], 'baslik'));
-        $this->assertTrue($denetim->yeniVar());
-        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/compare/'.self::CALISAN.'...'.self::SON));
+        $this->assertSame('yeni', $result['durum']);
+        $this->assertSame(2, $result['geride']);
+        $this->assertSame(['Yeni özellik', 'Eski düzeltme'], array_column($result['commitler'], 'baslik'));
+        $this->assertTrue($audit->hasNew());
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/compare/'.self::RUNNING.'...'.self::LAST));
 
         // Panel güncellendi: eski sonuç yeni sürümü anlatmıyor, uyarı susar.
-        config(['update.surum' => self::SON]);
-        $this->assertFalse($denetim->yeniVar());
+        config(['update.version' => self::LAST]);
+        $this->assertFalse($audit->hasNew());
     }
 
     public function test_ileride_ise_guncelleme_denmez(): void
     {
-        $this->sahte(karsilastirma: ['status' => 'behind', 'ahead_by' => 0, 'behind_by' => 3, 'commits' => []]);
+        $this->fake(comparison: ['status' => 'behind', 'ahead_by' => 0, 'behind_by' => 3, 'commits' => []]);
 
-        $denetim = $this->denetim();
-        $sonuc = $denetim->denetle('sınama');
+        $audit = $this->audit();
+        $result = $audit->check('sınama');
 
-        $this->assertSame('ileride', $sonuc['durum']);
-        $this->assertStringContainsString('geri almak', $sonuc['aciklama']);
-        $this->assertFalse($denetim->yeniVar());
+        $this->assertSame('ileride', $result['durum']);
+        $this->assertStringContainsString('geri almak', $result['aciklama']);
+        $this->assertFalse($audit->hasNew());
     }
 
     public function test_ayrisik_dal(): void
     {
-        $this->sahte(karsilastirma: ['status' => 'diverged', 'ahead_by' => 1, 'behind_by' => 2, 'commits' => []]);
+        $this->fake(comparison: ['status' => 'diverged', 'ahead_by' => 1, 'behind_by' => 2, 'commits' => []]);
 
-        $this->assertSame('ayrisik', $this->denetim()->denetle('sınama')['durum']);
+        $this->assertSame('ayrisik', $this->audit()->check('sınama')['durum']);
     }
 
     public function test_calisan_surum_bilinmiyorsa_karsilastirilmaz(): void
     {
-        config(['update.surum' => '']);
-        $this->sahte();
+        config(['update.version' => '']);
+        $this->fake();
 
-        $sonuc = $this->denetim()->denetle('sınama');
+        $result = $this->audit()->check('sınama');
 
-        $this->assertSame('bilinmiyor', $sonuc['durum']);
-        $this->assertSame(self::SON, $sonuc['son']);
+        $this->assertSame('bilinmiyor', $result['durum']);
+        $this->assertSame(self::LAST, $result['son']);
         Http::assertSentCount(1);
     }
 
     public function test_reddedilen_jeton_hata_olur_ve_jeton_yazilmaz(): void
     {
-        $this->sahte(kod: 401);
+        $this->fake(code: 401);
 
-        $sonuc = $this->denetim()->denetle('sınama');
+        $result = $this->audit()->check('sınama');
 
-        $this->assertSame('hata', $sonuc['durum']);
-        $this->assertStringContainsString('401', $sonuc['aciklama']);
-        $this->assertStringNotContainsString(self::JETON, (string) file_get_contents($this->dizin.'/state.json'));
+        $this->assertSame('hata', $result['durum']);
+        $this->assertStringContainsString('401', $result['aciklama']);
+        $this->assertStringNotContainsString(self::TOKEN, (string) file_get_contents($this->directory.'/state.json'));
     }
 
     public function test_erisim_yoksa_hata_ve_son_sonuc_okunur(): void
     {
         Http::fake(['*' => Http::failedConnection()]);
 
-        $denetim = $this->denetim();
-        $denetim->denetle('sınama');
+        $audit = $this->audit();
+        $audit->check('sınama');
 
-        $son = $denetim->son();
-        $this->assertSame('hata', $son['durum']);
-        $this->assertStringContainsString('erişilemedi', $son['aciklama']);
-        $this->assertSame('sınama', $son['tetikleyen']);
-        $this->assertSame(self::CALISAN, $son['calisan']);
+        $last = $audit->last();
+        $this->assertSame('hata', $last['durum']);
+        $this->assertStringContainsString('erişilemedi', $last['aciklama']);
+        $this->assertSame('sınama', $last['tetikleyen']);
+        $this->assertSame(self::RUNNING, $last['calisan']);
     }
 
     public function test_bozuk_sonuc_dosyasi_yok_sayilir(): void
     {
-        @mkdir($this->dizin, 0700, true);
-        file_put_contents($this->dizin.'/state.json', '{"durum":"bilmem"}');
+        @mkdir($this->directory, 0700, true);
+        file_put_contents($this->directory.'/state.json', '{"durum":"bilmem"}');
 
-        $this->assertNull($this->denetim()->son());
-        $this->assertFalse($this->denetim()->yeniVar());
+        $this->assertNull($this->audit()->last());
+        $this->assertFalse($this->audit()->hasNew());
     }
 }

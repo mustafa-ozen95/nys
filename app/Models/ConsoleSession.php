@@ -67,13 +67,13 @@ class ConsoleSession extends Model
      *
      * @param  Builder<$this>  $query
      */
-    public function scopeSessizKalan(Builder $query, int $saniye): void
+    public function scopeSilentRemaining(Builder $query, int $second): void
     {
-        $query->whereNull('closed_at')->where('last_seen_at', '<', now()->subSeconds($saniye));
+        $query->whereNull('closed_at')->where('last_seen_at', '<', now()->subSeconds($second));
     }
 
     /** @param  Builder<$this>  $query */
-    public function scopeAcik(Builder $query): void
+    public function scopeOpen(Builder $query): void
     {
         $query->whereNull('closed_at');
     }

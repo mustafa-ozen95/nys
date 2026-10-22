@@ -106,15 +106,15 @@ class SwitchTrafficService
      */
     private function latestSamples(NetworkSwitch $switch): array
     {
-        $sinir = now()->subSeconds((int) config('measurement.sample_freshness'));
+        $limit = now()->subSeconds((int) config('measurement.sample_freshness'));
 
-        $satirlar = SwitchPortSample::query()
+        $rows = SwitchPortSample::query()
             ->join('switch_ports', 'switch_ports.id', '=', 'switch_port_samples.switch_port_id')
             ->where('switch_ports.switch_id', $switch->id)
             ->whereNotNull('switch_ports.if_index')
-            ->where('switch_port_samples.sampled_at', '>=', $sinir)
-            ->whereIn('switch_port_samples.id', function ($sorgu) use ($switch): void {
-                $sorgu->selectRaw('max(s.id)')
+            ->where('switch_port_samples.sampled_at', '>=', $limit)
+            ->whereIn('switch_port_samples.id', function ($query) use ($switch): void {
+                $query->selectRaw('max(s.id)')
                     ->from('switch_port_samples as s')
                     ->join('switch_ports as p', 'p.id', '=', 's.switch_port_id')
                     ->where('p.switch_id', $switch->id)
@@ -122,11 +122,11 @@ class SwitchTrafficService
             })
             ->get(['switch_ports.if_index', 'switch_port_samples.in_bps', 'switch_port_samples.out_bps']);
 
-        return $satirlar
-            ->mapWithKeys(fn ($satir): array => [
-                (int) $satir->if_index => [
-                    'in' => $satir->in_bps === null ? null : (float) $satir->in_bps,
-                    'out' => $satir->out_bps === null ? null : (float) $satir->out_bps,
+        return $rows
+            ->mapWithKeys(fn ($row): array => [
+                (int) $row->if_index => [
+                    'in' => $row->in_bps === null ? null : (float) $row->in_bps,
+                    'out' => $row->out_bps === null ? null : (float) $row->out_bps,
                 ],
             ])
             ->all();

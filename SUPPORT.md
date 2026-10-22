@@ -179,7 +179,7 @@ portu da kayıttan okunmaz — oradaki port RDP'ninkidir (3389).
 
 Windows'ta kurtarma hesabı varsayılan olarak kapalıdır: Windows Server'da yeni
 açılan yerel yönetici hesabı **uzaktan** yönetici yetkisi alamaz
-(`LocalAccountTokenFilterPolicy` tanımsızken) ve tur boşuna iptal olur. O kaydı 1 yapan kurulumlarda `SUNUCU_WINRM_KURTARMA=true`.
+(`LocalAccountTokenFilterPolicy` tanımsızken) ve tur boşuna iptal olur. O kaydı 1 yapan kurulumlarda `SERVER_WINRM_RECOVERY=true`.
 
 **WinRM açık değilse tur başlamadan düşer** ("makineye ulaşılamadı"); makinede
 `Enable-PSRemoting` ve 5985'e güvenlik duvarı izni gerekir. Panel bunu kendisi

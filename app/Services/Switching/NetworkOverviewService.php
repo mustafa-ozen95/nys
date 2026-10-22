@@ -117,14 +117,14 @@ class NetworkOverviewService
      */
     private function trafficByNetworkSwitch(Collection $switches): array
     {
-        $okunacaklar = $switches->filter(
+        $toRead = $switches->filter(
             fn (NetworkSwitch $switch): bool => $switch->status !== SwitchStatus::Offline,
         );
 
         // Tek çağrıda hepsi; switch başına ayrı gidiş dönüş yerine.
-        $this->traffic->prefetch($okunacaklar);
+        $this->traffic->prefetch($toRead);
 
-        return $okunacaklar
+        return $toRead
             ->mapWithKeys(fn (NetworkSwitch $switch): array => [$switch->id => $this->traffic->current($switch)])
             // Hiçbir kaynağın cevap veremediği switch boş dizi döner; onu
             // "trafik sıfır" saymak yanlış olur, hiç veri yok demektir.

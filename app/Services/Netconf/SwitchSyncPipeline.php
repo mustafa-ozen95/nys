@@ -60,9 +60,9 @@ class SwitchSyncPipeline
          * bir commit ile değişir, CLI'dan yapılan değişiklik de
          * commit üretir. Tek RPC okunur ve tur burada biter.
          */
-        $okunanCommitler = $this->commits->commits($session);
+        $readCommits = $this->commits->commits($session);
 
-        if ($this->unchanged($switch, $okunanCommitler, $force)) {
+        if ($this->unchanged($switch, $readCommits, $force)) {
             return;
         }
 
@@ -79,10 +79,10 @@ class SwitchSyncPipeline
          * bir mgd süreci daha demek.
          */
         if ($switch->schema_profile === null) {
-            $profil = $this->schema->detect($session, $switch);
+            $profile = $this->schema->detect($session, $switch);
 
-            if ($profil !== null) {
-                $switch->forceFill(['schema_profile' => $profil])->save();
+            if ($profile !== null) {
+                $switch->forceFill(['schema_profile' => $profile])->save();
             }
         }
 
@@ -96,10 +96,10 @@ class SwitchSyncPipeline
          * girilmiyor, cihazda iz kalmıyor.
          */
         if ($this->capabilities->shouldProbe($switch)) {
-            $olculen = $this->capabilities->detect($session, $switch);
+            $measured = $this->capabilities->detect($session, $switch);
 
-            if ($olculen !== null) {
-                $switch->forceFill(['device_capabilities' => $olculen])->save();
+            if ($measured !== null) {
+                $switch->forceFill(['device_capabilities' => $measured])->save();
             }
         }
 
@@ -164,7 +164,7 @@ class SwitchSyncPipeline
          */
         $this->secureAccess->sync($switch, $session);
 
-        DB::transaction(fn () => $this->storeCommits($switch, $okunanCommitler));
+        DB::transaction(fn () => $this->storeCommits($switch, $readCommits));
     }
 
     /**
@@ -181,14 +181,14 @@ class SwitchSyncPipeline
          * demektir. array_filter null'ları atıyor; sapma oraya karışsaydı
          * eski bir ölçüm sonsuza kadar doğru sanılırdı.
          */
-        $sapma = $facts['clock_offset_seconds'] ?? null;
+        $deviation = $facts['clock_offset_seconds'] ?? null;
         unset($facts['clock_offset_seconds']);
 
         $switch->saveObservation(array_filter($facts, static fn (?string $value): bool => $value !== null));
 
-        if ($sapma !== null) {
+        if ($deviation !== null) {
             $switch->saveObservation([
-                'clock_offset_seconds' => $sapma,
+                'clock_offset_seconds' => $deviation,
                 'clock_checked_at' => now(),
             ]);
         }

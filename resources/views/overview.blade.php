@@ -16,22 +16,22 @@
 
             <div class="column__body">
                 <div class="grid-row__head switch-row switch-row__head">
-                    <span class="switch-row__durum"></span>
-                    <span class="switch-row__ad">Switch</span>
+                    <span class="switch-row__status"></span>
+                    <span class="switch-row__name">Switch</span>
                     <span class="switch-row__ip">Yönetim IP</span>
                     <span class="switch-row__cpu">İşlemci</span>
-                    <span class="switch-row__bellek">Bellek</span>
-                    <span class="switch-row__isi">Sıcaklık</span>
+                    <span class="switch-row__memory">Bellek</span>
+                    <span class="switch-row__job">Sıcaklık</span>
                 </div>
 
                 @forelse ($switches as $switch)
                     <a href="{{ route('switches.show', $switch) }}" class="grid-row switch-row">
-                        <x-ui.status-dot :status="$switch->status" :show-label="false" class="switch-row__durum" />
-                        <span class="mono switch-row__ad">{{ $switch->hostname }}</span>
+                        <x-ui.status-dot :status="$switch->status" :show-label="false" class="switch-row__status" />
+                        <span class="mono switch-row__name">{{ $switch->hostname }}</span>
                         <span class="mono text-muted switch-row__ip">{{ $switch->management_ip }}</span>
                         <x-ui.meter :value="$switch->cpu_usage" metric="cpu" class="switch-row__cpu" data-label="İşlemci" />
-                        <x-ui.meter :value="$switch->memory_usage" metric="memory" class="switch-row__bellek" data-label="Bellek" />
-                        <span class="mono switch-row__isi">{{ $switch->temperature ? $switch->temperature.' °C' : '—' }}</span>
+                        <x-ui.meter :value="$switch->memory_usage" metric="memory" class="switch-row__memory" data-label="Bellek" />
+                        <span class="mono switch-row__job">{{ $switch->temperature ? $switch->temperature.' °C' : '—' }}</span>
                     </a>
                 @empty
                     <x-ui.empty title="Switch yok"
@@ -40,8 +40,8 @@
 
                 @if ($busiestPorts->isNotEmpty())
                     <div class="grid-row__head switch-row switch-row__head overview-section">
-                        <span class="switch-row__durum"></span>
-                        <span class="switch-row__ad">En yoğun portlar</span>
+                        <span class="switch-row__status"></span>
+                        <span class="switch-row__name">En yoğun portlar</span>
                     </div>
 
                     @foreach ($busiestPorts as $row)
@@ -50,9 +50,9 @@
                             <x-ui.status-dot :status="$row['port']->oper_status" :show-label="false" />
                             <span class="mono busy-row__switch">{{ $row['port']->switch->hostname }}</span>
                             <span class="mono busy-row__port">{{ $row['port']->name }}</span>
-                            <span class="truncate text-muted busy-row__aciklama">{{ $row['port']->description ?: '—' }}</span>
-                            <span class="mono busy-row__hiz">{{ $row['display'] }}</span>
-                            <x-ui.meter :value="$row['utilisation']" metric="bandwidth" class="busy-row__doluluk" />
+                            <span class="truncate text-muted busy-row__description">{{ $row['port']->description ?: '—' }}</span>
+                            <span class="mono busy-row__speed">{{ $row['display'] }}</span>
+                            <x-ui.meter :value="$row['utilisation']" metric="bandwidth" class="busy-row__fill" />
                         </a>
                     @endforeach
                 @endif

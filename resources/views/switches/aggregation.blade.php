@@ -9,7 +9,7 @@
                 <span class="spacer"></span>
 
                 @can('updateSwitchAggregation', $switch)
-                    <button type="button" class="btn btn--sm" data-modal-open="ae-limiti">ae limiti</button>
+                    <button type="button" class="btn btn--sm" data-modal-open="ae-limit">ae limiti</button>
                 @endcan
             </div>
 
@@ -70,7 +70,7 @@
     </div>
 
     @can('updateSwitchAggregation', $switch)
-        <x-ui.modal id="ae-limiti" title="ae limiti">
+        <x-ui.modal id="ae-limit" title="ae limiti">
             <form method="POST" action="{{ route('switches.aggregation.device-count', $switch) }}"
                   data-confirm="Limiti DÜŞÜRMEK, üstteki ae arayüzlerini yapılandırmaları dururken cihazdan siler. Bu işlem cihaza commit atar."
                   data-confirm-title="Cihaza yaz"
@@ -79,9 +79,9 @@
                 @method('PUT')
 
                 <div class="modal__body">
-                    <x-form.field name="device_count" label="Kaç ae arayüzü olsun?" id="ae-sayi"
+                    <x-form.field name="device_count" label="Kaç ae arayüzü olsun?" id="ae-number"
                                   hint="Cihaz bu sayı kadar arayüz oluşturur: 4 verilirse ae0–ae3. Aralık 1–111.">
-                        <x-form.input name="device_count" id="ae-sayi" type="number"
+                        <x-form.input name="device_count" id="ae-number" type="number"
                                       :value="$deviceCount" min="1" max="111" required />
                     </x-form.field>
                 </div>
@@ -93,7 +93,7 @@
         @foreach ($aggregates as $aggregate)
             <x-ui.modal :id="'ae-'.$aggregate->uuid" :title="$aggregate->name.' ayarları'" wide>
                 <form method="POST" action="{{ route('switches.aggregation.update', [$switch, $aggregate]) }}"
-                      data-ae-formu
+                      data-ae-form
                       data-confirm="Bu işlem cihaza commit atar. Üye yapılan portlar kendi VLAN’larını kaybeder."
                       data-confirm-title="Cihaza yaz"
                       data-confirm-verify="{{ $aggregate->name }}">

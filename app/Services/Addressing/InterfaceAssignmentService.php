@@ -63,10 +63,10 @@ class InterfaceAssignmentService
             return [];
         }
 
-        $yapilanlar = [];
+        $done = [];
 
         if ($previous['switch_id'] !== null) {
-            $yapilanlar = [...$yapilanlar, ...$this->remove($previous)];
+            $done = [...$done, ...$this->remove($previous)];
         }
 
         if ($current['switch_id'] !== null && $current['cidr'] !== null) {
@@ -74,11 +74,11 @@ class InterfaceAssignmentService
 
             if ($switch?->netconfCredential !== null) {
                 $this->addresses->add($switch, (string) $current['interface'], (string) $current['cidr']);
-                $yapilanlar[] = "{$current['cidr']} → {$current['interface']} ({$switch->hostname})";
+                $done[] = "{$current['cidr']} → {$current['interface']} ({$switch->hostname})";
             }
         }
 
-        return $yapilanlar;
+        return $done;
     }
 
     /**
@@ -160,12 +160,12 @@ class InterfaceAssignmentService
             return [];
         }
 
-        [$adres] = explode('/', (string) $assignment['cidr']);
+        [$address] = explode('/', (string) $assignment['cidr']);
 
         $address = SwitchIpAddress::query()
             ->where('switch_id', $assignment['switch_id'])
             ->where('interface_name', $assignment['interface'])
-            ->where('address', $adres)
+            ->where('address', $address)
             ->first();
 
         if ($address === null) {

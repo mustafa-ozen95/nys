@@ -35,60 +35,60 @@ class IdentitySyncTest extends TestCase
 
         config([
             'identity.acik' => true,
-            'identity.yapilandirildi' => true,
-            'identity.adres' => 'https://merkez.test',
-            'identity.istemci' => 'istemci-1',
-            'identity.sir' => 'sir-1',
-            'identity.dogrulama_dakika' => 5,
+            'identity.configured' => true,
+            'identity.url' => 'https://merkez.test',
+            'identity.client_id' => 'istemci-1',
+            'identity.client_secret' => 'sir-1',
+            'identity.verify_minutes' => 5,
         ]);
 
         Cache::flush();
     }
 
-    private function bagli(array $ustune = []): User
+    private function bound(array $onto = []): User
     {
-        $kullanici = User::factory()->create($ustune);
+        $user = User::factory()->create($onto);
 
         UserIdentity::create([
-            'user_id' => $kullanici->id,
+            'user_id' => $user->id,
             'provider' => 'kimlik',
-            'subject' => 'merkez-'.$kullanici->id,
+            'subject' => 'merkez-'.$user->id,
         ]);
 
-        return $kullanici;
+        return $user;
     }
 
-    private function merkezSoyler(User $kullanici, array $durum): void
+    private function centerSays(User $user, array $status): void
     {
         Http::fake([
-            'merkez.test/api/kimlik-durumu' => Http::response([
-                'kimlikler' => ['merkez-'.$kullanici->id => $durum],
+            'merkez.test/api/identity-status' => Http::response([
+                'identities' => ['merkez-'.$user->id => $status],
             ]),
         ]);
     }
 
     public function test_merkezde_askiya_alinan_hesap_kapatilir(): void
     {
-        $kullanici = $this->bagli();
-        $this->merkezSoyler($kullanici, ['durum' => 'askida', 'girebilir' => false, 'rol' => 'network']);
+        $user = $this->bound();
+        $this->centerSays($user, ['status' => 'askida', 'can_enter' => false, 'role' => 'network']);
 
-        $this->artisan('ag:kimlik-esitle')->assertSuccessful();
+        $this->artisan('identity:sync')->assertSuccessful();
 
-        $this->assertSame(UserStatus::Inactive, $kullanici->fresh()->status);
+        $this->assertSame(UserStatus::Inactive, $user->fresh()->status);
     }
 
     /** Merkezde silinen kimlik de erişimini kaybeder; hesap SİLİNMEZ, kapatılır. */
     public function test_merkezde_silinen_kimlik_kapatilir(): void
     {
-        $kullanici = $this->bagli();
-        $this->merkezSoyler($kullanici, ['durum' => 'yok', 'rol' => null]);
+        $user = $this->bound();
+        $this->centerSays($user, ['status' => 'yok', 'role' => null]);
 
-        $this->artisan('ag:kimlik-esitle')->assertSuccessful();
+        $this->artisan('identity:sync')->assertSuccessful();
 
-        $taze = $kullanici->fresh();
+        $fresh = $user->fresh();
 
-        $this->assertNotNull($taze, 'Hesap silinmemeli: denetim kaydı sahipsiz kalmamalı.');
-        $this->assertSame(UserStatus::Inactive, $taze->status);
+        $this->assertNotNull($fresh, 'Hesap silinmemeli: denetim kaydı sahipsiz kalmamalı.');
+        $this->assertSame(UserStatus::Inactive, $fresh->status);
     }
 
     /**
@@ -100,24 +100,24 @@ class IdentitySyncTest extends TestCase
      */
     public function test_rol_degisince_yeni_rolun_yetkileri_gecerli_olur(): void
     {
-        $teknik = Role::query()->updateOrCreate(['slug' => 'teknik'], ['label' => 'Teknik']);
+        $technical = Role::query()->updateOrCreate(['slug' => 'teknik'], ['label' => 'Teknik']);
         $network = Role::query()->updateOrCreate(['slug' => 'network'], [
             'label' => 'Network',
             'template' => ['servers' => ['view', 'connect']],
         ]);
 
-        $kullanici = $this->bagli(['role_id' => $teknik->id]);
+        $user = $this->bound(['role_id' => $technical->id]);
 
-        $this->merkezSoyler($kullanici, ['durum' => 'etkin', 'girebilir' => true, 'rol' => 'network']);
+        $this->centerSays($user, ['status' => 'etkin', 'can_enter' => true, 'role' => 'network']);
 
-        $this->artisan('ag:kimlik-esitle')->assertSuccessful();
+        $this->artisan('identity:sync')->assertSuccessful();
 
-        $taze = $kullanici->fresh();
+        $fresh = $user->fresh();
 
-        $this->assertSame($network->id, $taze->role_id);
-        $this->assertSame(0, $taze->permissions()->count(), 'Yetki kopyalanmamalı.');
+        $this->assertSame($network->id, $fresh->role_id);
+        $this->assertSame(0, $fresh->permissions()->count(), 'Yetki kopyalanmamalı.');
         $this->assertTrue(
-            app(UserPermissionResolver::class)->allows($taze, 'servers', 'view'),
+            app(UserPermissionResolver::class)->allows($fresh, 'servers', 'view'),
             'Yeni rolün yetkisi geçerli olmalı.',
         );
     }
@@ -126,16 +126,16 @@ class IdentitySyncTest extends TestCase
     public function test_yoneticilik_devrolmaz(): void
     {
         Role::query()->updateOrCreate(['slug' => 'admin'], ['label' => 'Yönetici', 'is_admin' => true]);
-        $teknik = Role::query()->updateOrCreate(['slug' => 'teknik'], ['label' => 'Teknik']);
+        $technical = Role::query()->updateOrCreate(['slug' => 'teknik'], ['label' => 'Teknik']);
 
-        $kullanici = $this->bagli(['role_id' => $teknik->id]);
+        $user = $this->bound(['role_id' => $technical->id]);
 
-        $this->merkezSoyler($kullanici, ['durum' => 'etkin', 'girebilir' => true, 'rol' => 'admin']);
+        $this->centerSays($user, ['status' => 'etkin', 'can_enter' => true, 'role' => 'admin']);
 
-        $this->artisan('ag:kimlik-esitle')->assertSuccessful();
+        $this->artisan('identity:sync')->assertSuccessful();
 
-        $this->assertSame($teknik->id, $kullanici->fresh()->role_id);
-        $this->assertFalse($kullanici->fresh()->isAdmin());
+        $this->assertSame($technical->id, $user->fresh()->role_id);
+        $this->assertFalse($user->fresh()->isAdmin());
     }
 
     /**
@@ -146,13 +146,13 @@ class IdentitySyncTest extends TestCase
      */
     public function test_yanitta_anilmayan_kimlige_dokunulmaz(): void
     {
-        $kullanici = $this->bagli();
+        $user = $this->bound();
 
-        Http::fake(['merkez.test/api/kimlik-durumu' => Http::response(['kimlikler' => []])]);
+        Http::fake(['merkez.test/api/identity-status' => Http::response(['identities' => []])]);
 
-        $this->artisan('ag:kimlik-esitle')->assertSuccessful();
+        $this->artisan('identity:sync')->assertSuccessful();
 
-        $this->assertTrue($kullanici->fresh()->isActive());
+        $this->assertTrue($user->fresh()->isActive());
     }
 
     /**
@@ -163,38 +163,38 @@ class IdentitySyncTest extends TestCase
      */
     public function test_erisimi_kalkan_kisi_oturumdan_atilir(): void
     {
-        $kullanici = $this->bagli();
-        $this->merkezSoyler($kullanici, ['durum' => 'askida', 'girebilir' => false]);
+        $user = $this->bound();
+        $this->centerSays($user, ['status' => 'askida', 'can_enter' => false]);
 
-        $this->actingAs($kullanici)
-            ->get(route('hesap.profil'))
+        $this->actingAs($user)
+            ->get(route('account.profile'))
             ->assertRedirect(route('login'));
 
         $this->assertGuest();
-        $this->assertSame(UserStatus::Inactive, $kullanici->fresh()->status);
+        $this->assertSame(UserStatus::Inactive, $user->fresh()->status);
     }
 
     /** Merkez erişilemezse KİMSE ATILMAZ: panelin kendi girişi merkezden bağımsızdır. */
     public function test_merkez_ulasilamazsa_kimse_atilmaz(): void
     {
-        $kullanici = $this->bagli();
+        $user = $this->bound();
 
         Http::fake(['merkez.test/*' => Http::response('', 500)]);
 
-        $this->actingAs($kullanici)->get(route('hesap.profil'))->assertOk();
+        $this->actingAs($user)->get(route('account.profile'))->assertOk();
 
-        $this->assertTrue($kullanici->fresh()->isActive());
-        $this->assertAuthenticatedAs($kullanici);
+        $this->assertTrue($user->fresh()->isActive());
+        $this->assertAuthenticatedAs($user);
     }
 
     /** Merkeze HER İSTEKTE sorulmaz; yanıt kullanıcı başına önbelleklenir. */
     public function test_merkeze_her_istekte_sorulmaz(): void
     {
-        $kullanici = $this->bagli();
-        $this->merkezSoyler($kullanici, ['durum' => 'etkin', 'girebilir' => true, 'rol' => null]);
+        $user = $this->bound();
+        $this->centerSays($user, ['status' => 'etkin', 'can_enter' => true, 'role' => null]);
 
-        $this->actingAs($kullanici)->get(route('hesap.profil'))->assertOk();
-        $this->actingAs($kullanici)->get(route('hesap.profil'))->assertOk();
+        $this->actingAs($user)->get(route('account.profile'))->assertOk();
+        $this->actingAs($user)->get(route('account.profile'))->assertOk();
 
         Http::assertSentCount(1);
     }

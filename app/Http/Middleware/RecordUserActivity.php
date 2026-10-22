@@ -59,7 +59,7 @@ class RecordUserActivity
     }
 
     /**
-     * "GET /switchler/... · switches.ports · 200"
+     * "GET /switches/... · switches.ports · 200"
      *
      * Yol ham hâliyle yazılır; rota adı ise ekranın adıdır ve arama bunun
      * üzerinden yapılır.

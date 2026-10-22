@@ -33,13 +33,13 @@ class ServerApiController extends Controller
     {
         $this->authorize('viewAny', Server::class);
 
-        $sunucular = $this->resolver
+        $servers = $this->resolver
             ->scope(Server::query(), $request->user(), 'servers')
             ->with('latestPasswordRotation')
             ->orderBy('short_name')
             ->paginate((int) $request->integer('per_page', 50));
 
-        return ServerResource::collection($sunucular);
+        return ServerResource::collection($servers);
     }
 
     public function show(Server $server): ServerResource

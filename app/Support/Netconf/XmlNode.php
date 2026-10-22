@@ -129,10 +129,10 @@ final class XmlNode
         $body = '';
 
         foreach ($values as $value) {
-            $metin = trim((string) $value);
+            $text = trim((string) $value);
 
-            if ($metin !== '') {
-                $body .= "<{$element}>".self::escape($metin)."</{$element}>";
+            if ($text !== '') {
+                $body .= "<{$element}>".self::escape($text)."</{$element}>";
             }
         }
 

@@ -60,20 +60,20 @@ final class PortSpeedCapability implements DeviceCapability
 
     public function candidates(JunosDialect $dialect, NetworkSwitch $switch): array
     {
-        $adaylar = [];
+        $candidates = [];
 
-        foreach ($this->scopes($switch) as $kapsam => $ornek) {
-            foreach ($dialect->speedValues() as $deger => $eleman) {
-                $adaylar[self::candidateKey($kapsam, (string) $deger)] =
-                    '<interfaces><interface><name>'.$ornek.'</name>'
+        foreach ($this->scopes($switch) as $scope => $sample) {
+            foreach ($dialect->speedValues() as $value => $element) {
+                $candidates[self::candidateKey($scope, (string) $value)] =
+                    '<interfaces><interface><name>'.$sample.'</name>'
                     .($dialect->usesPlainSpeed()
-                        ? '<speed>'.$eleman.'</speed>'
-                        : '<ether-options><speed><'.$eleman.'/></speed></ether-options>')
+                        ? '<speed>'.$element.'</speed>'
+                        : '<ether-options><speed><'.$element.'/></speed></ether-options>')
                     .'</interface></interfaces>';
             }
         }
 
-        return $adaylar;
+        return $candidates;
     }
 
     /**
@@ -87,16 +87,16 @@ final class PortSpeedCapability implements DeviceCapability
      */
     private function scopes(NetworkSwitch $switch): array
     {
-        $kapsamlar = [];
+        $scopes = [];
 
-        foreach ($switch->ports()->orderBy('if_index')->pluck('name') as $ad) {
-            $kapsam = self::scope((string) $ad);
+        foreach ($switch->ports()->orderBy('if_index')->pluck('name') as $name) {
+            $scope = self::scope((string) $name);
 
-            if ($kapsam !== null && ! isset($kapsamlar[$kapsam])) {
-                $kapsamlar[$kapsam] = (string) $ad;
+            if ($scope !== null && ! isset($scopes[$scope])) {
+                $scopes[$scope] = (string) $name;
             }
         }
 
-        return $kapsamlar;
+        return $scopes;
     }
 }

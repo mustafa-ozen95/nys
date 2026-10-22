@@ -21,9 +21,9 @@ class PaginationBarTest extends TestCase
 {
     public function test_sayfalama_panelin_kendi_seridiyle_cizilir(): void
     {
-        $sayfalayici = new LengthAwarePaginator(range(1, 5), 100, 5, 2, ['path' => '/x']);
+        $paginator = new LengthAwarePaginator(range(1, 5), 100, 5, 2, ['path' => '/x']);
 
-        $html = (string) $sayfalayici->links();
+        $html = (string) $paginator->links();
 
         $this->assertStringContainsString('pagination__link', $html);
     }
@@ -31,8 +31,8 @@ class PaginationBarTest extends TestCase
     /** Tailwind şablonunun izi: boyutu sınırlanmamış SVG oklar. */
     public function test_tailwind_sablonu_kullanilmaz(): void
     {
-        $sayfalayici = new LengthAwarePaginator(range(1, 5), 100, 5, 2, ['path' => '/x']);
+        $paginator = new LengthAwarePaginator(range(1, 5), 100, 5, 2, ['path' => '/x']);
 
-        $this->assertStringNotContainsString('<svg', (string) $sayfalayici->links());
+        $this->assertStringNotContainsString('<svg', (string) $paginator->links());
     }
 }

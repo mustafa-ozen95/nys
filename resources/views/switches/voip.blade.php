@@ -10,7 +10,7 @@
 
                 @can('createSwitchVoip', $switch)
                     @if ($hasVlans && $interfaceOptions)
-                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="voip-ekle">Arayüz ekle</button>
+                        <button type="button" class="btn btn--primary btn--sm" data-modal-open="voip-add">Arayüz ekle</button>
                     @endif
                 @endcan
             </div>
@@ -39,7 +39,7 @@
                     </x-ui.alert>
                 </x-ui.panel>
 
-                <div class="grid-row__head ayar-row">
+                <div class="grid-row__head setting-row">
                     <span>Arayüz</span>
                     <span>Ses VLAN’ı</span>
                     <span>İletim sınıfı</span>
@@ -47,7 +47,7 @@
                 </div>
 
                 @forelse ($voipInterfaces as $voipInterface)
-                    <div class="grid-row grid-row--static ayar-row">
+                    <div class="grid-row grid-row--static setting-row">
                         <span class="mono">{{ $voipInterface->interface_name }}</span>
                         <span>
                             @if ($voipInterface->vlan_name)
@@ -85,15 +85,15 @@
 
     @can('createSwitchVoip', $switch)
         @if ($hasVlans && $interfaceOptions)
-            <x-ui.modal id="voip-ekle" title="Ses VLAN’ı tanımla">
+            <x-ui.modal id="voip-add" title="Ses VLAN’ı tanımla">
                 <form method="POST" action="{{ route('switches.voip.store', $switch) }}"
                       data-confirm="Ses VLAN’ı cihaza yazılacak. Yanlış VLAN seçilirse o porttaki telefonlar sessizce kayıt olamaz."
                       data-confirm-title="Cihaza yaz" data-confirm-verify="{{ $switch->hostname }}">
                     @csrf
                     <div class="modal__body stack">
-                        <x-form.field name="interface_name" label="Arayüz" id="voip-arayuz"
+                        <x-form.field name="interface_name" label="Arayüz" id="voip-interface"
                                       hint="Junos arayüzü birimiyle yazar (ge-0/0/5.0). Yalnızca anahtarlama ailesindeki portlar listelenir.">
-                            <x-form.select name="interface_name" id="voip-arayuz" :options="$interfaceOptions" />
+                            <x-form.select name="interface_name" id="voip-interface" :options="$interfaceOptions" />
                         </x-form.field>
 
                         <x-switching.voip-fields prefix="voip-yeni" :vlan-options="$vlanOptions"
@@ -127,7 +127,7 @@
                     </div>
                     <x-ui.modal-actions submit="Cihaza yaz">
                         @can('deleteSwitchVoip', $switch)
-                            <button type="submit" form="voip-sil-{{ $voipInterface->uuid }}"
+                            <button type="submit" form="voip-delete-{{ $voipInterface->uuid }}"
                                     class="btn btn--danger btn--sm">Sil</button>
                             <span class="spacer"></span>
                         @endcan
@@ -135,7 +135,7 @@
                 </form>
 
                 @can('deleteSwitchVoip', $switch)
-                    <form method="POST" id="voip-sil-{{ $voipInterface->uuid }}" hidden
+                    <form method="POST" id="voip-delete-{{ $voipInterface->uuid }}" hidden
                           action="{{ route('switches.voip.destroy', [$switch, $voipInterface]) }}"
                           data-confirm="{{ $voipInterface->interface_name }} arayüzünün ses VLAN’ı CİHAZDAN kaldırılacak; telefon trafiği etiketsiz VLAN’a düşer."
                           data-confirm-title="Ayarı sil" data-confirm-variant="danger"

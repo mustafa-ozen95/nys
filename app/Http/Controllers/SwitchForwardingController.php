@@ -64,13 +64,13 @@ class SwitchForwardingController extends Controller implements HasMiddleware
 
     public function index(Request $request, NetworkSwitch $switch): View
     {
-        $tablolar = $switch->routingInstances()->orderBy('name')->get();
-        $gruplar = $switch->ribGroups()->orderBy('name')->get();
+        $tables = $switch->routingInstances()->orderBy('name')->get();
+        $groups = $switch->ribGroups()->orderBy('name')->get();
 
         return view('switches.forwarding', [
             'switch' => $switch,
-            'instances' => $tablolar,
-            'groups' => $gruplar,
+            'instances' => $tables,
+            'groups' => $groups,
 
             /*
              * Tür CİHAZA GÖRE daralır: EX2300 "forwarding"i reddediyor ve o
@@ -84,10 +84,10 @@ class SwitchForwardingController extends Controller implements HasMiddleware
             ),
 
             'boundGroup' => $switch->interface_routes_rib_group,
-            'groupOptions' => ['' => 'Bağlı değil'] + $gruplar->pluck('name', 'name')->all(),
+            'groupOptions' => ['' => 'Bağlı değil'] + $groups->pluck('name', 'name')->all(),
 
             // Eksik parçayı ekran söyler; Blade hesap yapmaz.
-            'readiness' => $this->readiness($switch, $tablolar, $gruplar),
+            'readiness' => $this->readiness($switch, $tables, $groups),
 
             'switches' => $this->navigation->switches($request->user()),
             'objects' => $this->navigation->objects($switch, 'forwarding'),
@@ -96,14 +96,14 @@ class SwitchForwardingController extends Controller implements HasMiddleware
 
     public function storeInstance(RoutingInstanceRequest $request, NetworkSwitch $switch): RedirectResponse
     {
-        $ad = $request->instanceName();
+        $name = $request->instanceName();
 
         return $this->queueWrite(
             $switch,
             RoutingInstanceConfigurator::class,
             'apply',
-            [$ad, $request->settings()],
-            "yönlendirme tablosu {$ad} eklendi",
+            [$name, $request->settings()],
+            "yönlendirme tablosu {$name} eklendi",
         );
     }
 
@@ -136,14 +136,14 @@ class SwitchForwardingController extends Controller implements HasMiddleware
 
     public function storeGroup(RibGroupRequest $request, NetworkSwitch $switch): RedirectResponse
     {
-        $ad = $request->groupName();
+        $name = $request->groupName();
 
         return $this->queueWrite(
             $switch,
             RibGroupConfigurator::class,
             'apply',
-            [$ad, $request->settings()],
-            "rib grubu {$ad} eklendi",
+            [$name, $request->settings()],
+            "rib grubu {$name} eklendi",
         );
     }
 
@@ -180,16 +180,16 @@ class SwitchForwardingController extends Controller implements HasMiddleware
      */
     public function bind(Request $request, NetworkSwitch $switch): RedirectResponse
     {
-        $grup = $request->string('rib_group')->trim()->toString() ?: null;
+        $group = $request->string('rib_group')->trim()->toString() ?: null;
 
         return $this->queueWrite(
             $switch,
             RibGroupConfigurator::class,
             'applyInterfaceRoutes',
-            [$grup],
-            $grup === null
+            [$group],
+            $group === null
                 ? 'arayüz yolu bağlaması kaldırıldı'
-                : "arayüz yolları {$grup} grubuna bağlandı",
+                : "arayüz yolları {$group} grubuna bağlandı",
         );
     }
 
@@ -202,25 +202,25 @@ class SwitchForwardingController extends Controller implements HasMiddleware
      */
     private function readiness(NetworkSwitch $switch, $instances, $groups): array
     {
-        $eksikler = [];
+        $missing = [];
 
         if ($instances->isEmpty()) {
-            $eksikler[] = 'Yönlendirme tablosu yok: trafiğin atılacağı bir tablo gerekiyor.';
+            $missing[] = 'Yönlendirme tablosu yok: trafiğin atılacağı bir tablo gerekiyor.';
         }
 
         if ($groups->isEmpty()) {
-            $eksikler[] = 'RIB grubu yok: arayüz yolları hedef tabloya kopyalanmadan trafik düşer.';
+            $missing[] = 'RIB grubu yok: arayüz yolları hedef tabloya kopyalanmadan trafik düşer.';
         } elseif ($switch->interface_routes_rib_group === null) {
-            $eksikler[] = 'RIB grubu tanımlı ama arayüz yollarına BAĞLI DEĞİL; '
+            $missing[] = 'RIB grubu tanımlı ama arayüz yollarına BAĞLI DEĞİL; '
                 .'bağlanmadan hiçbir etkisi yok.';
         }
 
         if ($switch->firewallFilters()->count() === 0) {
-            $eksikler[] = 'Firewall filtresi yok: trafiği tabloya atacak terim '
+            $missing[] = 'Firewall filtresi yok: trafiği tabloya atacak terim '
                 .'“Firewall” ekranında tanımlanır.';
         }
 
-        return $eksikler;
+        return $missing;
     }
 
     protected function recorder(): ActivityRecorder

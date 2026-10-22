@@ -41,14 +41,14 @@ final class DeviceSettingsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<host-name>jn32-yeni</host-name>', $yazilan);
-        $this->assertStringContainsString('<time-zone>Europe/Istanbul</time-zone>', $yazilan);
-        $this->assertStringContainsString('<name-server><name>8.8.8.8</name></name-server>', $yazilan);
-        $this->assertStringContainsString('<ntp><server><name>192.0.2.51</name></server></ntp>', $yazilan);
+        $this->assertStringContainsString('<host-name>jn32-yeni</host-name>', $written);
+        $this->assertStringContainsString('<time-zone>Europe/Istanbul</time-zone>', $written);
+        $this->assertStringContainsString('<name-server><name>8.8.8.8</name></name-server>', $written);
+        $this->assertStringContainsString('<ntp><server><name>192.0.2.51</name></server></ntp>', $written);
         // Günlük hedefi ne alacağını da söylemek zorundadır.
-        $this->assertStringContainsString('<contents><name>any</name><notice/></contents>', $yazilan);
+        $this->assertStringContainsString('<contents><name>any</name><notice/></contents>', $written);
 
         // Cihazın adı değişince envanterinki de değişir; ikisi ayrışmamalı.
         $this->assertSame('jn32-yeni', $switch->fresh()->hostname);
@@ -92,10 +92,10 @@ final class DeviceSettingsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<location>Lokasyon-A</location>', $yazilan);
-        $this->assertStringContainsString('<contact>teknik@ornek.test</contact>', $yazilan);
+        $this->assertStringContainsString('<location>Lokasyon-A</location>', $written);
+        $this->assertStringContainsString('<contact>teknik@ornek.test</contact>', $written);
     }
 
     public function test_bos_konum_cihazdan_silinir(): void
@@ -124,11 +124,11 @@ final class DeviceSettingsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<community><name>gizlicommunity</name>', $yazilan);
-        $this->assertStringContainsString('<authorization>read-only</authorization>', $yazilan);
-        $this->assertStringContainsString('<clients><name>198.18.20.0/24</name></clients>', $yazilan);
+        $this->assertStringContainsString('<community><name>gizlicommunity</name>', $written);
+        $this->assertStringContainsString('<authorization>read-only</authorization>', $written);
+        $this->assertStringContainsString('<clients><name>198.18.20.0/24</name></clients>', $written);
     }
 
     /**
@@ -174,10 +174,10 @@ final class DeviceSettingsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<community replace="replace">', $yazilan);
-        $this->assertStringNotContainsString('<clients delete="delete"/>', $yazilan);
+        $this->assertStringContainsString('<community replace="replace">', $written);
+        $this->assertStringNotContainsString('<clients delete="delete"/>', $written);
     }
 
     /**
@@ -198,15 +198,15 @@ final class DeviceSettingsTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<chassis><alarm>', $yazilan);
-        $this->assertStringContainsString('<ethernet><link-down>red</link-down></ethernet>', $yazilan);
+        $this->assertStringContainsString('<chassis><alarm>', $written);
+        $this->assertStringContainsString('<ethernet><link-down>red</link-down></ethernet>', $written);
         $this->assertStringContainsString(
             '<management-ethernet><link-down>yellow</link-down></management-ethernet>',
-            $yazilan,
+            $written,
         );
-        $this->assertStringContainsString('<host-name>'.$switch->hostname.'</host-name>', $yazilan);
+        $this->assertStringContainsString('<host-name>'.$switch->hostname.'</host-name>', $written);
     }
 
     public function test_bos_alarm_cihazdan_silinir(): void

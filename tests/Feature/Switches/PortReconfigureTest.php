@@ -287,12 +287,12 @@ final class PortReconfigureTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<description>Musteri-A</description>', $yazilan);
-        $this->assertStringNotContainsString('<address delete="delete"', $yazilan);
-        $this->assertStringNotContainsString('<inet replace="replace"', $yazilan);
-        $this->assertStringNotContainsString('<inet6', $yazilan);
+        $this->assertStringContainsString('<description>Musteri-A</description>', $written);
+        $this->assertStringNotContainsString('<address delete="delete"', $written);
+        $this->assertStringNotContainsString('<inet replace="replace"', $written);
+        $this->assertStringNotContainsString('<inet6', $written);
     }
 
     /**

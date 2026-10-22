@@ -66,18 +66,18 @@ abstract class SecureAccessRequest extends FormRequest
      */
     protected function guardSchema(Validator $validator, string $field): void
     {
-        $lehce = $this->switch()->schema_profile?->dialect();
-        $kapsamli = $lehce?->vlanScopedSecureAccessFields() ?? [];
+        $dialect = $this->switch()->schema_profile?->dialect();
+        $scoped = $dialect?->vlanScopedSecureAccessFields() ?? [];
 
-        if ($kapsamli === [] || $this->filled('vlan_name')) {
+        if ($scoped === [] || $this->filled('vlan_name')) {
             return;
         }
 
-        foreach ($kapsamli as $alan => $neden) {
+        foreach ($scoped as $alan => $reason) {
             if ($this->filled($alan)) {
                 $validator->errors()->add(
                     'vlan_name',
-                    $neden.' Bu alanı kullanmak için önce VLAN seçin.',
+                    $reason.' Bu alanı kullanmak için önce VLAN seçin.',
                 );
 
                 return;

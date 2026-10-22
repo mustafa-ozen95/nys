@@ -21,7 +21,7 @@ class AddressAllocationService
      */
     public function slots(AddressBlock $parent, int $prefixLength): array
     {
-        $dolu = $parent->subnets()
+        $full = $parent->subnets()
             ->get(['range_start', 'range_end'])
             ->map(fn (AddressBlock $subnet): array => [$subnet->range_start, $subnet->range_end])
             ->all();
@@ -30,7 +30,7 @@ class AddressAllocationService
             ->map(fn (Cidr $slot): array => [
                 'cidr' => $slot->toString(),
                 'network' => $slot->network,
-                'available' => ! $this->overlaps($slot, $dolu),
+                'available' => ! $this->overlaps($slot, $full),
                 'usable' => $slot->usableCount(),
             ])
             ->all();
@@ -84,12 +84,12 @@ class AddressAllocationService
         $start = $slot->addressStart();
         $end = $slot->addressEnd();
 
-        foreach ($taken as [$dolgunBaslangic, $dolgunBitis]) {
-            if ($dolgunBaslangic === null || $dolgunBitis === null) {
+        foreach ($taken as [$fullStart, $fullEnd]) {
+            if ($fullStart === null || $fullEnd === null) {
                 continue;
             }
 
-            if ($start <= $dolgunBitis && $end >= $dolgunBaslangic) {
+            if ($start <= $fullEnd && $end >= $fullStart) {
                 return true;
             }
         }

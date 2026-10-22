@@ -24,47 +24,47 @@ class SimpleModeView
      *     farkli: int
      * }>
      */
-    public function bolumler(array $group, array $values): array
+    public function sections(array $group, array $values): array
     {
-        $ogeler = collect($group['items'])->keyBy('key');
-        $bolumler = [];
+        $items = collect($group['items'])->keyBy('key');
+        $sections = [];
 
-        foreach (config('simple_mode.bolumler') as $bolum => $_) {
-            $gor = $ogeler["simple_mode.bolumler.{$bolum}.goruntule"] ?? null;
-            $yon = $ogeler["simple_mode.bolumler.{$bolum}.yonet"] ?? null;
+        foreach (config('simple_mode.bolumler') as $section => $_) {
+            $see = $items["simple_mode.bolumler.{$section}.goruntule"] ?? null;
+            $direction = $items["simple_mode.bolumler.{$section}.yonet"] ?? null;
 
-            if ($gor === null || $yon === null) {
+            if ($see === null || $direction === null) {
                 continue;
             }
 
-            $alanlar = collect(config("simple_mode.alanlar.{$bolum}", []))
-                ->map(fn ($tanim, $alan) => ['item' => $ogeler["simple_mode.alanlar.{$bolum}.{$alan}.acik"] ?? null, 'varsayilan' => (bool) $tanim['varsayilan']])
+            $fields = collect(config("simple_mode.alanlar.{$section}", []))
+                ->map(fn ($definition, $alan) => ['item' => $items["simple_mode.alanlar.{$section}.{$alan}.acik"] ?? null, 'varsayilan' => (bool) $definition['varsayilan']])
                 ->filter(fn ($a) => $a['item'] !== null);
 
-            $bolumler[] = [
-                'ad' => config("permissions.resources.{$bolum}.label", $bolum),
+            $sections[] = [
+                'ad' => config("permissions.resources.{$section}.label", $section),
                 'anahtarlar' => [
-                    $this->kutu($gor, $values, 'Görüntülenir'),
-                    $this->kutu($yon, $values, 'Yönetilir'),
+                    $this->box($see, $values, 'Görüntülenir'),
+                    $this->box($direction, $values, 'Yönetilir'),
                 ],
-                'alanlar' => $alanlar->map(fn ($a) => $this->kutu($a['item'], $values, $a['item']->label))->values()->all(),
-                'farkli' => $alanlar->filter(fn ($a) => (bool) $values[$a['item']->key] !== $a['varsayilan'])->count(),
+                'alanlar' => $fields->map(fn ($a) => $this->box($a['item'], $values, $a['item']->label))->values()->all(),
+                'farkli' => $fields->filter(fn ($a) => (bool) $values[$a['item']->key] !== $a['varsayilan'])->count(),
             ];
         }
 
-        return $bolumler;
+        return $sections;
     }
 
     /**
      * @param  array<string, mixed>  $values
      * @return array{ad: string, acik: bool, etiket: string, ipucu: ?string}
      */
-    private function kutu(SettingDefinition $item, array $values, string $etiket): array
+    private function box(SettingDefinition $item, array $values, string $tag): array
     {
         return [
             'ad' => $item->field(),
             'acik' => (bool) old($item->field(), $values[$item->key]),
-            'etiket' => $etiket,
+            'etiket' => $tag,
             'ipucu' => $item->hint,
         ];
     }

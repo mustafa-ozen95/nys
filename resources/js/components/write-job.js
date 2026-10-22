@@ -1,5 +1,5 @@
 import { $ } from '../lib/dom.js';
-import { tazele } from './navigation.js';
+import { refresh } from './navigation.js';
 import { emit } from './toast.js';
 
 /**
@@ -11,9 +11,9 @@ import { emit } from './toast.js';
  *
  * Burada iş mantığı YOKTUR: durum ve metin sunucudan hazır gelir.
  */
-const ILK_GECIKME_MS = 1500;
-const ARALIK_MS = 2500;
-const AZAMI_SURE_MS = 10 * 60 * 1000;
+const FIRST_DELAY_MS = 1500;
+const INTERVAL_MS = 2500;
+const MAX_DURATION_MS = 10 * 60 * 1000;
 
 export function init() {
     const host = $('.toast-host');
@@ -23,39 +23,39 @@ export function init() {
         return;
     }
 
-    const baslangic = Date.now();
+    const start = Date.now();
 
-    const yokla = async () => {
-        if (Date.now() - baslangic > AZAMI_SURE_MS) {
+    const poll = async () => {
+        if (Date.now() - start > MAX_DURATION_MS) {
             return;
         }
 
-        let veri;
+        let data;
 
         try {
-            const yanit = await fetch(url, { headers: { Accept: 'application/json' } });
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
 
-            if (!yanit.ok) {
+            if (!response.ok) {
                 return;
             }
 
-            veri = await yanit.json();
+            data = await response.json();
         } catch {
             // Geçici bir ağ hatası yoklamayı bitirmesin.
-            setTimeout(yokla, ARALIK_MS);
+            setTimeout(poll, INTERVAL_MS);
 
             return;
         }
 
-        if (!veri.finished) {
-            setTimeout(yokla, ARALIK_MS);
+        if (!data.finished) {
+            setTimeout(poll, INTERVAL_MS);
 
             return;
         }
 
         emit(
-            veri.message ? `${veri.summary}: ${veri.message}` : `${veri.summary} — ${veri.label}`,
-            veri.status === 'failed' ? 'danger' : (veri.status === 'completed' ? 'success' : 'info'),
+            data.message ? `${data.summary}: ${data.message}` : `${data.summary} — ${data.label}`,
+            data.status === 'failed' ? 'danger' : (data.status === 'completed' ? 'success' : 'info'),
         );
 
         /*
@@ -64,10 +64,10 @@ export function init() {
          * geçişlerindeki gibi. Tarayıcı yenilemesi ekranı beyaza düşürür,
          * açık panelleri kapatır ve az önce basılan bildirimi siler.
          */
-        if (veri.status === 'completed') {
-            setTimeout(tazele, 1200);
+        if (data.status === 'completed') {
+            setTimeout(refresh, 1200);
         }
     };
 
-    setTimeout(yokla, ILK_GECIKME_MS);
+    setTimeout(poll, FIRST_DELAY_MS);
 }

@@ -135,11 +135,11 @@ final class ConfigurationPushTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('preview');
 
-        $fark = session('preview')['diff'] ?? '';
+        $diff = session('preview')['diff'] ?? '';
 
-        $this->assertNotSame('', $fark);
-        $this->assertStringNotContainsString('gizlicommunity', $fark);
-        $this->assertStringContainsString('••••', $fark);
+        $this->assertNotSame('', $diff);
+        $this->assertStringNotContainsString('gizlicommunity', $diff);
+        $this->assertStringContainsString('••••', $diff);
     }
 
     public function test_dis_cihaza_yalnizca_yonetici_yazar(): void
@@ -187,11 +187,11 @@ final class ConfigurationPushTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('action="set"', $yazilan);
-        $this->assertStringContainsString('<configuration-set>', $yazilan);
-        $this->assertStringNotContainsString('<![CDATA[', $yazilan);
+        $this->assertStringContainsString('action="set"', $written);
+        $this->assertStringContainsString('<configuration-set>', $written);
+        $this->assertStringNotContainsString('<![CDATA[', $written);
     }
 
     public function test_hiyerarsik_metin_configuration_text_icinde_gider(): void
@@ -204,10 +204,10 @@ final class ConfigurationPushTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<configuration-text>', $yazilan);
-        $this->assertStringNotContainsString('<![CDATA[', $yazilan);
+        $this->assertStringContainsString('<configuration-text>', $written);
+        $this->assertStringNotContainsString('<![CDATA[', $written);
     }
 
     /**
@@ -223,11 +223,11 @@ final class ConfigurationPushTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('a&amp;b&lt;c&gt;', $yazilan);
+        $this->assertStringContainsString('a&amp;b&lt;c&gt;', $written);
         // Ham karakter belgeye sızmamalı.
-        $this->assertStringNotContainsString('host-name "a&b', $yazilan);
+        $this->assertStringNotContainsString('host-name "a&b', $written);
     }
 
     /**
@@ -264,17 +264,17 @@ final class ConfigurationPushTest extends TestCase
      */
     public function test_gecmis_yalnizca_erisilebilen_cihazlari_gosterir(): void
     {
-        $gorunen = $this->switch();
-        $gizli = NetworkSwitch::factory()->create(['hostname' => 'baska-switch']);
+        $visible = $this->switch();
+        $hidden = NetworkSwitch::factory()->create(['hostname' => 'baska-switch']);
 
-        $this->push($gorunen->id, 'jn32-test');
-        $this->push($gizli->id, 'baska-switch');
+        $this->push($visible->id, 'jn32-test');
+        $this->push($hidden->id, 'baska-switch');
 
         // Yetki yalnızca TEK cihaza verilir; wildcard yok.
         $user = User::factory()->create();
         app(UserPermissionResolver::class)->syncResource($user, 'switches', [], [
-            'view' => [$gorunen->id],
-            'provision' => [$gorunen->id],
+            'view' => [$visible->id],
+            'provision' => [$visible->id],
         ]);
 
         $this->actingAs($user->fresh())
@@ -330,17 +330,17 @@ final class ConfigurationPushTest extends TestCase
      */
     public function test_policy_ve_sorgu_ayni_seyi_soyler(): void
     {
-        $gorunur = $this->switch();
-        $gizli = NetworkSwitch::factory()->create(['hostname' => 'gizli-sw', 'management_ip' => '198.18.20.196']);
+        $visible = $this->switch();
+        $hidden = NetworkSwitch::factory()->create(['hostname' => 'gizli-sw', 'management_ip' => '198.18.20.196']);
 
         $user = User::factory()->create();
         /* Cihazı görme ve ona yazma yetkisi birlikte verilir; policy ikisini de arar. */
         app(UserPermissionResolver::class)->syncResource($user, 'switches', [], [
-            'view' => [$gorunur->id],
-            'provision' => [$gorunur->id],
+            'view' => [$visible->id],
+            'provision' => [$visible->id],
         ]);
 
-        $kayitlar = collect([$gorunur, $gizli, null])->map(fn (?NetworkSwitch $sw): ConfigurationPush => ConfigurationPush::query()->create([
+        $records = collect([$visible, $hidden, null])->map(fn (?NetworkSwitch $sw): ConfigurationPush => ConfigurationPush::query()->create([
             'user_id' => $user->id,
             'switch_id' => $sw?->id,
             'target_host' => $sw?->management_ip ?? '10.9.9.9',
@@ -352,18 +352,18 @@ final class ConfigurationPushTest extends TestCase
         ]));
 
         $user = $user->fresh();
-        $listede = ConfigurationPush::query()->visibleTo($user)->pluck('id');
+        $list = ConfigurationPush::query()->visibleTo($user)->pluck('id');
 
-        foreach ($kayitlar as $kayit) {
+        foreach ($records as $record) {
             $this->assertSame(
-                $listede->contains($kayit->id),
-                $user->can('view', $kayit),
-                "Listede görünmekle detayın açılması aynı yanıtı vermeli: {$kayit->target_label}",
+                $list->contains($record->id),
+                $user->can('view', $record),
+                "Listede görünmekle detayın açılması aynı yanıtı vermeli: {$record->target_label}",
             );
         }
 
         /* Kural gerçekten süzüyor: üç kayıttan yalnızca biri görünüyor. */
-        $this->assertCount(1, $listede);
+        $this->assertCount(1, $list);
     }
 
     private function switch(): NetworkSwitch

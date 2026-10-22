@@ -115,7 +115,7 @@ class User extends Authenticatable
      * Gelişmiş moda geçebilir mi? Yönetici her zaman; diğerleri "Gelişmiş
      * mod" rol yetkisiyle.
      */
-    public function gelismisModaGecebilir(): bool
+    public function advancedModeCanPass(): bool
     {
         return $this->isAdmin()
             || app(UserPermissionResolver::class)->allows($this, 'gorunum_modu', 'view');
@@ -125,9 +125,9 @@ class User extends Authenticatable
      * GEÇERLİ mod. Kayıtlı tercih "gelişmiş" olsa bile yetkisi yoksa basit
      * sayılır: yetki sonradan alınan kişi gelişmişte kalmamalı.
      */
-    public function etkinPanelModu(): PanelMode
+    public function activePanelMode(): PanelMode
     {
-        return $this->panel_mode === PanelMode::Advanced && $this->gelismisModaGecebilir()
+        return $this->panel_mode === PanelMode::Advanced && $this->advancedModeCanPass()
             ? PanelMode::Advanced
             : PanelMode::Simple;
     }

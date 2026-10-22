@@ -71,7 +71,7 @@ class ServerPasswordRotation extends Model
     }
 
     /** Kurtarma hesabı makineden silindi: paneldeki sırrı da sil. */
-    public function kurtarmayiTemizle(): void
+    public function recoveryClean(): void
     {
         $this->forceFill([
             'recovery_active' => false,

@@ -56,39 +56,39 @@ class VerifyDeviceWritesCommand extends Command
             return self::FAILURE;
         }
 
-        $yazici = new CheckOnlyWriter(
+        $writer = new CheckOnlyWriter(
             app(NetconfClient::class),
             app(CommitLog::class),
             app(SwitchWriteLock::class),
             app(DeviceOperationRecorder::class),
         );
 
-        app()->instance(ConfigurationWriter::class, $yazici);
+        app()->instance(ConfigurationWriter::class, $writer);
 
-        $suzgec = (string) $this->option('only');
-        $sayim = ['GECTI' => 0, 'RED' => 0, 'ATLANDI' => 0];
+        $filter = (string) $this->option('only');
+        $count = ['GECTI' => 0, 'RED' => 0, 'ATLANDI' => 0];
 
-        foreach (app(DeviceWriteScenarios::class)->all($switch) as $ad => $senaryo) {
-            if ($suzgec !== '' && ! str_contains($ad, $suzgec)) {
+        foreach (app(DeviceWriteScenarios::class)->all($switch) as $name => $scenario) {
+            if ($filter !== '' && ! str_contains($name, $filter)) {
                 continue;
             }
 
-            $yazici->sonuncu = null;
+            $writer->last = null;
 
             /*
              * Bir senaryo cihazın REDDETMESİNİ ölçüyor olabilir; o zaman
              * kırmızı doğru sonuçtur ve yeşil BULGUDUR (bkz. Scenario).
              */
-            $beklenenRed = $senaryo instanceof Scenario;
-            $calistir = $beklenenRed ? $senaryo->run : $senaryo;
+            $expectedRed = $scenario instanceof Scenario;
+            $run = $expectedRed ? $scenario->run : $scenario;
 
             try {
-                $calistir();
-                $sonuc = $yazici->sonuncu ?? 'ATLANDI (cihaza gitmedi)';
+                $run();
+                $result = $writer->last ?? 'ATLANDI (cihaza gitmedi)';
 
-                if ($beklenenRed) {
-                    $sonuc = str_starts_with((string) $sonuc, 'GECTI')
-                        ? 'BULGU: cihaz reddetmeliydi — '.$senaryo->reason
+                if ($expectedRed) {
+                    $result = str_starts_with((string) $result, 'GECTI')
+                        ? 'BULGU: cihaz reddetmeliydi — '.$scenario->reason
                         : 'BEKLENEN RED';
                 }
             } catch (ScenarioNotApplicable $e) {
@@ -97,14 +97,14 @@ class VerifyDeviceWritesCommand extends Command
                  * hatasından ayırmak raporun tek işi: karışırsa okuyan kişi
                  * olmayan bir hatayı kovalar (bkz. ScenarioNotApplicable).
                  */
-                $sonuc = 'ATLANDI (ön koşul): '.$e->getMessage();
+                $result = 'ATLANDI (ön koşul): '.$e->getMessage();
             } catch (Throwable $e) {
-                $sonuc = 'HATA (panel): '.trim(preg_replace('/\s+/', ' ', $e->getMessage()));
+                $result = 'HATA (panel): '.trim(preg_replace('/\s+/', ' ', $e->getMessage()));
             }
 
-            $sayim[$this->bucket($sonuc)]++;
+            $count[$this->bucket($result)]++;
 
-            $this->line(str_pad($ad, 42).' '.$sonuc);
+            $this->line(str_pad($name, 42).' '.$result);
 
             /*
              * Cihaza nefes payı: her senaryo yeni bir SSH oturumu açıyor ve
@@ -119,16 +119,16 @@ class VerifyDeviceWritesCommand extends Command
         $this->newLine();
         $this->line(sprintf(
             'GECTI %d · RED %d · ATLANDI %d',
-            $sayim['GECTI'],
-            $sayim['RED'],
-            $sayim['ATLANDI'],
+            $count['GECTI'],
+            $count['RED'],
+            $count['ATLANDI'],
         ));
 
-        if ($sayim['RED'] > 0) {
+        if ($count['RED'] > 0) {
             $this->warn('Kırmızı satır kaldıysa ön koşul değil PANEL sorunudur; her biri incelenir.');
         }
 
-        return $sayim['RED'] === 0 ? self::SUCCESS : self::FAILURE;
+        return $count['RED'] === 0 ? self::SUCCESS : self::FAILURE;
     }
 
     /**
@@ -136,12 +136,12 @@ class VerifyDeviceWritesCommand extends Command
      * raporun bütün değeri: ikisi karışınca panel hatası olmayan yerde
      * hata aranır.
      */
-    private function bucket(string $sonuc): string
+    private function bucket(string $result): string
     {
         return match (true) {
-            str_starts_with($sonuc, 'GECTI'),
-            str_starts_with($sonuc, 'BEKLENEN RED') => 'GECTI',
-            str_starts_with($sonuc, 'ATLANDI') => 'ATLANDI',
+            str_starts_with($result, 'GECTI'),
+            str_starts_with($result, 'BEKLENEN RED') => 'GECTI',
+            str_starts_with($result, 'ATLANDI') => 'ATLANDI',
             default => 'RED',
         };
     }
@@ -155,15 +155,15 @@ class VerifyDeviceWritesCommand extends Command
  */
 final class CheckOnlyWriter extends ConfigurationWriter
 {
-    public ?string $sonuncu = null;
+    public ?string $last = null;
 
     public function __construct(
-        private NetconfClient $istemci,
+        private NetconfClient $client,
         CommitLog $log,
         SwitchWriteLock $lock,
         DeviceOperationRecorder $operations,
     ) {
-        parent::__construct($istemci, $log, $lock, $operations);
+        parent::__construct($client, $log, $lock, $operations);
     }
 
     public function apply(
@@ -180,7 +180,7 @@ final class CheckOnlyWriter extends ConfigurationWriter
         string|array|Closure $configuration,
         string $summary,
         ?Closure $afterConfirm = null,
-        bool $geriAlinabilir = true,
+        bool $revertible = true,
     ): array {
         $switch = NetworkSwitch::query()->find($target->switchId);
 
@@ -214,7 +214,7 @@ final class CheckOnlyWriter extends ConfigurationWriter
     private function check(NetworkSwitch $switch, array|Closure $documents, string $format, string $mode, int|Closure|null $rollback = null): array
     {
         try {
-            $this->istemci->run($switch, function (NetconfSession $session) use ($documents, $format, $mode, $rollback): void {
+            $this->client->run($switch, function (NetconfSession $session) use ($documents, $format, $mode, $rollback): void {
                 $session->rpc('<open-configuration><private/></open-configuration>');
 
                 try {
@@ -228,12 +228,12 @@ final class CheckOnlyWriter extends ConfigurationWriter
                     // Belgeler üretimde de oturumun içinde üretilebiliyor
                     // (bkz. ConfigurationWriter::apply); denetim aynı yoldan
                     // geçmezse doğruladığı belge cihaza gidenden başka olur.
-                    $belgeler = $documents instanceof Closure ? $documents($session) : $documents;
+                    $documents = $documents instanceof Closure ? $documents($session) : $documents;
 
-                    foreach ($belgeler as $document) {
+                    foreach ($documents as $document) {
                         // Yük biçimi ÜRETİM koduyla aynı yerden gelir;
                         // ayrışırsa denetim yanlış şeyi doğrular.
-                        $yuk = $format === 'text'
+                        $load = $format === 'text'
                             ? $this->textPayload($document, $mode)
                             : $document;
 
@@ -241,7 +241,7 @@ final class CheckOnlyWriter extends ConfigurationWriter
                             '<load-configuration action="%s" format="%s">%s</load-configuration>',
                             $mode,
                             $format,
-                            $yuk,
+                            $load,
                         ));
                     }
 
@@ -251,9 +251,9 @@ final class CheckOnlyWriter extends ConfigurationWriter
                 }
             });
 
-            $this->sonuncu = 'GECTI';
+            $this->last = 'GECTI';
         } catch (Throwable $e) {
-            $this->sonuncu = 'HATA (cihaz): '.trim(preg_replace('/\s+/', ' ', $e->getMessage()));
+            $this->last = 'HATA (cihaz): '.trim(preg_replace('/\s+/', ' ', $e->getMessage()));
         }
 
         // committed=false: çağıran servis kayda geçmez, geri okuma yapmaz.

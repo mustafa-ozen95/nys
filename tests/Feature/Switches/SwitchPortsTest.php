@@ -56,13 +56,13 @@ final class SwitchPortsTest extends TestCase
 
         $this->fakeZabbix();
 
-        $portlar = $this->actingAs($this->operator())
+        $ports = $this->actingAs($this->operator())
             ->get(route('switches.ports', $switch))
             ->assertOk()
             ->viewData('ports');
 
-        $this->assertSame('—', $portlar->firstWhere('model.name', 'ge-0/0/5')['link_speed_display']);
-        $this->assertSame('1000 Mbps', $portlar->firstWhere('model.name', 'ge-0/0/6')['link_speed_display']);
+        $this->assertSame('—', $ports->firstWhere('model.name', 'ge-0/0/5')['link_speed_display']);
+        $this->assertSame('1000 Mbps', $ports->firstWhere('model.name', 'ge-0/0/6')['link_speed_display']);
     }
 
     private function fakeZabbix(string $itemFixture = 'item-get-interfaces'): void

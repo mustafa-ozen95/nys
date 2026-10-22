@@ -83,13 +83,13 @@ final class LoginTest extends TestCase
         $this->post(route('login'), ['email' => $user->email, 'password' => 'dogru-parola-1']);
         $this->assertAuthenticated();
 
-        $kayit = ActivityLog::query()->where('action', 'login')->firstOrFail();
-        $this->assertNotNull($kayit->hash);
+        $record = ActivityLog::query()->where('action', 'login')->firstOrFail();
+        $this->assertNotNull($record->hash);
         $this->assertTrue(app(ActivityChain::class)->verify()['ok']);
 
-        DB::table('activity_logs')->where('id', $kayit->id)->update(['description' => 'değiştirildi']);
+        DB::table('activity_logs')->where('id', $record->id)->update(['description' => 'değiştirildi']);
 
-        $this->assertSame($kayit->id, app(ActivityChain::class)->verify()['broken_id']);
+        $this->assertSame($record->id, app(ActivityChain::class)->verify()['broken_id']);
     }
 
     /**
@@ -98,14 +98,14 @@ final class LoginTest extends TestCase
      */
     public function test_basarisiz_giris_tekillestirmesi_denenen_hesabi_ayirir(): void
     {
-        foreach (['yem@example.test', 'kurban1@example.test', 'kurban2@example.test', 'KURBAN1@example.test'] as $eposta) {
-            $this->post(route('login'), ['email' => $eposta, 'password' => 'yanlis-parola']);
+        foreach (['yem@example.test', 'kurban1@example.test', 'kurban2@example.test', 'KURBAN1@example.test'] as $email) {
+            $this->post(route('login'), ['email' => $email, 'password' => 'yanlis-parola']);
         }
 
-        $kayitlar = ActivityLog::query()->where('action', 'login_failed')->pluck('description')->all();
+        $records = ActivityLog::query()->where('action', 'login_failed')->pluck('description')->all();
 
-        $this->assertCount(3, $kayitlar);
-        $this->assertContains('Başarısız giriş denemesi: kurban2@example.test', $kayitlar);
+        $this->assertCount(3, $records);
+        $this->assertContains('Başarısız giriş denemesi: kurban2@example.test', $records);
     }
 
     public function test_an_inactive_user_is_signed_out_on_the_next_request(): void

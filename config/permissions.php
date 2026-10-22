@@ -105,9 +105,9 @@ return [
      * VERMEZ: şablonlar boşaltıldı (göç 2026_09_15_230000), yeniden
      * seçilmeleri gerekir.
      */
-    'yonetim_yalnizca_yonetici' => (bool) env('YONETIM_YALNIZCA_YONETICI', true),
+    'admin_only_management' => (bool) env('ADMIN_ONLY_MANAGEMENT', true),
 
-    'yonetim_kaynaklari' => ['settings', 'users', 'logs'],
+    'management_resources' => ['settings', 'users', 'logs'],
 
     'resources' => [
 

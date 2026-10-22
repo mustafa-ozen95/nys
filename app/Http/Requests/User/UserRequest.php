@@ -45,8 +45,8 @@ class UserRequest extends FormRequest
              * dışarı çıkmaz (bkz. CLAUDE.md, "Nesne erişimi (IDOR)").
              */
             'role' => [
-                Rule::requiredIf(fn (): bool => $this->rolAtanabilir()),
-                Rule::prohibitedIf(fn (): bool => ! $this->rolAtanabilir()),
+                Rule::requiredIf(fn (): bool => $this->roleAssignable()),
+                Rule::prohibitedIf(fn (): bool => ! $this->roleAssignable()),
                 Rule::exists('roles', 'uuid'),
             ],
             'status' => ['required', Rule::enum(UserStatus::class)],
@@ -75,7 +75,7 @@ class UserRequest extends FormRequest
         return ['role.prohibited' => 'Kullanıcı rolünü yalnızca yönetici değiştirebilir.'];
     }
 
-    private function rolAtanabilir(): bool
+    private function roleAssignable(): bool
     {
         return $this->user()?->isAdmin() ?? false;
     }
@@ -90,7 +90,7 @@ class UserRequest extends FormRequest
     {
         $attributes = $this->safe()->only(['name', 'email', 'status', 'password']);
 
-        if ($this->rolAtanabilir()) {
+        if ($this->roleAssignable()) {
             $attributes['role_id'] = Role::query()
                 ->where('uuid', $this->string('role')->toString())
                 ->value('id');

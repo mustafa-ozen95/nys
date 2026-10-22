@@ -41,7 +41,7 @@ class Field extends Component
         public ?string $id = null,
         public bool $advanced = false,
         public ?string $current = null,
-        public ?string $kural = null,
+        public ?string $rule = null,
     ) {}
 
     public function shouldRender(): bool
@@ -67,7 +67,7 @@ class Field extends Component
     {
         return $this->advanced
             && ! PanelMode::current()->isAdvanced()
-            && ! (bool) config($this->ayarAnahtari(), false);
+            && ! (bool) config($this->settingKey(), false);
     }
 
     /**
@@ -78,9 +78,9 @@ class Field extends Component
      * Doğrulama hatası taşıyan alan gizlenmez: okunamayan bir hata, kişiyi
      * düzeltemeyeceği bir formun önünde bırakırdı.
      */
-    public function gizli(): bool
+    public function hidden(): bool
     {
-        if ($this->advanced || $this->kural === null || PanelMode::current()->isAdvanced()) {
+        if ($this->advanced || $this->rule === null || PanelMode::current()->isAdvanced()) {
             return false;
         }
 
@@ -88,12 +88,12 @@ class Field extends Component
             return false;
         }
 
-        return ! (bool) config($this->ayarAnahtari(), true);
+        return ! (bool) config($this->settingKey(), true);
     }
 
-    private function ayarAnahtari(): string
+    private function settingKey(): string
     {
-        return 'simple_mode.alanlar.'.$this->kural.'.acik';
+        return 'simple_mode.alanlar.'.$this->rule.'.acik';
     }
 
     public function render(): View

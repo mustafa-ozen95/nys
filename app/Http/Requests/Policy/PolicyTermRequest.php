@@ -177,9 +177,9 @@ class PolicyTermRequest extends FormRequest
          * yoksa cihaza aynı satır iki kere giderdi.
          */
         $community = $this->string('community_delete')->toString();
-        $zaten = in_array($community, array_column($actions['communities'], 'name'), true);
+        $already = in_array($community, array_column($actions['communities'], 'name'), true);
 
-        if ($community !== '' && ! $zaten) {
+        if ($community !== '' && ! $already) {
             $actions['communities'][] = ['operation' => 'delete', 'name' => $community];
         }
 

@@ -25,11 +25,11 @@ class LoginController extends Controller
      * okumaz. Soruyu `CenterClient` yanıtlar: ayar tek başına yetmiyor,
      * istemci bilgileri de gerekiyor.
      */
-    public function create(CenterClient $merkez): View
+    public function create(CenterClient $center): View
     {
         return view('auth.login', [
-            'merkezAcik' => $merkez->acikMi(),
-            'merkezAd' => config('identity.ad'),
+            'merkezAcik' => $center->isOpen(),
+            'merkezAd' => config('identity.name'),
         ]);
     }
 
@@ -49,15 +49,15 @@ class LoginController extends Controller
      * ZAMAN AŞIMI ORTAK DEĞİL: ekran kilidinin çıkışı (süre doldu) yalnız bu
      * oturumu kapatır; bir sekmede süresi dolan kişi öteki panellerden atılmaz.
      */
-    public function destroy(Request $request, CenterClient $merkez): RedirectResponse
+    public function destroy(Request $request, CenterClient $center): RedirectResponse
     {
-        $bag = $request->user() !== null && ! SharedLogout::zamanAsimiMi($request) ? SharedLogout::bag($request->user()) : null;
+        $bag = $request->user() !== null && ! SharedLogout::isTimedOut($request) ? SharedLogout::bag($request->user()) : null;
 
         if ($bag !== null) {
-            SharedLogout::isle($bag, SharedLogout::simdiMs());
+            SharedLogout::isle($bag, SharedLogout::nowMs());
 
-            if ($merkez->acikMi()) {
-                rescue(fn () => $merkez->oturumKapandi($bag->subject));
+            if ($center->isOpen()) {
+                rescue(fn () => $center->sessionClosed($bag->subject));
             }
         }
 

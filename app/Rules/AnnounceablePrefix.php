@@ -31,10 +31,10 @@ class AnnounceablePrefix implements ValidationRule
             return;
         }
 
-        $sinir = $this->ipv6 ? self::LONGEST_IPV6 : self::LONGEST_IPV4;
+        $limit = $this->ipv6 ? self::LONGEST_IPV6 : self::LONGEST_IPV4;
 
-        if ((int) $value > $sinir) {
-            $fail("Anons edilen prefix en fazla /{$sinir} olabilir; daha dar bloklar internette anons edilmez.");
+        if ((int) $value > $limit) {
+            $fail("Anons edilen prefix en fazla /{$limit} olabilir; daha dar bloklar internette anons edilmez.");
         }
     }
 }

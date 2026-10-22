@@ -24,21 +24,21 @@ final class CidrRangeTest extends TestCase
     /**
      * @param  list<string>  $beklenen
      */
-    #[DataProvider('araliklar')]
-    public function test_araligi_en_az_parcaya_boler(string $bas, string $son, array $beklenen, bool $v6 = false): void
+    #[DataProvider('intervals')]
+    public function test_araligi_en_az_parcaya_boler(string $head, string $last, array $expected, bool $v6 = false): void
     {
-        $parcalar = array_map(
+        $fragments = array_map(
             static fn (Cidr $c): string => $c->toString(),
-            Cidr::fromRange(inet_pton($bas), inet_pton($son), $v6),
+            Cidr::fromRange(inet_pton($head), inet_pton($last), $v6),
         );
 
-        $this->assertSame($beklenen, $parcalar);
+        $this->assertSame($expected, $fragments);
     }
 
     /**
      * @return array<string, array{0: string, 1: string, 2: list<string>, 3?: bool}>
      */
-    public static function araliklar(): array
+    public static function intervals(): array
     {
         return [
             'tam blok tek parca' => ['10.0.0.0', '10.0.0.255', ['10.0.0.0/24']],
@@ -78,20 +78,20 @@ final class CidrRangeTest extends TestCase
      */
     public function test_parcalar_araligi_tam_kapatir(): void
     {
-        $bas = inet_pton('10.0.0.3');
-        $son = inet_pton('10.0.1.200');
+        $head = inet_pton('10.0.0.3');
+        $last = inet_pton('10.0.1.200');
 
-        $parcalar = Cidr::fromRange($bas, $son, false);
+        $fragments = Cidr::fromRange($head, $last, false);
 
-        $this->assertNotSame([], $parcalar);
-        $this->assertSame($bas, inet_pton($parcalar[0]->network));
-        $this->assertSame($son, inet_pton($parcalar[count($parcalar) - 1]->lastAddress()));
+        $this->assertNotSame([], $fragments);
+        $this->assertSame($head, inet_pton($fragments[0]->network));
+        $this->assertSame($last, inet_pton($fragments[count($fragments) - 1]->lastAddress()));
 
         /* Parçalar birbirine bitişik: her biri bir öncekinin bittiği yerde başlar. */
-        for ($i = 1; $i < count($parcalar); $i++) {
+        for ($i = 1; $i < count($fragments); $i++) {
             $this->assertSame(
-                Cidr::increment(inet_pton($parcalar[$i - 1]->lastAddress())),
-                inet_pton($parcalar[$i]->network),
+                Cidr::increment(inet_pton($fragments[$i - 1]->lastAddress())),
+                inet_pton($fragments[$i]->network),
             );
         }
     }

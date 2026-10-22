@@ -25,17 +25,17 @@ class VerifyActivityChainCommand extends Command
 
     public function handle(ActivityChain $chain): int
     {
-        $sonuc = $chain->verify();
+        $result = $chain->verify();
 
-        if ($sonuc['ok']) {
-            $this->info("Zincir sağlam: {$sonuc['checked']} kayıt doğrulandı.");
+        if ($result['ok']) {
+            $this->info("Zincir sağlam: {$result['checked']} kayıt doğrulandı.");
 
-            if (($sonuc['acknowledged'] ?? 0) > 0) {
-                $this->line("  {$sonuc['acknowledged']} kayıt BİLİNEN ESKİ KIRIK olarak mühürlü ve değişmemiş (bkz. network:log-seal).");
+            if (($result['acknowledged'] ?? 0) > 0) {
+                $this->line("  {$result['acknowledged']} kayıt BİLİNEN ESKİ KIRIK olarak mühürlü ve değişmemiş (bkz. network:log-seal).");
             }
 
-            if ($sonuc['unprotected'] > 0) {
-                $this->line("  {$sonuc['unprotected']} kayıt zincirden önce yazılmış; onlar doğrulanamaz.");
+            if ($result['unprotected'] > 0) {
+                $this->line("  {$result['unprotected']} kayıt zincirden önce yazılmış; onlar doğrulanamaz.");
             }
 
             return self::SUCCESS;
@@ -43,7 +43,7 @@ class VerifyActivityChainCommand extends Command
 
         // Çıkış kodu sıfırdan farklıdır: zamanlanmış çalıştırmada sessiz
         // kalmamalı, izleme bunu yakalayabilmeli.
-        $this->error("ZİNCİR KIRIK. İlk bozuk kayıt: #{$sonuc['broken_id']} ({$sonuc['checked']} kayıt tarandı).");
+        $this->error("ZİNCİR KIRIK. İlk bozuk kayıt: #{$result['broken_id']} ({$result['checked']} kayıt tarandı).");
 
         return self::FAILURE;
     }

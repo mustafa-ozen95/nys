@@ -76,13 +76,13 @@ class RouteConfigurator
          * tablosuna (ya da tersine) geçtiyse eski satır silinmezse cihazda
          * İKİ yerde birden durur ve hangisinin geçerli olduğu belirsizleşir.
          */
-        $tasindi = $route->cidr !== "{$destination}/{$prefixLength}"
+        $migrated = $route->cidr !== "{$destination}/{$prefixLength}"
             || $route->rib !== $rib
             || $route->routing_instance !== $instance;
 
         $documents = [];
 
-        if ($tasindi) {
+        if ($migrated) {
             $documents[] = $this->wrap(
                 $route->rib,
                 $this->deleteElement($route->destination, $route->prefix_length),
@@ -162,11 +162,11 @@ class RouteConfigurator
         $static = "<static>{$routeElement}</static>";
 
         if ($rib !== null && $rib !== '') {
-            $ad = $this->escape($rib);
-            $static = "<rib><name>{$ad}</name>{$static}</rib>";
+            $name = $this->escape($rib);
+            $static = "<rib><name>{$name}</name>{$static}</rib>";
         }
 
-        $govde = "<routing-options>{$static}</routing-options>";
+        $body = "<routing-options>{$static}</routing-options>";
 
         /*
          * Route bir yönlendirme tablosunun İÇİNDE olabilir. FBF tipik olarak
@@ -176,13 +176,13 @@ class RouteConfigurator
          * çalışmazdı.
          */
         if ($instance !== null && $instance !== '') {
-            $ad = $this->escape($instance);
-            $govde = "<routing-instances><instance><name>{$ad}</name>{$govde}</instance></routing-instances>";
+            $name = $this->escape($instance);
+            $body = "<routing-instances><instance><name>{$name}</name>{$body}</instance></routing-instances>";
 
-            return "<configuration>{$govde}</configuration>";
+            return "<configuration>{$body}</configuration>";
         }
 
-        return "<configuration>{$govde}</configuration>";
+        return "<configuration>{$body}</configuration>";
     }
 
     /**
@@ -228,14 +228,14 @@ class RouteConfigurator
         /** @var list<string> $hops */
         $hops = $settings['next_hops'] ?? array_filter([$settings['next_hop'] ?? null]);
 
-        $davranislar = ['discard' => 'discard', 'reject' => 'reject', 'receive' => 'receive'];
+        $behaviors = ['discard' => 'discard', 'reject' => 'reject', 'receive' => 'receive'];
         $body = '';
 
         foreach ($hops as $hop) {
-            $anahtar = mb_strtolower(trim((string) $hop));
+            $key = mb_strtolower(trim((string) $hop));
 
-            if (isset($davranislar[$anahtar])) {
-                $body .= '<'.$davranislar[$anahtar].'/>';
+            if (isset($behaviors[$key])) {
+                $body .= '<'.$behaviors[$key].'/>';
 
                 continue;
             }
@@ -260,19 +260,19 @@ class RouteConfigurator
                 continue;
             }
 
-            $ic = '<name>'.$this->escape((string) $hop['name']).'</name>';
+            $inner = '<name>'.$this->escape((string) $hop['name']).'</name>';
 
             foreach (['preference', 'metric'] as $alan) {
                 if (filled($hop[$alan] ?? null)) {
-                    $ic .= "<{$alan}>".(int) $hop[$alan]."</{$alan}>";
+                    $inner .= "<{$alan}>".(int) $hop[$alan]."</{$alan}>";
                 }
             }
 
             if (filled($hop['interface'] ?? null)) {
-                $ic .= '<interface>'.$this->escape((string) $hop['interface']).'</interface>';
+                $inner .= '<interface>'.$this->escape((string) $hop['interface']).'</interface>';
             }
 
-            $body .= "<qualified-next-hop>{$ic}</qualified-next-hop>";
+            $body .= "<qualified-next-hop>{$inner}</qualified-next-hop>";
         }
 
         return $body;

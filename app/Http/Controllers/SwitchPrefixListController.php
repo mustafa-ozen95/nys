@@ -104,12 +104,12 @@ class SwitchPrefixListController extends Controller implements HasMiddleware
 
     public function destroy(NetworkSwitch $switch, SwitchPrefixList $prefixList): RedirectResponse
     {
-        $bagli = $this->dependencies->forPrefixList($prefixList);
+        $bound = $this->dependencies->forPrefixList($prefixList);
 
         // Hâlâ atıf yapan bir politika, firewall terimi ya da blok varsa
         // cihaz commit'i reddeder; istek oraya kadar gitmemeli.
-        if ($bagli !== []) {
-            return back()->with('error', $this->dependencies->message("Prefix list {$prefixList->name}", $bagli));
+        if ($bound !== []) {
+            return back()->with('error', $this->dependencies->message("Prefix list {$prefixList->name}", $bound));
         }
 
         $name = $prefixList->name;

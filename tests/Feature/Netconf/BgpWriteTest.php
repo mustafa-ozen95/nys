@@ -105,10 +105,10 @@ final class BgpWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringNotContainsString('active="active"', $yazilan);
-        $this->assertStringNotContainsString('inactive="inactive"', $yazilan);
+        $this->assertStringNotContainsString('active="active"', $written);
+        $this->assertStringNotContainsString('inactive="inactive"', $written);
     }
 
     public function test_grup_butun_ayarlariyla_cihaza_yazilir(): void
@@ -132,17 +132,17 @@ final class BgpWriteTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<protocols><bgp>', $yazilan);
-        $this->assertStringContainsString('<name>musteri1</name>', $yazilan);
-        $this->assertStringContainsString('<type>external</type>', $yazilan);
-        $this->assertStringContainsString('<peer-as>64497</peer-as>', $yazilan);
-        $this->assertStringContainsString('<multihop><ttl>5</ttl></multihop>', $yazilan);
-        $this->assertStringContainsString('<log-updown/>', $yazilan);
-        $this->assertStringContainsString('<passive/>', $yazilan);
+        $this->assertStringContainsString('<protocols><bgp>', $written);
+        $this->assertStringContainsString('<name>musteri1</name>', $written);
+        $this->assertStringContainsString('<type>external</type>', $written);
+        $this->assertStringContainsString('<peer-as>64497</peer-as>', $written);
+        $this->assertStringContainsString('<multihop><ttl>5</ttl></multihop>', $written);
+        $this->assertStringContainsString('<log-updown/>', $written);
+        $this->assertStringContainsString('<passive/>', $written);
         // local-as düz değer değil, alt elemanlı düğümdür.
-        $this->assertStringContainsString('<local-as><as-number>65009</as-number></local-as>', $yazilan);
+        $this->assertStringContainsString('<local-as><as-number>65009</as-number></local-as>', $written);
     }
 
     /**
@@ -183,12 +183,12 @@ final class BgpWriteTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<family><inet><any><prefix-limit>', $yazilan);
-        $this->assertStringContainsString('<maximum>200</maximum>', $yazilan);
-        $this->assertStringContainsString('<limit-threshold>100</limit-threshold>', $yazilan);
-        $this->assertStringContainsString('<idle-timeout/>', $yazilan);
+        $this->assertStringContainsString('<family><inet><any><prefix-limit>', $written);
+        $this->assertStringContainsString('<maximum>200</maximum>', $written);
+        $this->assertStringContainsString('<limit-threshold>100</limit-threshold>', $written);
+        $this->assertStringContainsString('<idle-timeout/>', $written);
     }
 
     public function test_dakikali_bekleme_alt_elemanla_yazilir(): void
@@ -228,16 +228,16 @@ final class BgpWriteTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<multihop delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<local-address delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<import delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<inet delete="delete"/>', $yazilan);
-        $this->assertStringContainsString('<inet6 delete="delete"/>', $yazilan);
+        $this->assertStringContainsString('<multihop delete="delete"/>', $written);
+        $this->assertStringContainsString('<local-address delete="delete"/>', $written);
+        $this->assertStringContainsString('<import delete="delete"/>', $written);
+        $this->assertStringContainsString('<inet delete="delete"/>', $written);
+        $this->assertStringContainsString('<inet6 delete="delete"/>', $written);
 
         // Grubun KENDİSİ silinmez: altındaki komşular korunmalı.
-        $this->assertStringNotContainsString('<group delete="delete">', $yazilan);
+        $this->assertStringNotContainsString('<group delete="delete">', $written);
     }
 
     /**
@@ -308,10 +308,10 @@ final class BgpWriteTest extends TestCase
             ])
             ->assertRedirect();
 
-        $yazilan = $device->payload();
+        $written = $device->payload();
 
-        $this->assertStringContainsString('<neighbor><name>198.51.100.134</name>', $yazilan);
-        $this->assertStringContainsString('<description>uplink komsusu</description>', $yazilan);
+        $this->assertStringContainsString('<neighbor><name>198.51.100.134</name>', $written);
+        $this->assertStringContainsString('<description>uplink komsusu</description>', $written);
     }
 
     /**
@@ -340,12 +340,12 @@ final class BgpWriteTest extends TestCase
     public function test_baska_switchin_grubu_uzerinden_islem_yapilamaz(): void
     {
         $switch = $this->switch();
-        $digerSwitch = $this->switch('198.18.20.196');
-        $yabanciGrup = BgpGroup::factory()->for($digerSwitch, 'switch')->create();
+        $otherSwitch = $this->switch('198.18.20.196');
+        $foreignGroup = BgpGroup::factory()->for($otherSwitch, 'switch')->create();
         $device = $this->device();
 
         $this->actingAs($this->operator())
-            ->post(route('switches.bgp.neighbors.store', [$switch, $yabanciGrup]), ['address' => '198.51.100.134'])
+            ->post(route('switches.bgp.neighbors.store', [$switch, $foreignGroup]), ['address' => '198.51.100.134'])
             ->assertNotFound();
 
         $this->assertNull($device->connection);

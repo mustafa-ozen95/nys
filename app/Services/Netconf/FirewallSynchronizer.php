@@ -65,7 +65,7 @@ class FirewallSynchronizer
         ['filters' => $filters, 'policers' => $policers] = $this->reader->read($session);
 
         DB::transaction(function () use ($switch, $filters, $policers): void {
-            $tutulan = [];
+            $kept = [];
 
             foreach ($filters as $filter) {
                 $model = $switch->firewallFilters()->updateOrCreate(
@@ -79,12 +79,12 @@ class FirewallSynchronizer
                     ],
                 );
 
-                $tutulan[] = $model->id;
+                $kept[] = $model->id;
 
                 $this->storeTerms($model, $filter['terms']);
             }
 
-            $switch->firewallFilters()->whereNotIn('id', $tutulan)->delete();
+            $switch->firewallFilters()->whereNotIn('id', $kept)->delete();
 
             $this->storePolicers($switch, $policers);
         });
@@ -95,16 +95,16 @@ class FirewallSynchronizer
      */
     private function storeTerms(SwitchFirewallFilter $filter, array $terms): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($terms as $term) {
-            $tutulan[] = $filter->terms()->updateOrCreate(
+            $kept[] = $filter->terms()->updateOrCreate(
                 ['name' => $term['name']],
                 collect($term)->only(self::TERM_FIELDS)->all(),
             )->id;
         }
 
-        $filter->terms()->whereNotIn('id', $tutulan)->delete();
+        $filter->terms()->whereNotIn('id', $kept)->delete();
     }
 
     /**
@@ -112,15 +112,15 @@ class FirewallSynchronizer
      */
     private function storePolicers(NetworkSwitch $switch, array $policers): void
     {
-        $tutulan = [];
+        $kept = [];
 
         foreach ($policers as $policer) {
-            $tutulan[] = $switch->firewallPolicers()->updateOrCreate(
+            $kept[] = $switch->firewallPolicers()->updateOrCreate(
                 ['name' => $policer['name']],
                 collect($policer)->only(self::POLICER_FIELDS)->all(),
             )->id;
         }
 
-        $switch->firewallPolicers()->whereNotIn('id', $tutulan)->delete();
+        $switch->firewallPolicers()->whereNotIn('id', $kept)->delete();
     }
 }

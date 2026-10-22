@@ -44,17 +44,17 @@ class ConfigurationPusher
      */
     public function styleOf(string $configuration): string
     {
-        $satirlar = array_filter(
+        $rows = array_filter(
             array_map(trim(...), explode("\n", $configuration)),
-            static fn (string $satir): bool => $satir !== '' && ! str_starts_with($satir, '#'),
+            static fn (string $row): bool => $row !== '' && ! str_starts_with($row, '#'),
         );
 
-        if ($satirlar === []) {
+        if ($rows === []) {
             return 'merge';
         }
 
-        foreach ($satirlar as $satir) {
-            if (preg_match('/^(set|delete|deactivate|activate)\s/', $satir) !== 1) {
+        foreach ($rows as $row) {
+            if (preg_match('/^(set|delete|deactivate|activate)\s/', $row) !== 1) {
                 return 'merge';
             }
         }
@@ -107,7 +107,7 @@ class ConfigurationPusher
         ?User $user,
     ): ConfigurationPush {
         $mode = $this->modeFor($configuration, $requested);
-        $sonuc = $this->writer->applyText($target, $configuration, $mode, $this->summary($mode, $source));
+        $result = $this->writer->applyText($target, $configuration, $mode, $this->summary($mode, $source));
 
         return ConfigurationPush::create([
             'user_id' => $user?->id,
@@ -117,9 +117,9 @@ class ConfigurationPusher
             'mode' => $mode,
             'source' => $source,
             'body' => $configuration,
-            'diff' => $sonuc['diff'],
-            'committed' => $sonuc['committed'],
-            'warnings' => $sonuc['warnings'],
+            'diff' => $result['diff'],
+            'committed' => $result['committed'],
+            'warnings' => $result['warnings'],
         ]);
     }
 
@@ -162,12 +162,12 @@ class ConfigurationPusher
      */
     private function summary(string $mode, string $source): string
     {
-        $kaynak = $source === 'template' ? 'şablon' : 'elle';
+        $source = $source === 'template' ? 'şablon' : 'elle';
 
         return match ($mode) {
-            'override' => "Config yüklendi ({$kaynak}, tamamen değiştir)",
-            'set' => "Config yüklendi ({$kaynak}, set satırları)",
-            default => "Config yüklendi ({$kaynak}, ekle)",
+            'override' => "Config yüklendi ({$source}, tamamen değiştir)",
+            'set' => "Config yüklendi ({$source}, set satırları)",
+            default => "Config yüklendi ({$source}, ekle)",
         };
     }
 }

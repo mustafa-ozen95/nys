@@ -136,10 +136,10 @@ class PortConfigurator
         if (array_key_exists('vlans', $settings) || array_key_exists('untagged', $settings)) {
             $documents[] = $this->wrap($this->interfaceElement($portName, $this->vlanDeleteElement()));
 
-            $temizlik = $this->vlanSideCleanupDocument($portName, $vlanSideClear);
+            $cleanup = $this->vlanSideCleanupDocument($portName, $vlanSideClear);
 
-            if ($temizlik !== null) {
-                $documents[] = $temizlik;
+            if ($cleanup !== null) {
+                $documents[] = $cleanup;
             }
         }
 
@@ -169,10 +169,10 @@ class PortConfigurator
     {
         $documents = [$this->wrap($this->interfaceElement($portName, $this->vlanDeleteElement()))];
 
-        $temizlik = $this->vlanSideCleanupDocument($portName, [...$members, ...$previous]);
+        $cleanup = $this->vlanSideCleanupDocument($portName, [...$members, ...$previous]);
 
-        if ($temizlik !== null) {
-            $documents[] = $temizlik;
+        if ($cleanup !== null) {
+            $documents[] = $cleanup;
         }
 
         if ($members !== []) {
@@ -206,7 +206,7 @@ class PortConfigurator
      */
     private function vlanSideCleanupDocument(string $portName, array $vlanNames): ?string
     {
-        $names = array_values(array_unique(array_filter($vlanNames, static fn (string $ad): bool => $ad !== '')));
+        $names = array_values(array_unique(array_filter($vlanNames, static fn (string $name): bool => $name !== '')));
 
         if ($names === []) {
             return null;
@@ -215,7 +215,7 @@ class PortConfigurator
         $unit = $this->escape("{$portName}.0");
 
         $body = implode('', array_map(
-            fn (string $ad): string => '<vlan><name>'.$this->escape($ad).'</name>'
+            fn (string $name): string => '<vlan><name>'.$this->escape($name).'</name>'
                 ."<interface delete=\"delete\"><name>{$unit}</name></interface></vlan>",
             $names,
         ));
@@ -353,14 +353,14 @@ class PortConfigurator
 
         $body = '';
 
-        foreach (['input' => 'input_filter', 'output' => 'output_filter'] as $yon => $anahtar) {
-            if (! array_key_exists($anahtar, $settings)) {
+        foreach (['input' => 'input_filter', 'output' => 'output_filter'] as $direction => $key) {
+            if (! array_key_exists($key, $settings)) {
                 continue;
             }
 
-            $body .= filled($settings[$anahtar])
-                ? "<{$yon}><filter-name>".$this->escape((string) $settings[$anahtar])."</filter-name></{$yon}>"
-                : "<{$yon} delete=\"delete\"/>";
+            $body .= filled($settings[$key])
+                ? "<{$direction}><filter-name>".$this->escape((string) $settings[$key])."</filter-name></{$direction}>"
+                : "<{$direction} delete=\"delete\"/>";
         }
 
         return $body === '' ? '' : "<filter>{$body}</filter>";
@@ -393,10 +393,10 @@ class PortConfigurator
      */
     private function etherOptions(array $settings, JunosSchemaProfile $profile): string
     {
-        $hizVar = array_key_exists('speed', $settings) || array_key_exists('autonegotiation', $settings);
-        $duplexVar = array_key_exists('duplex', $settings);
+        $hasSpeed = array_key_exists('speed', $settings) || array_key_exists('autonegotiation', $settings);
+        $hasDuplex = array_key_exists('duplex', $settings);
 
-        if (! $hizVar && ! $duplexVar) {
+        if (! $hasSpeed && ! $hasDuplex) {
             return '';
         }
 
@@ -410,8 +410,8 @@ class PortConfigurator
          * orası değişmiyor.
          */
         if ($profile->usesPlainSpeed()) {
-            return ($hizVar ? $this->elsSpeedElement($settings, $profile) : '')
-                .($duplexVar ? '<ether-options>'.$this->linkModeElement($settings).'</ether-options>' : '');
+            return ($hasSpeed ? $this->elsSpeedElement($settings, $profile) : '')
+                .($hasDuplex ? '<ether-options>'.$this->linkModeElement($settings).'</ether-options>' : '');
         }
 
         /*
@@ -420,8 +420,8 @@ class PortConfigurator
          * değil, yalnızca kendi alanını taşır ve okuması zorlaşır.
          */
         return '<ether-options>'
-            .($hizVar ? $this->speedElement($settings) : '')
-            .($duplexVar ? $this->linkModeElement($settings) : '')
+            .($hasSpeed ? $this->speedElement($settings) : '')
+            .($hasDuplex ? $this->linkModeElement($settings) : '')
             .'</ether-options>';
     }
 
@@ -505,9 +505,9 @@ class PortConfigurator
             return '<link-mode delete="delete"/>';
         }
 
-        $akis = (string) $duplex === 'half' ? '<no-flow-control/>' : '';
+        $flow = (string) $duplex === 'half' ? '<no-flow-control/>' : '';
 
-        return $akis.'<link-mode>'.$modes[(string) $duplex].'</link-mode>';
+        return $flow.'<link-mode>'.$modes[(string) $duplex].'</link-mode>';
     }
 
     /**
@@ -523,13 +523,13 @@ class PortConfigurator
          * bulunur (bkz. SchemaProbe); bilinmiyorsa ELS ÖNCESİ varsayılır —
          * lehçe varsayılanı budur (bkz. JunosDialect).
          */
-        $etiket = $profile->switchingModeElement();
+        $tag = $profile->switchingModeElement();
 
         if (array_key_exists('mode', $settings) && $settings['mode'] instanceof PortMode) {
             $body .= match ($settings['mode']) {
-                PortMode::Trunk => "<{$etiket}>trunk</{$etiket}>",
-                PortMode::Access => "<{$etiket}>access</{$etiket}>",
-                default => "<{$etiket} delete=\"delete\"/>",
+                PortMode::Trunk => "<{$tag}>trunk</{$tag}>",
+                PortMode::Access => "<{$tag}>access</{$tag}>",
+                default => "<{$tag} delete=\"delete\"/>",
             };
         }
 

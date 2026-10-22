@@ -37,32 +37,32 @@ class DeviceClockSynchronizer
      */
     public function synchronize(NetworkSwitch $switch): array
     {
-        $sunucu = $switch->ntp_boot_server ?? ($switch->ntp_servers[0] ?? null);
+        $server = $switch->ntp_boot_server ?? ($switch->ntp_servers[0] ?? null);
 
-        if ($sunucu === null) {
+        if ($server === null) {
             throw NetconfException::transport(
                 'Cihazda NTP sunucusu tanımlı değil; saat neyle eşitlenecek belli değil.',
                 'missing-ntp-server',
             );
         }
 
-        $cikti = '';
+        $output = '';
 
-        $this->client->run($switch, function (NetconfSession $session) use ($sunucu, &$cikti): void {
-            $yanit = $session->rpc(
-                '<command format="text">set date ntp '.$this->escape($sunucu).'</command>'
+        $this->client->run($switch, function (NetconfSession $session) use ($server, &$output): void {
+            $response = $session->rpc(
+                '<command format="text">set date ntp '.$this->escape($server).'</command>'
             );
 
-            $cikti = trim((string) ($yanit->xpath('//*[local-name()="output"]')[0] ?? ''));
+            $output = trim((string) ($response->xpath('//*[local-name()="output"]')[0] ?? ''));
         });
 
         /*
          * ntpdate hatayı ÇIKTIDA bildirir, RPC hatası olarak değil:
          * "No route to host" gibi satırlar başarı sanılırdı.
          */
-        if ($this->failed($cikti)) {
+        if ($this->failed($output)) {
             throw $this->operations->failure(
-                NetconfException::transport($this->message($cikti), 'ntpdate'),
+                NetconfException::transport($this->message($output), 'ntpdate'),
                 'clock',
                 $switch->hostname,
                 $switch,
@@ -72,7 +72,7 @@ class DeviceClockSynchronizer
 
         $this->storeOffset($switch);
 
-        return ['diff' => $cikti, 'committed' => true, 'warnings' => []];
+        return ['diff' => $output, 'committed' => true, 'warnings' => []];
     }
 
     /**
@@ -82,18 +82,18 @@ class DeviceClockSynchronizer
     private function storeOffset(NetworkSwitch $switch): void
     {
         $this->client->run($switch, function (NetconfSession $session) use ($switch): void {
-            $yanit = $session->rpc('<get-system-uptime-information/>');
-            $metin = trim((string) (
-                $yanit->xpath('//*[local-name()="current-time"]/*[local-name()="date-time"]')[0] ?? ''
+            $response = $session->rpc('<get-system-uptime-information/>');
+            $text = trim((string) (
+                $response->xpath('//*[local-name()="current-time"]/*[local-name()="date-time"]')[0] ?? ''
             ));
 
-            if ($metin === '') {
+            if ($text === '') {
                 return;
             }
 
             $switch->forceFill([
                 'clock_offset_seconds' => (int) round(
-                    CarbonImmutable::parse($metin)->diffInSeconds(CarbonImmutable::now())
+                    CarbonImmutable::parse($text)->diffInSeconds(CarbonImmutable::now())
                 ),
                 'clock_checked_at' => now(),
             ])->save();
@@ -102,8 +102,8 @@ class DeviceClockSynchronizer
 
     private function failed(string $output): bool
     {
-        foreach (['no route to host', 'no server suitable', 'timed out', 'name resolution'] as $isaret) {
-            if (str_contains(mb_strtolower($output), $isaret)) {
+        foreach (['no route to host', 'no server suitable', 'timed out', 'name resolution'] as $mark) {
+            if (str_contains(mb_strtolower($output), $mark)) {
                 return true;
             }
         }
@@ -113,9 +113,9 @@ class DeviceClockSynchronizer
 
     private function message(string $output): string
     {
-        $satirlar = array_values(array_filter(array_map(trim(...), explode("\n", $output))));
+        $rows = array_values(array_filter(array_map(trim(...), explode("\n", $output))));
 
-        return 'Cihaz saati eşitleyemedi: '.($satirlar[0] ?? 'NTP sunucusuna ulaşılamadı.');
+        return 'Cihaz saati eşitleyemedi: '.($rows[0] ?? 'NTP sunucusuna ulaşılamadı.');
     }
 
     /**

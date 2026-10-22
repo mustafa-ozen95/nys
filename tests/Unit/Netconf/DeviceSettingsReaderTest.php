@@ -19,7 +19,7 @@ final class DeviceSettingsReaderTest extends TestCase
 {
     public function test_giris_hesaplari_cozumlenir(): void
     {
-        $ayarlar = $this->read(
+        $settings = $this->read(
             '<system><login>'
             .'<user><name>admin</name><uid>200</uid><class>super-user</class>'
             .'<authentication><encrypted-password>$1$abc$def</encrypted-password></authentication></user>'
@@ -28,15 +28,15 @@ final class DeviceSettingsReaderTest extends TestCase
             .'</login></system>'
         );
 
-        $this->assertCount(2, $ayarlar['login_users']);
+        $this->assertCount(2, $settings['login_users']);
 
-        $this->assertSame('admin', $ayarlar['login_users'][0]['name']);
-        $this->assertSame(200, $ayarlar['login_users'][0]['uid']);
-        $this->assertSame('super-user', $ayarlar['login_users'][0]['class']);
-        $this->assertTrue($ayarlar['login_users'][0]['has_password']);
+        $this->assertSame('admin', $settings['login_users'][0]['name']);
+        $this->assertSame(200, $settings['login_users'][0]['uid']);
+        $this->assertSame('super-user', $settings['login_users'][0]['class']);
+        $this->assertTrue($settings['login_users'][0]['has_password']);
 
-        $this->assertSame('Saha Ekibi', $ayarlar['login_users'][1]['full_name']);
-        $this->assertFalse($ayarlar['login_users'][1]['has_password']);
+        $this->assertSame('Saha Ekibi', $settings['login_users'][1]['full_name']);
+        $this->assertFalse($settings['login_users'][1]['has_password']);
     }
 
     /**
@@ -45,13 +45,13 @@ final class DeviceSettingsReaderTest extends TestCase
      */
     public function test_parola_ozeti_okunmaz(): void
     {
-        $ayarlar = $this->read(
+        $settings = $this->read(
             '<system><login><user><name>admin</name><class>super-user</class>'
             .'<authentication><encrypted-password>$1$gizli$ozet</encrypted-password></authentication>'
             .'</user></login></system>'
         );
 
-        $this->assertStringNotContainsString('gizli', json_encode($ayarlar) ?: '');
+        $this->assertStringNotContainsString('gizli', json_encode($settings) ?: '');
     }
 
     /**
@@ -60,32 +60,32 @@ final class DeviceSettingsReaderTest extends TestCase
      */
     public function test_sinifsiz_hesap_yetkisiz_sayilir(): void
     {
-        $ayarlar = $this->read('<system><login><user><name>eski</name></user></login></system>');
+        $settings = $this->read('<system><login><user><name>eski</name></user></login></system>');
 
-        $this->assertSame('unauthorized', $ayarlar['login_users'][0]['class']);
-        $this->assertNull($ayarlar['login_users'][0]['uid']);
+        $this->assertSame('unauthorized', $settings['login_users'][0]['class']);
+        $this->assertNull($settings['login_users'][0]['uid']);
     }
 
     public function test_sasi_alarmlari_cozumlenir(): void
     {
-        $ayarlar = $this->read(
+        $settings = $this->read(
             '<chassis><alarm>'
             .'<ethernet><link-down>red</link-down></ethernet>'
             .'<management-ethernet><link-down>ignore</link-down></management-ethernet>'
             .'</alarm></chassis>'
         );
 
-        $this->assertSame('red', $ayarlar['alarms']['ethernet']);
-        $this->assertSame('ignore', $ayarlar['alarms']['management']);
+        $this->assertSame('red', $settings['alarms']['ethernet']);
+        $this->assertSame('ignore', $settings['alarms']['management']);
     }
 
     public function test_yazilmamis_alarm_null_kalir(): void
     {
-        $ayarlar = $this->read('<system><host-name>test1</host-name></system>');
+        $settings = $this->read('<system><host-name>test1</host-name></system>');
 
-        $this->assertNull($ayarlar['alarms']['ethernet']);
-        $this->assertNull($ayarlar['alarms']['management']);
-        $this->assertSame([], $ayarlar['login_users']);
+        $this->assertNull($settings['alarms']['ethernet']);
+        $this->assertNull($settings['alarms']['management']);
+        $this->assertSame([], $settings['login_users']);
     }
 
     /**

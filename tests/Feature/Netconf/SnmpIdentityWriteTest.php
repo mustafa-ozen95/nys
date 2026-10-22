@@ -26,14 +26,14 @@ final class SnmpIdentityWriteTest extends TestCase
     public function test_ad_cihaza_yazilir_ve_commit_onaylanir(): void
     {
         $switch = $this->switch();
-        $transport = $this->fakeTransport($this->basariliAkis());
+        $transport = $this->fakeTransport($this->successfulFlow());
 
-        $sonuc = app(SnmpIdentityWriter::class)->rename($switch, 'test1');
+        $result = app(SnmpIdentityWriter::class)->rename($switch, 'test1');
 
-        $this->assertTrue($sonuc['committed']);
-        $this->assertStringContainsString('test1', $sonuc['diff']);
+        $this->assertTrue($result['committed']);
+        $this->assertStringContainsString('test1', $result['diff']);
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
         /*
          * Sıra güvenliğin kendisi: KİLİT, adayın temiz olduğunun kontrolü,
@@ -43,17 +43,17 @@ final class SnmpIdentityWriteTest extends TestCase
          * Özel aday (private) KULLANILMAZ: Junos onun içinde "commit
          * confirmed"i kabul etmiyor (test4'te ölçüldü).
          */
-        $this->assertStringContainsString('<lock-configuration/>', $yazilan);
-        $this->assertStringNotContainsString('<private/>', $yazilan);
-        $this->assertStringContainsString('<unlock-configuration/>', $yazilan);
-        $this->assertStringContainsString('<load-configuration action="merge" format="xml">', $yazilan);
-        $this->assertStringContainsString('<name>test1</name>', $yazilan);
-        $this->assertStringContainsString('compare="rollback" rollback="0"', $yazilan);
+        $this->assertStringContainsString('<lock-configuration/>', $written);
+        $this->assertStringNotContainsString('<private/>', $written);
+        $this->assertStringContainsString('<unlock-configuration/>', $written);
+        $this->assertStringContainsString('<load-configuration action="merge" format="xml">', $written);
+        $this->assertStringContainsString('<name>test1</name>', $written);
+        $this->assertStringContainsString('compare="rollback" rollback="0"', $written);
         // Ayrı bir "commit check" YAPILMAZ: doğrulamayı commit confirmed
         // zaten yapıyor ve cihazın en pahalı adımı o (ELS'te on saniyeyi
         // aşabilir).
-        $this->assertStringNotContainsString('<check/>', $yazilan);
-        $this->assertStringContainsString('<confirmed/><confirm-timeout>2</confirm-timeout>', $yazilan);
+        $this->assertStringNotContainsString('<check/>', $written);
+        $this->assertStringContainsString('<confirmed/><confirm-timeout>2</confirm-timeout>', $written);
 
         // İki oturum açıldı ve ikisi de kapandı.
         $this->assertSame(2, $transport->closeCount);
@@ -74,13 +74,13 @@ final class SnmpIdentityWriteTest extends TestCase
             $this->ok(),                 // unlock-configuration
         ]);
 
-        $sonuc = app(SnmpIdentityWriter::class)->rename($switch, 'test1');
+        $result = app(SnmpIdentityWriter::class)->rename($switch, 'test1');
 
-        $this->assertFalse($sonuc['committed']);
-        $this->assertSame('', $sonuc['diff']);
+        $this->assertFalse($result['committed']);
+        $this->assertSame('', $result['diff']);
 
-        $yazilan = implode("\n", $transport->written);
-        $this->assertStringNotContainsString('confirm-timeout', $yazilan);
+        $written = implode("\n", $transport->written);
+        $this->assertStringNotContainsString('confirm-timeout', $written);
         $this->assertSame(1, $transport->closeCount);
     }
 
@@ -90,14 +90,14 @@ final class SnmpIdentityWriteTest extends TestCase
     public function test_cihaz_uyarisi_isi_durdurmaz(): void
     {
         $switch = $this->switch();
-        $akis = $this->basariliAkis();
-        $akis[1] = $this->warning('uncommitted changes will be discarded on exit');
-        $this->fakeTransport($akis);
+        $flow = $this->successfulFlow();
+        $flow[1] = $this->warning('uncommitted changes will be discarded on exit');
+        $this->fakeTransport($flow);
 
-        $sonuc = app(SnmpIdentityWriter::class)->rename($switch, 'test1');
+        $result = app(SnmpIdentityWriter::class)->rename($switch, 'test1');
 
-        $this->assertTrue($sonuc['committed']);
-        $this->assertContains('uncommitted changes will be discarded on exit', $sonuc['warnings']);
+        $this->assertTrue($result['committed']);
+        $this->assertContains('uncommitted changes will be discarded on exit', $result['warnings']);
     }
 
     /**
@@ -127,11 +127,11 @@ final class SnmpIdentityWriteTest extends TestCase
             $this->assertStringContainsString('kaydedilmemiş', $exception->getMessage());
         }
 
-        $yazilan = implode("\n", $transport->written);
+        $written = implode("\n", $transport->written);
 
-        $this->assertStringNotContainsString('<load-configuration', $yazilan, 'Kirli adaya yükleme yapıldı.');
-        $this->assertStringNotContainsString('confirm-timeout', $yazilan, 'Kirli adayda commit atıldı.');
-        $this->assertStringContainsString('<unlock-configuration/>', $yazilan, 'Kilit bırakılmadı.');
+        $this->assertStringNotContainsString('<load-configuration', $written, 'Kirli adaya yükleme yapıldı.');
+        $this->assertStringNotContainsString('confirm-timeout', $written, 'Kirli adayda commit atıldı.');
+        $this->assertStringContainsString('<unlock-configuration/>', $written, 'Kilit bırakılmadı.');
     }
 
     public function test_cihaz_hatasi_istisnaya_cevrilir(): void
@@ -153,7 +153,7 @@ final class SnmpIdentityWriteTest extends TestCase
     public function test_panelden_yazma_yetkisi_olan_kullanici_yazabilir(): void
     {
         $switch = $this->switch();
-        $this->fakeTransport($this->basariliAkis());
+        $this->fakeTransport($this->successfulFlow());
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->put(route('switches.snmp-identity', $switch), ['name' => 'test1'])
@@ -174,7 +174,7 @@ final class SnmpIdentityWriteTest extends TestCase
     public function test_duzenleme_yetkisi_cihaza_yazmaya_yetmez(): void
     {
         $switch = $this->switch();
-        $transport = $this->fakeTransport($this->basariliAkis());
+        $transport = $this->fakeTransport($this->successfulFlow());
 
         $this->actingAs($this->operator(['view', 'update']))
             ->put(route('switches.snmp-identity', $switch), ['name' => 'test1'])
@@ -186,7 +186,7 @@ final class SnmpIdentityWriteTest extends TestCase
     public function test_gecersiz_ad_cihaza_gitmez(): void
     {
         $switch = $this->switch();
-        $transport = $this->fakeTransport($this->basariliAkis());
+        $transport = $this->fakeTransport($this->successfulFlow());
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->put(route('switches.snmp-identity', $switch), ['name' => 'kotu ad; commit'])
@@ -201,7 +201,7 @@ final class SnmpIdentityWriteTest extends TestCase
     public function test_netconf_kimligi_olmayan_switche_yazilamaz(): void
     {
         $switch = NetworkSwitch::factory()->create(['management_ip' => '198.18.20.196']);
-        $this->fakeTransport($this->basariliAkis());
+        $this->fakeTransport($this->successfulFlow());
 
         $this->actingAs($this->operator(['view', 'configure']))
             ->put(route('switches.snmp-identity', $switch), ['name' => 'test2'])
@@ -252,7 +252,7 @@ final class SnmpIdentityWriteTest extends TestCase
      *
      * @return list<string>
      */
-    private function basariliAkis(): array
+    private function successfulFlow(): array
     {
         return [
             $this->hello(),

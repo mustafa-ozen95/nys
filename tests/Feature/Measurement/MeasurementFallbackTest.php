@@ -88,12 +88,12 @@ final class MeasurementFallbackTest extends TestCase
         $resolver = app('App\Services\Measurement\MeasurementResolver');
 
         (new SyncSwitchStatusJob($switch->id))->handle($resolver);
-        $ilkTur = count(Http::recorded());
+        $firstRound = count(Http::recorded());
 
         (new SyncSwitchStatusJob($switch->id))->handle($resolver);
 
         // İkinci turda izleme sistemine hiç gidilmemeli: devre kesik.
-        $this->assertSame($ilkTur, count(Http::recorded()));
+        $this->assertSame($firstRound, count(Http::recorded()));
     }
 
     public function test_port_olcumleri_cihazdan_okunur_ve_ornek_saklanir(): void
@@ -217,15 +217,15 @@ final class MeasurementFallbackTest extends TestCase
     public function test_suren_ariza_saatte_bir_kez_gunluge_yazilir(): void
     {
         $switch = $this->switch();
-        $kesici = app(MeasurementCircuit::class);
+        $cutter = app(MeasurementCircuit::class);
 
         $this->assertTrue(
-            $kesici->shouldReport(MeasurementSource::Zabbix, $switch),
+            $cutter->shouldReport(MeasurementSource::Zabbix, $switch),
             'İlk arıza yazılmalı.',
         );
 
         $this->assertFalse(
-            $kesici->shouldReport(MeasurementSource::Zabbix, $switch),
+            $cutter->shouldReport(MeasurementSource::Zabbix, $switch),
             'Aynı arıza tekrar yazılmamalı.',
         );
 
@@ -235,17 +235,17 @@ final class MeasurementFallbackTest extends TestCase
          * öbürününki olmayabilir. Başarı sınırı sıfırlasaydı uyarı her turda
          * yeniden yazılırdı.
          */
-        $kesici->recordSuccess(MeasurementSource::Zabbix, $switch);
+        $cutter->recordSuccess(MeasurementSource::Zabbix, $switch);
 
         $this->assertFalse(
-            $kesici->shouldReport(MeasurementSource::Zabbix, $switch),
+            $cutter->shouldReport(MeasurementSource::Zabbix, $switch),
             'Başarılı bir okuma saatlik sınırı sıfırlamamalı.',
         );
 
         $this->travel(61)->minutes();
 
         $this->assertTrue(
-            $kesici->shouldReport(MeasurementSource::Zabbix, $switch),
+            $cutter->shouldReport(MeasurementSource::Zabbix, $switch),
             'Saat dolunca arızanın sürdüğü yeniden yazılmalı.',
         );
     }

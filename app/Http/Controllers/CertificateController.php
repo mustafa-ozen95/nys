@@ -27,32 +27,32 @@ class CertificateController extends Controller implements HasMiddleware
 {
     public function __construct(
         private SettingsCatalog $catalog,
-        private CertificateType $sertifika,
+        private CertificateType $certificate,
     ) {}
 
     /** @return array<int, Middleware> */
     public static function middleware(): array
     {
-        return [new Middleware('can:manageSertifika')];
+        return [new Middleware('can:manageCertificate')];
     }
 
     public function index(): View
     {
         return view('settings.certificate', [
-            'sections' => $this->catalog->tabs('sertifika'),
-            'durum' => $this->sertifika->durum(),
-            'kayitlar' => $this->sertifika->kayitlar(),
-            'islem' => $this->sertifika->sonIslem(),
-            'yayilma' => $this->sertifika->yayilmaDurumu(),
-            'bekliyor' => $this->sertifika->istekBekliyorMu(),
+            'sections' => $this->catalog->tabs('certificate'),
+            'durum' => $this->certificate->status(),
+            'kayitlar' => $this->certificate->records(),
+            'islem' => $this->certificate->lastOperation(),
+            'yayilma' => $this->certificate->propagationStatus(),
+            'bekliyor' => $this->certificate->isRequestPending(),
         ]);
     }
 
     /** Yeni tur: sunucu ACME siparişini açar ve TXT kayıtlarını yazar. */
-    public function baslat(): RedirectResponse
+    public function start(): RedirectResponse
     {
-        if (! $this->sertifika->istekBirak('baslat')) {
-            return $this->iletilemedi();
+        if (! $this->certificate->requestLeave('baslat')) {
+            return $this->undeliverable();
         }
 
         return back()->with('status', 'Tur başlatıldı. Kayıtlar birkaç saniye içinde burada görünecek.');
@@ -64,21 +64,21 @@ class CertificateController extends Controller implements HasMiddleware
      * Yayılmamış bir kayıtla sağlayıcıya gitmek başarısız bir deneme demek;
      * tur baştan başlar ve kullanıcı sebebini anlamaz.
      */
-    public function tamamla(): RedirectResponse
+    public function complete(): RedirectResponse
     {
-        $eksik = collect($this->sertifika->yayilmaDurumu())
+        $missing = collect($this->certificate->propagationStatus())
             ->reject(fn (array $k): bool => $k['yayildi'])
             ->pluck('ad')
             ->all();
 
-        if ($eksik !== []) {
+        if ($missing !== []) {
             return back()->withErrors([
-                'sertifika' => 'Şu kayıtlar DNS\'te henüz görünmüyor: '.implode(', ', $eksik),
+                'sertifika' => 'Şu kayıtlar DNS\'te henüz görünmüyor: '.implode(', ', $missing),
             ]);
         }
 
-        if (! $this->sertifika->istekBirak('tamamla')) {
-            return $this->iletilemedi();
+        if (! $this->certificate->requestLeave('tamamla')) {
+            return $this->undeliverable();
         }
 
         return back()->with('status', 'Sertifika alınıyor. Bu işlem bir dakikayı bulabilir.');
@@ -90,7 +90,7 @@ class CertificateController extends Controller implements HasMiddleware
      * sahibi yanlışsa (ör. root) sekme tam olarak böyle sessizce hiçbir şey
      * yapmazdı.
      */
-    private function iletilemedi(): RedirectResponse
+    private function undeliverable(): RedirectResponse
     {
         return back()->withErrors([
             'sertifika' => 'İstek sunucuya iletilemedi: panel istek dizinine (/etc/dc/sertifika-panel) yazamıyor. Sunucu yöneticisine bildirin.',

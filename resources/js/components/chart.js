@@ -9,55 +9,55 @@ import { http } from '../lib/http.js';
  */
 
 let charts = [];
-let aktifUc = null;
-let aktifAralik = null;
-let istek = null;
+let activeEndpoint = null;
+let activeInterval = null;
+let request = null;
 
-async function ciz(endpoint, range) {
-    const panel = $('[data-trafik-paneli]');
-    const durum = $('[data-trafik-durumu]');
-    const alan = $('[data-trafik-alani]');
+async function draw(endpoint, range) {
+    const panel = $('[data-traffic-panel]');
+    const status = $('[data-traffic-status]');
+    const field = $('[data-traffic-field]');
 
-    if (!panel || !alan) {
+    if (!panel || !field) {
         return;
     }
 
-    istek?.abort();
-    istek = new AbortController();
+    request?.abort();
+    request = new AbortController();
 
-    durum.hidden = false;
-    durum.textContent = 'Yükleniyor…';
-    alan.hidden = true;
+    status.hidden = false;
+    status.textContent = 'Yükleniyor…';
+    field.hidden = true;
 
-    let veri;
+    let data;
 
     try {
-        veri = await http.get(`${endpoint}?range=${encodeURIComponent(range)}`, { signal: istek.signal, silent: true });
+        data = await http.get(`${endpoint}?range=${encodeURIComponent(range)}`, { signal: request.signal, silent: true });
     } catch (error) {
         if (error.name === 'AbortError') {
             return;
         }
 
-        durum.textContent = 'Trafik verisi alınamadı.';
-        temizle();
+        status.textContent = 'Trafik verisi alınamadı.';
+        clean();
 
         return;
     }
 
-    if (veri.labels.length === 0) {
-        durum.textContent = 'Bu aralıkta veri yok.';
-        temizle();
+    if (data.labels.length === 0) {
+        status.textContent = 'Bu aralıkta veri yok.';
+        clean();
 
         return;
     }
 
-    durum.hidden = true;
-    alan.hidden = false;
-    render(veri);
+    status.hidden = true;
+    field.hidden = false;
+    render(data);
 }
 
-function temizle() {
-    charts.forEach((grafik) => grafik.destroy());
+function clean() {
+    charts.forEach((chart) => chart.destroy());
     charts = [];
 }
 
@@ -66,87 +66,87 @@ function temizle() {
  * diğerinde de aynı noktayı gösterir. Böylece gelen ve giden değeri aynı
  * anda okunur.
  */
-function esitle(kaynak, sira) {
-    charts.forEach((grafik) => {
-        if (grafik === kaynak) {
+function sync(source, order) {
+    charts.forEach((chart) => {
+        if (chart === source) {
             return;
         }
 
-        if (sira === null) {
-            grafik.setActiveElements([]);
-            grafik.tooltip.setActiveElements([], { x: 0, y: 0 });
+        if (order === null) {
+            chart.setActiveElements([]);
+            chart.tooltip.setActiveElements([], { x: 0, y: 0 });
         } else {
-            const nokta = { datasetIndex: 0, index: sira };
-            const eleman = grafik.getDatasetMeta(0).data[sira];
+            const point = { datasetIndex: 0, index: order };
+            const element = chart.getDatasetMeta(0).data[order];
 
-            if (!eleman) {
+            if (!element) {
                 return;
             }
 
-            grafik.setActiveElements([nokta]);
-            grafik.tooltip.setActiveElements([nokta], { x: eleman.x, y: eleman.y });
+            chart.setActiveElements([point]);
+            chart.tooltip.setActiveElements([point], { x: element.x, y: element.y });
         }
 
-        grafik.update('none');
+        chart.update('none');
     });
 }
 
 /** Sunucunun verdiği ton adını tasarım token'ına çevirir. */
-function tonRengi(stil, ton) {
-    const token = ton === 'accent' ? '--color-accent' : `--color-${ton}-fg`;
+function toneColor(style, tone) {
+    const token = tone === 'accent' ? '--color-accent' : `--color-${tone}-fg`;
 
-    return stil.getPropertyValue(token).trim();
+    return style.getPropertyValue(token).trim();
 }
 
 /** Sunucunun seçtiği ölçeğe göre okunabilir etiket. */
-function olcekli(deger, olcek) {
-    const bolunmus = deger / olcek.divisor;
+function scaled(value, scale) {
+    const split = value / scale.divisor;
 
     // Küçük değerlerde basamak açılmazsa eksen aynı etiketi tekrarlıyor
     // ("1 bps, 1 bps"). Sondaki sıfırlar yazılmaz.
-    const basamak = bolunmus >= 100 ? 0 : bolunmus >= 10 ? 1 : 2;
+    const digit = split >= 100 ? 0 : split >= 10 ? 1 : 2;
 
-    return `${bolunmus.toLocaleString('tr-TR', {
+    return `${split.toLocaleString('tr-TR', {
         minimumFractionDigits: 0,
-        maximumFractionDigits: basamak,
-    })} ${olcek.unit}`;
+        maximumFractionDigits: digit,
+    })} ${scale.unit}`;
 }
 
-function render(veri) {
-    const stil = getComputedStyle(document.documentElement);
-    const ikincil = stil.getPropertyValue('--color-text-muted').trim();
-    const cizgi = stil.getPropertyValue('--color-line').trim();
-    const olcek = veri.scale;
+function render(data) {
+    const style = getComputedStyle(document.documentElement);
+    const secondary = style.getPropertyValue('--color-text-muted').trim();
+    const line = style.getPropertyValue('--color-line').trim();
+    const scale = data.scale;
 
-    temizle();
+    clean();
 
     // Her seri kendi grafiğinde: eksenler bağımsız olunca küçük olan da okunur.
-    charts = veri.series.map((seri, sira) => {
-        const tuval = $(`[data-trafik-tuvali="${sira}"]`);
-        const baslik = $(`[data-trafik-basligi="${sira}"]`);
+    charts = data.series.map((series, order) => {
+        const canvas = $(`[data-traffic-canvas="${order}"]`);
+        const header = $(`[data-traffic-title="${order}"]`);
 
-        if (!tuval) {
+        if (!canvas) {
             return null;
         }
 
-        if (baslik) {
-            baslik.textContent = seri.label;
+        if (header) {
+            header.textContent = series.label;
         }
 
-        const renk = tonRengi(stil, seri.tone);
+        const color = toneColor(style, series.tone);
 
-        return new window.Chart(tuval, {
+        return new window.Chart(canvas, {
             type: 'line',
             data: {
-                labels: veri.labels.map((clock) => new Date(clock * 1000).toLocaleTimeString('tr-TR', {
+                labels: data.labels.map((clock) => new Date(clock * 1000).toLocaleTimeString('tr-TR', {
                     hour: '2-digit',
                     minute: '2-digit',
                 })),
                 datasets: [{
-                    label: seri.label,
-                    data: seri.values,
-                    borderColor: renk,
-                    backgroundColor: renk,
+                    label: series.label,
+                    data: series.values,
+                    borderColor: color,
+                    backgroundColor: color,
                     borderWidth: 1.6,
                     pointRadius: 0,
                     tension: 0.25,
@@ -165,19 +165,19 @@ function render(veri) {
                 resizeDelay: 100,
                 animation: false,
                 interaction: { mode: 'index', intersect: false },
-                onHover: (olay, elemanlar, grafik) => {
-                    esitle(grafik, elemanlar.length ? elemanlar[0].index : null);
+                onHover: (event, elements, chart) => {
+                    sync(chart, elements.length ? elements[0].index : null);
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: ikincil, maxTicksLimit: 4 } },
+                    x: { grid: { display: false }, ticks: { color: secondary, maxTicksLimit: 4 } },
                     y: {
                         beginAtZero: true,
                         min: 0,
-                        grid: { color: cizgi },
+                        grid: { color: line },
                         ticks: {
-                            color: ikincil,
+                            color: secondary,
                             maxTicksLimit: 3,
-                            callback: (deger) => olcekli(deger, olcek),
+                            callback: (value) => scaled(value, scale),
                         },
                     },
                 },
@@ -186,7 +186,7 @@ function render(veri) {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (baglam) => `${baglam.dataset.label}: ${olcekli(baglam.parsed.y, olcek)}`,
+                            label: (context) => `${context.dataset.label}: ${scaled(context.parsed.y, scale)}`,
                         },
                     },
                 },
@@ -195,34 +195,34 @@ function render(veri) {
     }).filter(Boolean);
 
     // Tarayıcı testleri iki grafiğin eşleşip eşleşmediğini buradan okur.
-    window.__trafikGrafikleri = charts;
+    window.__trafficCharts = charts;
 }
 
 /** Satırı seçip trafik panelini açar. */
-function ac(satir) {
-    const panel = $('[data-trafik-paneli]');
+function open(row) {
+    const panel = $('[data-traffic-panel]');
 
-    $$('[data-port-trafik]').forEach((s) => s.removeAttribute('aria-selected'));
-    satir.setAttribute('aria-selected', 'true');
+    $$('[data-port-traffic]').forEach((s) => s.removeAttribute('aria-selected'));
+    row.setAttribute('aria-selected', 'true');
 
-    aktifUc = satir.dataset.portTrafik;
-    aktifAralik ??= $('[data-trafik-araligi]')?.dataset.trafikAraligi;
+    activeEndpoint = row.dataset.portTraffic;
+    activeInterval ??= $('[data-traffic-range]')?.dataset.trafficRange;
 
-    $('[data-trafik-baslik]').textContent = satir.dataset.portAdi;
+    $('[data-traffic-header]').textContent = row.dataset.portName;
 
-    const duzenle = $('[data-port-duzenle]');
+    const edit = $('[data-port-edit]');
 
-    if (duzenle) {
-        duzenle.dataset.modalOpen = `port-${satir.dataset.portKimlik}`;
+    if (edit) {
+        edit.dataset.modalOpen = `port-${row.dataset.portId}`;
     }
 
     panel.hidden = false;
 
-    ciz(aktifUc, aktifAralik);
+    draw(activeEndpoint, activeInterval);
 }
 
 export function init() {
-    const panel = $('[data-trafik-paneli]');
+    const panel = $('[data-traffic-panel]');
 
     if (!panel) {
         return;
@@ -234,39 +234,39 @@ export function init() {
      * sayfa geçişinde yeni bir düğüm olduğu için işaret düğümün üstünde
      * tutulur — aynı düğüme iki kez bağlanmasın.
      */
-    if (panel.dataset.cikisBagli !== undefined) {
+    if (panel.dataset.logoutBound !== undefined) {
         return;
     }
 
-    panel.dataset.cikisBagli = '';
+    panel.dataset.logoutBound = '';
 
     panel.addEventListener('mouseleave', () => {
-        charts.forEach((grafik) => {
-            grafik.setActiveElements([]);
-            grafik.tooltip.setActiveElements([], { x: 0, y: 0 });
-            grafik.update('none');
+        charts.forEach((chart) => {
+            chart.setActiveElements([]);
+            chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+            chart.update('none');
         });
     });
 
     // Sunucu bir portu seçili işaretlediyse (genel bakıştan gelindiğinde)
     // panel doğrudan açılır.
-    const otomatik = $('[data-port-otomatik]');
+    const auto = $('[data-port-auto]');
 
-    if (otomatik) {
-        ac(otomatik);
-        otomatik.scrollIntoView({ block: 'center' });
+    if (auto) {
+        open(auto);
+        auto.scrollIntoView({ block: 'center' });
     }
 
-    on('click', '[data-port-trafik]', (event, satir) => ac(satir));
+    on('click', '[data-port-traffic]', (event, row) => open(row));
 
-    on('click', '[data-trafik-araligi]', (event, dugme) => {
-        $$('[data-trafik-araligi]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-        dugme.setAttribute('aria-pressed', 'true');
+    on('click', '[data-traffic-range]', (event, button) => {
+        $$('[data-traffic-range]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        button.setAttribute('aria-pressed', 'true');
 
-        aktifAralik = dugme.dataset.trafikAraligi;
+        activeInterval = button.dataset.trafficRange;
 
-        if (aktifUc) {
-            ciz(aktifUc, aktifAralik);
+        if (activeEndpoint) {
+            draw(activeEndpoint, activeInterval);
         }
     });
 }

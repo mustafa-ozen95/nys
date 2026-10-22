@@ -36,17 +36,17 @@ final class NeighborFormTest extends TestCase
             ->for(BgpGroup::factory()->for($switch, 'switch'), 'group')
             ->create(['address' => '198.18.8.38', 'hold_time' => null, 'multihop' => false]);
 
-        $cikti = $this->actingAs($this->operator())
+        $output = $this->actingAs($this->operator())
             ->get(route('switches.bgp', $switch))
             ->assertOk()
             ->getContent();
 
-        $this->assertDoesNotMatchRegularExpression('/<details class="fieldgroup"\s+open/', $cikti);
+        $this->assertDoesNotMatchRegularExpression('/<details class="fieldgroup"\s+open/', $output);
 
         /* KRİTİK: katlamak kaldırmak değildir; alan gönderilmeye devam eder. */
-        $this->assertStringContainsString('name="hold_time"', $cikti);
-        $this->assertStringContainsString('name="multihop"', $cikti);
-        $this->assertStringContainsString('name="authentication_key"', $cikti);
+        $this->assertStringContainsString('name="hold_time"', $output);
+        $this->assertStringContainsString('name="multihop"', $output);
+        $this->assertStringContainsString('name="authentication_key"', $output);
     }
 
     /**
@@ -63,12 +63,12 @@ final class NeighborFormTest extends TestCase
             ->for(BgpGroup::factory()->for($switch, 'switch'), 'group')
             ->create(['address' => '198.18.8.38', 'hold_time' => 30]);
 
-        $cikti = $this->actingAs($this->operator())
+        $output = $this->actingAs($this->operator())
             ->get(route('switches.bgp', $switch))
             ->assertOk()
             ->getContent();
 
-        $this->assertMatchesRegularExpression('/<details class="fieldgroup"\s+open\s*>/', $cikti);
+        $this->assertMatchesRegularExpression('/<details class="fieldgroup"\s+open\s*>/', $output);
     }
 
     private function operator(): User

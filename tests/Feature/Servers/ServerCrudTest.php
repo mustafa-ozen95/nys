@@ -142,12 +142,12 @@ final class ServerCrudTest extends TestCase
             'connection_password' => 'onceki-sunucu-parolasi',
         ]);
 
-        foreach (['ip_address' => '198.51.100.10', 'connection_port' => 2222] as $alan => $deger) {
+        foreach (['ip_address' => '198.51.100.10', 'connection_port' => 2222] as $alan => $value) {
             $this->actingAs($this->operator())
                 ->put(route('servers.update', $server), $this->payload([
                     'short_name' => $server->short_name,
                     'connection_password' => '',
-                    $alan => $deger,
+                    $alan => $value,
                 ]))
                 ->assertSessionHasErrors('connection_password');
         }

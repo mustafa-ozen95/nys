@@ -55,7 +55,7 @@ class RouteAssignmentService
             return [];
         }
 
-        $yapilanlar = [];
+        $done = [];
 
         /*
          * Önce eski satır çıkarılır. Ters sırada yapılsaydı, aynı hedefin
@@ -63,7 +63,7 @@ class RouteAssignmentService
          * trafiği ikiye bölerdi.
          */
         if ($previous['switch_id'] !== null) {
-            $yapilanlar = [...$yapilanlar, ...$this->remove($block, $previous['switch_id'])];
+            $done = [...$done, ...$this->remove($block, $previous['switch_id'])];
         }
 
         if ($current['switch_id'] !== null && $current['next_hop'] !== null) {
@@ -71,11 +71,11 @@ class RouteAssignmentService
 
             if ($switch?->netconfCredential !== null) {
                 $this->routes->create($switch, $block->network, $block->prefix_length, ['next_hops' => [$current['next_hop']]]);
-                $yapilanlar[] = "{$block->cidr} → {$current['next_hop']} ({$switch->hostname})";
+                $done[] = "{$block->cidr} → {$current['next_hop']} ({$switch->hostname})";
             }
         }
 
-        return $yapilanlar;
+        return $done;
     }
 
     /**
@@ -88,9 +88,9 @@ class RouteAssignmentService
      */
     public function detach(AddressBlock $block): array
     {
-        $onceki = $this->fingerprint($block);
+        $previous = $this->fingerprint($block);
 
-        return $onceki['switch_id'] === null ? [] : $this->remove($block, $onceki['switch_id']);
+        return $previous['switch_id'] === null ? [] : $this->remove($block, $previous['switch_id']);
     }
 
     /**

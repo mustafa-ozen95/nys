@@ -29,11 +29,11 @@ final class NotificationFlowTest extends TestCase
     public function test_tamamlanan_yazma_herkese_gorunur(): void
     {
         $switch = $this->switch();
-        $baskasi = User::factory()->create();
+        $other = User::factory()->create();
 
         SwitchWriteJob::create([
             'switch_id' => $switch->id,
-            'user_id' => $baskasi->id,
+            'user_id' => $other->id,
             'summary' => 'ge-0/0/5 portu yazıldı',
             'status' => SwitchWriteStatus::Completed,
             'diff' => '[edit interfaces ge-0/0/5] + speed 100m;',
@@ -45,7 +45,7 @@ final class NotificationFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('items.0.title', 'ge-0/0/5 portu yazıldı')
             ->assertJsonPath('items.0.label', 'Cihaza yazıldı')
-            ->assertJsonPath('items.0.actor', $baskasi->name)
+            ->assertJsonPath('items.0.actor', $other->name)
             ->assertJsonPath('unseen', 1);
     }
 
@@ -74,14 +74,14 @@ final class NotificationFlowTest extends TestCase
             'summary' => 'bu yazma hatası akışta TEKRARLANMAZ',
         ]);
 
-        $yanit = $this->actingAs($this->operator())
+        $response = $this->actingAs($this->operator())
             ->getJson(route('notifications.index'))
             ->assertOk();
 
-        $basliklar = collect($yanit->json('items'))->pluck('title');
+        $headers = collect($response->json('items'))->pluck('title');
 
-        $this->assertContains('NETCONF eşitlemesi', $basliklar);
-        $this->assertNotContains('bu yazma hatası akışta TEKRARLANMAZ', $basliklar);
+        $this->assertContains('NETCONF eşitlemesi', $headers);
+        $this->assertNotContains('bu yazma hatası akışta TEKRARLANMAZ', $headers);
     }
 
     /**
@@ -89,10 +89,10 @@ final class NotificationFlowTest extends TestCase
      */
     public function test_gorulemeyen_switchin_olayi_sizmaz(): void
     {
-        $gizli = NetworkSwitch::factory()->create(['hostname' => 'gizli-switch']);
+        $hidden = NetworkSwitch::factory()->create(['hostname' => 'gizli-switch']);
 
         SwitchWriteJob::create([
-            'switch_id' => $gizli->id,
+            'switch_id' => $hidden->id,
             'summary' => 'gizli işlem',
             'status' => SwitchWriteStatus::Completed,
             'finished_at' => now(),
@@ -101,11 +101,11 @@ final class NotificationFlowTest extends TestCase
         // Switch görme yetkisi OLMAYAN kullanıcı hiçbir olayı görmez.
         $user = User::factory()->create();
 
-        $basliklar = collect(
+        $headers = collect(
             $this->actingAs($user->fresh())->getJson(route('notifications.index'))->json('items'),
         )->pluck('title');
 
-        $this->assertNotContains('gizli işlem', $basliklar);
+        $this->assertNotContains('gizli işlem', $headers);
     }
 
     /**
@@ -247,7 +247,7 @@ final class NotificationFlowTest extends TestCase
             ->get(route('overview'))
             ->assertOk()
             ->assertSee('Tümünü okundu işaretle')
-            ->assertSee('data-bildirim-tumu', false);
+            ->assertSee('data-notification-all', false);
     }
 
     private function switch(): NetworkSwitch

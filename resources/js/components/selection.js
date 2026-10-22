@@ -10,41 +10,41 @@ import { on } from '../lib/dom.js';
  * Doğrulama burada yapılmaz — değerin geçerliliğine sunucu karar verir.
  */
 
-const ELLE = '__elle__';
+const MANUAL = '__elle__';
 
-function uygula(kutu, odakla = false) {
-    const liste = kutu?.querySelector('[data-secim-liste]');
-    const elle = kutu?.querySelector('[data-secim-elle]');
+function apply(box, focusOn = false) {
+    const list = box?.querySelector('[data-selection-list]');
+    const manual = box?.querySelector('[data-selection-manual]');
 
-    if (!liste || !elle) {
+    if (!list || !manual) {
         return;
     }
 
-    const ad = liste.dataset.secimListe;
-    const acik = liste.value === ELLE;
+    const name = list.dataset.selectionList;
+    const open = list.value === MANUAL;
 
-    elle.hidden = !acik;
+    manual.hidden = !open;
 
-    if (acik) {
-        liste.removeAttribute('name');
-        elle.name = ad;
+    if (open) {
+        list.removeAttribute('name');
+        manual.name = name;
 
-        if (odakla) {
-            elle.focus();
+        if (focusOn) {
+            manual.focus();
         }
 
         return;
     }
 
-    liste.name = ad;
-    elle.removeAttribute('name');
+    list.name = name;
+    manual.removeAttribute('name');
 
     // Kapanan kutu değerini bırakmaz: sonraki açılışta eski değer kalmasın.
-    elle.value = '';
+    manual.value = '';
 }
 
 export function init() {
-    on('change', '[data-secim-liste]', (event, liste) => {
-        uygula(liste.closest('[data-secim]'), true);
+    on('change', '[data-selection-list]', (event, list) => {
+        apply(list.closest('[data-selection]'), true);
     });
 }

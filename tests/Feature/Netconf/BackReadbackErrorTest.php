@@ -22,14 +22,14 @@ use Tests\TestCase;
 /**
  * Yazmayı yapıp geri okumada patlayan sınama yazıcısı.
  */
-final class OkumasiDusenYazici
+final class ReadDroppedWriter
 {
     public function __construct(private ConfigurationWriter $writer) {}
 
     /**
      * @return array{diff: string, committed: bool, warnings: list<string>}
      */
-    public function yaz(NetworkSwitch $switch): array
+    public function write(NetworkSwitch $switch): array
     {
         return $this->writer->apply(
             $switch,
@@ -56,17 +56,17 @@ final class BackReadbackErrorTest extends TestCase
         $device = new FakeJunosDevice;
         $this->app->instance(NetconfTransport::class, $device);
 
-        $kayit = SwitchWriteJob::create([
+        $record = SwitchWriteJob::create([
             'switch_id' => $switch->id,
             'summary' => 'sınama yazması',
             'status' => SwitchWriteStatus::Queued,
         ]);
 
-        (new ApplySwitchWriteJob($kayit, $switch, OkumasiDusenYazici::class, 'yaz'))->handle();
+        (new ApplySwitchWriteJob($record, $switch, ReadDroppedWriter::class, 'write'))->handle();
 
-        $kayit->refresh();
-        $this->assertSame(SwitchWriteStatus::Completed, $kayit->status);
-        $this->assertStringContainsString(ConfigurationWriter::READBACK_WARNING, (string) $kayit->message);
+        $record->refresh();
+        $this->assertSame(SwitchWriteStatus::Completed, $record->status);
+        $this->assertStringContainsString(ConfigurationWriter::READBACK_WARNING, (string) $record->message);
         $this->assertStringContainsString('<confirmed/>', implode('', $device->written));
 
         $this->assertSame(1, ActivityLog::query()->where('action', 'configured')->count());
@@ -78,18 +78,18 @@ final class BackReadbackErrorTest extends TestCase
         $switch = $this->switch();
         $this->app->instance(NetconfTransport::class, new FakeJunosDevice);
 
-        $sonuc = app(ConfigurationWriter::class)->applyOn(
+        $result = app(ConfigurationWriter::class)->applyOn(
             NetconfTarget::fromSwitch($switch),
             '<configuration><system/></configuration>',
             'deneme',
             function (NetconfSession $session): void {
                 throw new \RuntimeException('okuma düştü');
             },
-            geriAlinabilir: false,
+            revertible: false,
         );
 
-        $this->assertTrue($sonuc['committed']);
-        $this->assertStringContainsString(ConfigurationWriter::READBACK_WARNING, implode(' ', $sonuc['warnings']));
+        $this->assertTrue($result['committed']);
+        $this->assertStringContainsString(ConfigurationWriter::READBACK_WARNING, implode(' ', $result['warnings']));
     }
 
     private function switch(): NetworkSwitch

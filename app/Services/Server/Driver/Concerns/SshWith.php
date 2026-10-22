@@ -20,17 +20,17 @@ trait SshWith
 {
     private int $timeout = 15;
 
-    public function ac(Server $sunucu, string $kullanici, string $parola): ServerSession
+    public function open(Server $server, string $user, string $password): ServerSession
     {
-        $ssh = $this->baglan($sunucu, $kullanici, $parola);
+        $ssh = $this->connect($server, $user, $password);
 
-        return new ServerSession($ssh, $kullanici, $parola, static fn () => $ssh->disconnect());
+        return new ServerSession($ssh, $user, $password, static fn () => $ssh->disconnect());
     }
 
-    public function dogrula(Server $sunucu, string $kullanici, string $parola): bool
+    public function verify(Server $server, string $user, string $password): bool
     {
         try {
-            $this->baglan($sunucu, $kullanici, $parola)->disconnect();
+            $this->connect($server, $user, $password)->disconnect();
 
             return true;
         } catch (RotationError) {
@@ -38,18 +38,18 @@ trait SshWith
         }
     }
 
-    private function baglan(Server $sunucu, string $kullanici, string $parola): SSH2
+    private function connect(Server $server, string $user, string $password): SSH2
     {
-        $ssh = new SSH2($sunucu->ip_address, $this->baglantiPortu($sunucu), $this->timeout);
+        $ssh = new SSH2($server->ip_address, $this->connectionPort($server), $this->timeout);
 
         try {
-            $ok = $ssh->login($kullanici, $parola);
+            $ok = $ssh->login($user, $password);
         } catch (Throwable $e) {
             throw new RotationError('Bağlantı kurulamadı: '.$e->getMessage());
         }
 
         if (! $ok) {
-            throw new RotationError("Kimlik doğrulaması reddedildi ({$kullanici}).");
+            throw new RotationError("Kimlik doğrulaması reddedildi ({$user}).");
         }
 
         return $ssh;
@@ -72,7 +72,7 @@ trait SshWith
      * makinenin kendi çıktısına benzemeyecek kadar özeldir; yoksa lecture
      * ya da açılış iletisi içindeki bir kelime istem sanılırdı.
      */
-    private const SUDO_ISTEM = 'NYS-SUDO-PAROLA:';
+    private const SUDO_REQUEST = 'NYS-SUDO-PAROLA:';
 
     /**
      * Yetki yükseltme ön sözü.
@@ -82,11 +82,11 @@ trait SshWith
      */
     protected function sudoPrelude(): string
     {
-        return 'sudo -S -p '.escapeshellarg(self::SUDO_ISTEM).' -v';
+        return 'sudo -S -p '.escapeshellarg(self::SUDO_REQUEST).' -v';
     }
 
     private function execute(
-        ServerSession $oturum,
+        ServerSession $session,
         string $command,
         string $failure,
         string $stdin = '',
@@ -94,7 +94,7 @@ trait SshWith
         string $preludeInput = '',
     ): string {
         /** @var SSH2 $ssh */
-        $ssh = $oturum->tutamac;
+        $ssh = $session->handle;
 
         /*
          * Bağlantı KOPMUŞSA burada durulur.
@@ -146,9 +146,9 @@ trait SshWith
             ? '{ '.$command.' ; }; printf "\n'.$marker.':%s\n" "$?"'
             : '{ '.$prelude.' ; }; printf "\n'.$gate.'\n"; { '.$command.' ; }; printf "\n'.$marker.':%s\n" "$?"');
 
-        $onSoz = '';
+        $preludeOutput = '';
 
-        if ($prelude !== '') {
+        if ($preludeOutput !== '') {
             if ($preludeInput !== '') {
                 /*
                  * PAROLA, İSTEM GÖRÜLENE KADAR YAZILMAZ.
@@ -172,17 +172,17 @@ trait SshWith
                  * (NOPASSWD): ikisinden hangisi önce gelirse ona göre
                  * davranılır, yoksa parolasız makinede boşuna beklenirdi.
                  */
-                $onSoz = (string) $ssh->read(
-                    '/'.preg_quote(self::SUDO_ISTEM, '/').'|'.$gate.'/',
+                $preludeOutput = (string) $ssh->read(
+                    '/'.preg_quote(self::SUDO_REQUEST, '/').'|'.$gate.'/',
                     SSH2::READ_REGEX,
                 );
 
-                if (! str_contains($onSoz, $gate)) {
+                if (! str_contains($preludeOutput, $gate)) {
                     $ssh->write($preludeInput);
-                    $onSoz .= (string) $ssh->read('/'.$gate.'/', SSH2::READ_REGEX);
+                    $preludeOutput .= (string) $ssh->read('/'.$gate.'/', SSH2::READ_REGEX);
                 }
             } else {
-                $onSoz = (string) $ssh->read('/'.$gate.'/', SSH2::READ_REGEX);
+                $preludeOutput = (string) $ssh->read('/'.$gate.'/', SSH2::READ_REGEX);
             }
         }
 
@@ -192,7 +192,7 @@ trait SshWith
 
         $ssh->write("\x04");
 
-        $output = $onSoz.(string) $ssh->read('/'.$marker.':\d+/', SSH2::READ_REGEX);
+        $output = $preludeOutput.(string) $ssh->read('/'.$marker.':\d+/', SSH2::READ_REGEX);
         $ssh->disablePTY();
 
         if (preg_match('/'.$marker.':(\d+)/', $output, $m) !== 1) {
@@ -217,10 +217,10 @@ trait SshWith
      * orada port RDP'nin portudur (3389) ve WinRM oraya bağlanmaz — bu yüzden
      * sürücü kendi portunu söyleyebilir (bkz. WindowsDriver).
      */
-    protected function baglantiPortu(Server $sunucu): int
+    protected function connectionPort(Server $server): int
     {
-        return $sunucu->connection_port ?? $this->varsayilanPort();
+        return $server->connection_port ?? $this->defaultPort();
     }
 
-    abstract protected function varsayilanPort(): int;
+    abstract protected function defaultPort(): int;
 }

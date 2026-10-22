@@ -109,10 +109,10 @@ final class ApiTokenAuthTest extends TestCase
         $switch = $this->switch();
         $this->token(owner: $this->owner([$switch->id]));
 
-        $yanit = $this->apiGet('/api/v1/switches')->assertOk()->json('data.0');
+        $response = $this->apiGet('/api/v1/switches')->assertOk()->json('data.0');
 
-        $this->assertSame($switch->uuid, $yanit['id']);
-        $this->assertArrayNotHasKey('switch_id', $yanit);
+        $this->assertSame($switch->uuid, $response['id']);
+        $this->assertArrayNotHasKey('switch_id', $response);
     }
 
     /**
@@ -248,11 +248,11 @@ final class ApiTokenAuthTest extends TestCase
 
         $this->apiGet('/api/v1/switches')->assertOk();
 
-        $yeni = $token->rotate();
+        $new = $token->rotate();
 
         $this->apiGet('/api/v1/switches')->assertUnauthorized();
 
-        $this->getJson('/api/v1/switches', ['Authorization' => "Bearer {$yeni}"])->assertOk();
+        $this->getJson('/api/v1/switches', ['Authorization' => "Bearer {$new}"])->assertOk();
     }
 
     /**

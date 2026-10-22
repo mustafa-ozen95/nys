@@ -118,7 +118,7 @@ return new class extends Migration
 
         // Örnek veri kapalıyken YALNIZCA yönetici rolü kurulur; kurulumu
         // yapan kendi rollerini panelden açar.
-        if (! config('app.ornek_veri')) {
+        if (! config('app.sample_data')) {
             $roles = array_slice($roles, 0, 1);
         }
 

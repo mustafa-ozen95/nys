@@ -72,18 +72,18 @@ final class IrrQueryTest extends TestCase
          * sunucu "A16\nAS64496 AS64496\nC\n" döndürüyor, 16 bayt son
          * satır sonuyla birlikte sayılıyor.
          */
-        $sonuc = $this->ask(
+        $result = $this->ask(
             "A7\nroute:\nC\nD\n",
             ['192.0.2.0/24', '203.0.113.0/24'],
         );
 
         $this->assertSame(
             "!!\n!r192.0.2.0/24\n!r203.0.113.0/24\n!q\n",
-            $sonuc['request'],
+            $result['request'],
         );
 
-        $this->assertSame("route:\n", $sonuc['objects']['192.0.2.0/24']);
-        $this->assertNull($sonuc['objects']['203.0.113.0/24']);
+        $this->assertSame("route:\n", $result['objects']['192.0.2.0/24']);
+        $this->assertNull($result['objects']['203.0.113.0/24']);
     }
 
     /**

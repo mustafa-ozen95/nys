@@ -42,16 +42,16 @@ class AnalyzerSynchronizer
         $analyzers = $this->reader->analyzers($session, $switch);
 
         DB::transaction(function () use ($switch, $analyzers): void {
-            $tutulan = [];
+            $kept = [];
 
             foreach ($analyzers as $analyzer) {
-                $tutulan[] = $switch->analyzers()->updateOrCreate(
+                $kept[] = $switch->analyzers()->updateOrCreate(
                     ['name' => $analyzer['name']],
                     collect($analyzer)->only(self::FIELDS)->all(),
                 )->id;
             }
 
-            $switch->analyzers()->whereNotIn('id', $tutulan)->delete();
+            $switch->analyzers()->whereNotIn('id', $kept)->delete();
         });
     }
 }

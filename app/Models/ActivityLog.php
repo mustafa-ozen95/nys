@@ -83,8 +83,8 @@ class ActivityLog extends Model
             return;
         }
 
-        $query->where(function (Builder $dis) use ($user): void {
-            $dis->where('user_id', $user->getKey())
+        $query->where(function (Builder $outer) use ($user): void {
+            $outer->where('user_id', $user->getKey())
                 ->orWhere(fn (Builder $q) => $q
                     ->where('subject_type', (new NetworkSwitch)->getMorphClass())
                     ->whereIn('subject_id', NetworkSwitch::query()->visibleTo($user)->select('id')))

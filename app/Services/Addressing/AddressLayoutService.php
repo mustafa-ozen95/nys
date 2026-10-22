@@ -53,46 +53,46 @@ class AddressLayoutService
      */
     public function network(AddressBlock $block, ?User $user = null): array
     {
-        $altAglar = $block->subnets()
+        $subNetworks = $block->subnets()
             // Görme yasağı olan alt ağ listelenmez (yeri boşluk olarak görünür).
             ->when($user !== null, fn ($query) => $query->visibleTo($user))
             ->with(['accessSwitch', 'coreSwitch', 'vlan'])
             ->orderBy('range_start')
             ->get();
 
-        $satirlar = [];
-        $imlec = $block->range_start;
-        $son = $block->range_end;
+        $rows = [];
+        $cursor = $block->range_start;
+        $last = $block->range_end;
 
-        foreach ($altAglar as $alt) {
+        foreach ($subNetworks as $alt) {
             /* Alt ağdan ÖNCE kalan yer boşluktur. */
-            if ($imlec < $alt->range_start) {
-                $satirlar[] = $this->bosluk($imlec, Cidr::decrement($alt->range_start), $block);
+            if ($cursor < $alt->range_start) {
+                $rows[] = $this->gap($cursor, Cidr::decrement($alt->range_start), $block);
             }
 
-            $satirlar[] = [
+            $rows[] = [
                 'tur' => 'alt-ag',
                 'cidr' => $alt->cidr,
                 'blok' => $alt,
                 'adres' => $alt->toCidr()->usableCount(),
             ];
 
-            $sonraki = Cidr::increment($alt->range_end);
+            $next = Cidr::increment($alt->range_end);
 
             /* Taşma: blok adres uzayının sonunda bitiyor. */
-            if ($sonraki <= $alt->range_end) {
-                return $satirlar;
+            if ($next <= $alt->range_end) {
+                return $rows;
             }
 
-            $imlec = $sonraki;
+            $cursor = $next;
         }
 
         /* Sondan artan yer. */
-        if ($imlec <= $son) {
-            $satirlar[] = $this->bosluk($imlec, $son, $block);
+        if ($cursor <= $last) {
+            $rows[] = $this->gap($cursor, $last, $block);
         }
 
-        return $satirlar;
+        return $rows;
     }
 
     /**
@@ -106,42 +106,42 @@ class AddressLayoutService
     public function hosts(AddressBlock $block): array
     {
         $cidr = $block->toCidr();
-        $toplam = $cidr->usableCount();
+        $total = $cidr->usableCount();
 
-        if ($block->is_subnetted || $toplam === null || $toplam > self::HOST_LIMIT) {
-            return ['sinirli' => true, 'toplam' => $toplam, 'dolu' => 0, 'adresler' => []];
+        if ($block->is_subnetted || $total === null || $total > self::HOST_LIMIT) {
+            return ['sinirli' => true, 'toplam' => $total, 'dolu' => 0, 'adresler' => []];
         }
 
-        $sahipler = $this->owners($block);
-        $adresler = [];
+        $owners = $this->owners($block);
+        $addresses = [];
 
-        $adres = inet_pton($cidr->firstUsable());
-        $bitis = inet_pton($cidr->lastUsable());
+        $address = inet_pton($cidr->firstUsable());
+        $end = inet_pton($cidr->lastUsable());
 
-        while ($adres <= $bitis && count($adresler) < self::HOST_LIMIT) {
-            $metin = (string) inet_ntop($adres);
-            $sahip = $sahipler[$metin] ?? null;
+        while ($address <= $end && count($addresses) < self::HOST_LIMIT) {
+            $text = (string) inet_ntop($address);
+            $owner = $owners[$text] ?? null;
 
-            $adresler[] = [
-                'adres' => $metin,
-                'sahip' => $sahip['ad'] ?? null,
-                'tur' => $sahip['tur'] ?? null,
+            $addresses[] = [
+                'adres' => $text,
+                'sahip' => $owner['ad'] ?? null,
+                'tur' => $owner['tur'] ?? null,
             ];
 
-            $sonraki = Cidr::increment($adres);
+            $next = Cidr::increment($address);
 
-            if ($sonraki <= $adres) {
+            if ($next <= $address) {
                 break;
             }
 
-            $adres = $sonraki;
+            $address = $next;
         }
 
         return [
             'sinirli' => false,
-            'toplam' => $toplam,
-            'dolu' => count(array_filter($adresler, static fn (array $a): bool => $a['sahip'] !== null)),
-            'adresler' => $adresler,
+            'toplam' => $total,
+            'dolu' => count(array_filter($addresses, static fn (array $a): bool => $a['sahip'] !== null)),
+            'adresler' => $addresses,
         ];
     }
 
@@ -156,25 +156,25 @@ class AddressLayoutService
      */
     private function owners(AddressBlock $block): array
     {
-        $bas = $block->range_start;
-        $son = $block->range_end;
+        $head = $block->range_start;
+        $last = $block->range_end;
 
-        $icinde = function (?string $adres) use ($bas, $son): bool {
-            if ($adres === null || $adres === '') {
+        $within = function (?string $address) use ($head, $last): bool {
+            if ($address === null || $address === '') {
                 return false;
             }
 
-            $paket = @inet_pton($adres);
+            $package = @inet_pton($address);
 
             /* Alan adı da yazılabiliyor (sunucu kaydı); adres değilse atla. */
-            return $paket !== false && strlen($paket) === strlen($bas) && $paket >= $bas && $paket <= $son;
+            return $package !== false && strlen($package) === strlen($head) && $package >= $head && $package <= $last;
         };
 
-        $sahipler = [];
+        $owners = [];
 
         foreach (SwitchIpAddress::query()->with('switch')->get() as $ip) {
-            if ($icinde($ip->address)) {
-                $sahipler[(string) $ip->address] = [
+            if ($within($ip->address)) {
+                $owners[(string) $ip->address] = [
                     'ad' => trim(($ip->switch?->hostname ?? '?').' · '.($ip->interface_name ?? '')),
                     'tur' => 'switch',
                 ];
@@ -182,47 +182,47 @@ class AddressLayoutService
         }
 
         foreach (NetworkSwitch::query()->get(['hostname', 'management_ip', 'uplink_ip']) as $switch) {
-            foreach (['management_ip' => 'yönetim', 'uplink_ip' => 'uplink'] as $alan => $etiket) {
-                if ($icinde($switch->{$alan})) {
-                    $sahipler[(string) $switch->{$alan}] ??= [
-                        'ad' => $switch->hostname.' · '.$etiket,
+            foreach (['management_ip' => 'yönetim', 'uplink_ip' => 'uplink'] as $alan => $tag) {
+                if ($within($switch->{$alan})) {
+                    $owners[(string) $switch->{$alan}] ??= [
+                        'ad' => $switch->hostname.' · '.$tag,
                         'tur' => 'switch',
                     ];
                 }
             }
         }
 
-        foreach (Server::query()->get(['short_name', 'ip_address']) as $sunucu) {
-            if ($icinde($sunucu->ip_address)) {
-                $sahipler[(string) $sunucu->ip_address] ??= [
-                    'ad' => (string) $sunucu->short_name,
+        foreach (Server::query()->get(['short_name', 'ip_address']) as $server) {
+            if ($within($server->ip_address)) {
+                $owners[(string) $server->ip_address] ??= [
+                    'ad' => (string) $server->short_name,
                     'tur' => 'sunucu',
                 ];
             }
         }
 
-        foreach (BgpNeighbor::query()->get(['address']) as $komsu) {
-            if ($icinde($komsu->address)) {
-                $sahipler[(string) $komsu->address] ??= ['ad' => 'BGP komşusu', 'tur' => 'bgp'];
+        foreach (BgpNeighbor::query()->get(['address']) as $neighbor) {
+            if ($within($neighbor->address)) {
+                $owners[(string) $neighbor->address] ??= ['ad' => 'BGP komşusu', 'tur' => 'bgp'];
             }
         }
 
-        return $sahipler;
+        return $owners;
     }
 
     /**
      * @return array{tur: 'bosluk', cidr: string, parcalar: list<string>, adres: int|null}
      */
-    private function bosluk(string $bas, string $son, AddressBlock $block): array
+    private function gap(string $head, string $last, AddressBlock $block): array
     {
-        $parcalar = Cidr::fromRange($bas, $son, $block->toCidr()->isIpv6);
+        $fragments = Cidr::fromRange($head, $last, $block->toCidr()->isIpv6);
 
         return [
             'tur' => 'bosluk',
             /* Başlık: "10.0.0.8 – 10.0.0.29" — insanın okuduğu biçim. */
-            'cidr' => inet_ntop($bas).' – '.inet_ntop($son),
-            'parcalar' => array_map(static fn (Cidr $c): string => $c->toString(), $parcalar),
-            'adres' => $this->say($parcalar),
+            'cidr' => inet_ntop($head).' – '.inet_ntop($last),
+            'parcalar' => array_map(static fn (Cidr $c): string => $c->toString(), $fragments),
+            'adres' => $this->count($fragments),
         ];
     }
 
@@ -232,20 +232,20 @@ class AddressLayoutService
      *
      * @param  list<Cidr>  $parcalar
      */
-    private function say(array $parcalar): ?int
+    private function count(array $fragments): ?int
     {
-        $toplam = 0;
+        $total = 0;
 
-        foreach ($parcalar as $parca) {
-            $adet = $parca->usableCount();
+        foreach ($fragments as $fragment) {
+            $count = $fragment->usableCount();
 
-            if ($adet === null) {
+            if ($count === null) {
                 return null;
             }
 
-            $toplam += $adet;
+            $total += $count;
         }
 
-        return $toplam;
+        return $total;
     }
 }

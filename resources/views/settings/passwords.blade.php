@@ -23,21 +23,21 @@
                     cihazdan biri bitmiş diğeri başlamışken "ortalama" ikisinin
                     de yarısında olduğunu söylerdi.
                 --}}
-                <div class="ilerleme ilerleme--serit"
-                     data-ilerleme-ozet
-                     data-ilerleme-adres="{{ route('settings.passwords.progress') }}">
-                    <div class="ilerleme__ust">
-                        <span class="ilerleme__metin" data-ilerleme-ozet-metin>{{ count($active) }} cihazda parola turu sürüyor</span>
-                        <span class="ilerleme__adim" data-ilerleme-ozet-adim>{{ $ozet['biten'] }}/{{ $ozet['toplam'] }} adım</span>
+                <div class="progress progress--strip"
+                     data-progress-summary
+                     data-progress-address="{{ route('settings.passwords.progress') }}">
+                    <div class="progress__top">
+                        <span class="progress__text" data-progress-summary-text>{{ count($active) }} cihazda parola turu sürüyor</span>
+                        <span class="progress__step" data-progress-summary-step>{{ $ozet['biten'] }}/{{ $ozet['toplam'] }} adım</span>
                     </div>
 
-                    <div class="ilerleme__yol"
+                    <div class="progress__path"
                          role="progressbar"
                          aria-label="Parola turlarının toplam ilerlemesi"
                          aria-valuemin="0"
                          aria-valuemax="100"
                          aria-valuenow="{{ $ozet['yuzde'] }}">
-                        <div class="ilerleme__cubuk" data-ilerleme-ozet-cubuk data-baslangic="{{ $ozet['yuzde'] }}"></div>
+                        <div class="progress__bar" data-progress-summary-bar data-start="{{ $ozet['yuzde'] }}"></div>
                     </div>
                 </div>
             @endif
@@ -50,21 +50,21 @@
                 <x-ui.panel title="Kapatılmamış kurtarma hesapları"
                             subtitle="Bu cihazlarda tam yetkili geçici bir hesap duruyor. Parola turu yarıda kaldı.">
                     @foreach ($stranded as $rotation)
-                        <div class="grid-row grid-row--static ayar-row">
+                        <div class="grid-row grid-row--static setting-row">
                             <span class="mono">{{ $rotation->switch?->hostname ?? '—' }}</span>
                             <span>
                                 <x-ui.badge :variant="$rotation->stage?->badge() ?? 'red'">{{ $rotation->stage?->label() ?? 'Bilinmiyor' }}</x-ui.badge>
                             </span>
                             <span class="text-muted truncate">{{ $rotation->stage?->hint() }}</span>
                             <span class="text-right">
-                                <button type="submit" form="kurtarma-{{ $rotation->uuid }}"
+                                <button type="submit" form="recovery-{{ $rotation->uuid }}"
                                         class="btn btn--primary btn--sm">Kapat</button>
                             </span>
                         </div>
 
-                        <form method="POST" id="kurtarma-{{ $rotation->uuid }}" hidden
+                        <form method="POST" id="recovery-{{ $rotation->uuid }}" hidden
                               action="{{ route('settings.passwords.repair', $rotation) }}"
-                              data-yerinde
+                              data-in-place
                               data-confirm="Kurtarma hesabı cihazdan silinecek. Panel hesabına girilemiyorsa önce parolası yeniden kurulur."
                               data-confirm-title="Kurtarma hesabını kapat"
                               data-confirm-verify="{{ $rotation->switch?->hostname }}">
@@ -108,7 +108,7 @@
                         subtitle="Her cihaza {{ $length }} karakterlik, {{ $format }} içeren AYRI bir parola yazılır.">
                 @if ($canRotateAny)
                     <x-slot:actions>
-                        <button type="submit" form="toplu-parola" class="btn btn--danger btn--sm">
+                        <button type="submit" form="bulk-password" class="btn btn--danger btn--sm">
                             Hepsini değiştir
                         </button>
                     </x-slot:actions>
@@ -144,8 +144,8 @@
                     zaman yazılmaz; her gösterim ise kayda geçer.
                 </p>
 
-                <form method="POST" id="toplu-parola" hidden action="{{ route('settings.passwords.store') }}"
-                      data-yerinde
+                <form method="POST" id="bulk-password" hidden action="{{ route('settings.passwords.store') }}"
+                      data-in-place
                       data-confirm="Bütün switchlerin panel parolası değiştirilecek. Cihaza SSH ile bu hesapla bağlanan başka sistemler varsa erişimlerini kaybeder."
                       data-confirm-title="Bütün cihazların parolasını değiştir"
                       data-confirm-variant="danger"
@@ -162,7 +162,7 @@
             <x-ui.panel title="Cihazlar" subtitle="Son turun sonucu. Tek bir cihazı yeniden denemek için satırdaki düğme."
                         >
                 @forelse ($switches as $switch)
-                    <div class="grid-row grid-row--static ayar-row" data-ilerleme-cihaz="{{ $switch->uuid }}">
+                    <div class="grid-row grid-row--static setting-row" data-progress-device="{{ $switch->uuid }}">
                         <span class="mono">{{ $switch->hostname }}</span>
                         <span>
                             @if (isset($active[$switch->uuid]))
@@ -190,23 +190,23 @@
                                 </span>
                             @endcan
                         </span>
-                        <span @class(['text-right', 'ayar-row__ilerleme' => isset($active[$switch->uuid])])>
+                        <span @class(['text-right', 'setting-row__progress' => isset($active[$switch->uuid])])>
                             @if (isset($active[$switch->uuid]))
                                 {{--
                                     Tur SÜRÜYOR. Düğmeler gösterilmez: ikinci
                                     iş, işin tekilliğine takılıp sessizce
                                     düşerdi ve kullanıcı bunu hata sanardı.
                                 --}}
-                                <span class="ilerleme">
-                                    <span class="ilerleme__metin" data-ilerleme-metin>{{ $active[$switch->uuid]['adim'] > 0 ? $active[$switch->uuid]['adim'].'/'.$active[$switch->uuid]['toplam'].' · '.$active[$switch->uuid]['metin'] : $active[$switch->uuid]['metin'] }}</span>
+                                <span class="progress">
+                                    <span class="progress__text" data-progress-text>{{ $active[$switch->uuid]['adim'] > 0 ? $active[$switch->uuid]['adim'].'/'.$active[$switch->uuid]['toplam'].' · '.$active[$switch->uuid]['metin'] : $active[$switch->uuid]['metin'] }}</span>
 
-                                    <span class="ilerleme__yol"
+                                    <span class="progress__path"
                                           role="progressbar"
                                           aria-label="{{ $switch->hostname }} parola güncelleme ilerlemesi"
                                           aria-valuemin="0"
                                           aria-valuemax="100"
                                           aria-valuenow="{{ $active[$switch->uuid]['yuzde'] }}">
-                                        <span class="ilerleme__cubuk" data-ilerleme-cubuk data-baslangic="{{ $active[$switch->uuid]['yuzde'] }}"></span>
+                                        <span class="progress__bar" data-progress-bar data-start="{{ $active[$switch->uuid]['yuzde'] }}"></span>
                                     </span>
                                 </span>
                             @else
@@ -214,7 +214,7 @@
                                     @unless ($switch->credentials->isEmpty())
                                         <button type="button" class="btn btn--sm"
                                                 data-modal-open="elle-{{ $switch->uuid }}">Elle</button>
-                                        <button type="submit" form="parola-{{ $switch->uuid }}"
+                                        <button type="submit" form="password-{{ $switch->uuid }}"
                                                 class="btn btn--sm">Değiştir</button>
                                     @endunless
                                 @endcan
@@ -223,9 +223,9 @@
                     </div>
 
                     @if (! $switch->credentials->isEmpty() && auth()->user()->can('rotate', $switch))
-                        <form method="POST" id="parola-{{ $switch->uuid }}" hidden
+                        <form method="POST" id="password-{{ $switch->uuid }}" hidden
                               action="{{ route('settings.passwords.update', $switch) }}"
-                              data-yerinde
+                              data-in-place
                               data-confirm="{{ $switch->hostname }} cihazının panel parolası değiştirilecek."
                               data-confirm-title="Parolayı değiştir"
                               data-confirm-verify="{{ $switch->hostname }}">
@@ -249,7 +249,7 @@
                     @unless ($switch->credentials->isEmpty())
                         <x-ui.modal :id="'elle-'.$switch->uuid" :title="$switch->hostname.' · parolayı elle ver'">
                             <form method="POST" action="{{ route('settings.passwords.manual', $switch) }}"
-                            data-yerinde
+                            data-in-place
                                   data-confirm="{{ $switch->hostname }} cihazına verdiğiniz parola yazılacak. Geri alınabilir commit kullanılır; kurtarma hesabı açılır ve tur sonunda silinir."
                                   data-confirm-title="Elle parola"
                                   data-confirm-verify="{{ $switch->hostname }}">

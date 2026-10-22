@@ -9,27 +9,27 @@
                 <span class="spacer"></span>
 
                 @can('createSwitchIpAddresses', $switch)
-                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="ip-ekle">Adres ekle</button>
+                    <button type="button" class="btn btn--primary btn--sm" data-modal-open="ip-add">Adres ekle</button>
                 @endcan
             </div>
 
             <div class="column__body">
                 <div class="grid-row__head ip-row ip-row__head">
-                    <span class="ip-row__adres">Adres</span>
-                    <span class="ip-row__arayuz">Arayüz</span>
+                    <span class="ip-row__address">Adres</span>
+                    <span class="ip-row__interface">Arayüz</span>
                     <span class="ip-row__port">VLAN / Port</span>
-                    <span class="ip-row__eylem"></span>
+                    <span class="ip-row__action"></span>
                 </div>
 
                 @forelse ($addresses as $address)
                     <div class="grid-row grid-row--static ip-row">
-                        <span class="mono ip-row__adres">{{ $address->cidr }}</span>
-                        <span class="mono text-muted ip-row__arayuz truncate">{{ $address->interface_name }}</span>
+                        <span class="mono ip-row__address">{{ $address->cidr }}</span>
+                        <span class="mono text-muted ip-row__interface truncate">{{ $address->interface_name }}</span>
                         <span class="mono text-muted ip-row__port">
                             {{ $address->vlan ? $address->vlan->label : ($address->port?->name ?: '—') }}
                         </span>
 
-                        <span class="ip-row__eylem">
+                        <span class="ip-row__action">
                             @can('updateSwitchIpAddresses', $switch)
                                 @if ($editable[$address->uuid])
                                     <button type="button" class="btn btn--sm"
@@ -51,7 +51,7 @@
     </div>
 
     @can('createSwitchIpAddresses', $switch)
-        <x-ui.modal id="ip-ekle" title="Yeni IP adresi">
+        <x-ui.modal id="ip-add" title="Yeni IP adresi">
             <form method="POST" action="{{ route('switches.ip-addresses.store', $switch) }}"
                   data-confirm="Adres cihaza commit edilecek. Porta adres vermek portu routed yapar ve VLAN üyeliğini düşürür."
                   data-confirm-title="Cihaza yaz">
@@ -80,12 +80,12 @@
                                                :prefix="'ip-'.$address->uuid" />
                     </div>
                     <x-ui.modal-actions submit="Cihaza yaz">
-                        <button type="submit" form="ip-sil-{{ $address->uuid }}" class="btn btn--danger btn--sm">Sil</button>
+                        <button type="submit" form="ip-delete-{{ $address->uuid }}" class="btn btn--danger btn--sm">Sil</button>
                         <span class="spacer"></span>
                     </x-ui.modal-actions>
                 </form>
 
-                <form method="POST" id="ip-sil-{{ $address->uuid }}" hidden
+                <form method="POST" id="ip-delete-{{ $address->uuid }}" hidden
                       action="{{ route('switches.ip-addresses.destroy', [$switch, $address]) }}"
                       data-confirm="{{ $address->cidr }} adresi CİHAZDAN silinecek."
                       data-confirm-title="Adresi cihazdan sil" data-confirm-variant="danger"

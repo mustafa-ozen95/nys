@@ -76,13 +76,13 @@ class PrefixListEntryRequest extends FormRequest
              * yazabilir. Düz metin eşitliği aynı prefixi iki kez eklemeye
              * izin verirdi ve cihaz ikincisini sessizce yutardı.
              */
-            $zatenVar = SwitchPrefixListEntry::query()
+            $alreadyExists = SwitchPrefixListEntry::query()
                 ->where('switch_prefix_list_id', $this->route('prefixList')->id)
                 ->where('prefix_length', $cidr->prefixLength)
                 ->pluck('address')
                 ->contains(fn (string $address): bool => @inet_pton($address) === inet_pton($cidr->network));
 
-            if ($zatenVar) {
+            if ($alreadyExists) {
                 $validator->errors()->add('cidr', 'Bu prefix listede zaten var.');
 
                 return;
@@ -103,19 +103,19 @@ class PrefixListEntryRequest extends FormRequest
      */
     private function guardFamily(Validator $validator, Cidr $cidr): void
     {
-        $aileler = app(DependencyGuard::class)->prefixListFamilies($this->route('prefixList'));
+        $families = app(DependencyGuard::class)->prefixListFamilies($this->route('prefixList'));
 
-        if ($aileler === []) {
+        if ($families === []) {
             return;
         }
 
-        $gereken = $cidr->isIpv6 ? 'inet6' : 'inet';
+        $required = $cidr->isIpv6 ? 'inet6' : 'inet';
 
-        if (! in_array($gereken, $aileler, true)) {
+        if (! in_array($required, $families, true)) {
             $validator->errors()->add(
                 'cidr',
-                'Bu liste '.implode(', ', $aileler).' ailesindeki bir firewall filtresinden kullanılıyor; '
-                ."cihaz oraya {$gereken} prefix'i kabul etmiyor.",
+                'Bu liste '.implode(', ', $families).' ailesindeki bir firewall filtresinden kullanılıyor; '
+                ."cihaz oraya {$required} prefix'i kabul etmiyor.",
             );
         }
     }
@@ -158,8 +158,8 @@ class PrefixListEntryRequest extends FormRequest
      */
     private function isAligned(Cidr $cidr): bool
     {
-        $yazilan = @inet_pton($this->address());
+        $written = @inet_pton($this->address());
 
-        return $yazilan !== false && $yazilan === inet_pton($cidr->network);
+        return $written !== false && $written === inet_pton($cidr->network);
     }
 }

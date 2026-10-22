@@ -26,28 +26,28 @@ use App\Models\UserIdentity;
  */
 class AccountMatcher
 {
-    public const SAGLAYICI = 'kimlik';
+    public const PROVIDER = 'kimlik';
 
     /** @param  array{sub: string, name: string, email: string, email_verified: bool}  $kimlik */
-    public function bul(array $kimlik): ?User
+    public function find(array $identity): ?User
     {
-        $bag = UserIdentity::where('provider', self::SAGLAYICI)
-            ->where('subject', $kimlik['sub'])
+        $bag = UserIdentity::where('provider', self::PROVIDER)
+            ->where('subject', $identity['sub'])
             ->first();
 
         if ($bag?->user) {
             return $bag->user;
         }
 
-        return $kimlik['email_verified'] ? $this->epostayaGore($kimlik['email']) : null;
+        return $identity['email_verified'] ? $this->emailBy($identity['email']) : null;
     }
 
     /** İlk eşleşmeyi kalıcı hâle getirir. */
-    public function bagla(User $kullanici, array $kimlik): UserIdentity
+    public function bind(User $user, array $identity): UserIdentity
     {
         return UserIdentity::updateOrCreate(
-            ['provider' => self::SAGLAYICI, 'subject' => $kimlik['sub']],
-            ['user_id' => $kullanici->id, 'email' => $kimlik['email'], 'last_login_at' => now()],
+            ['provider' => self::PROVIDER, 'subject' => $identity['sub']],
+            ['user_id' => $user->id, 'email' => $identity['email'], 'last_login_at' => now()],
         );
     }
 
@@ -57,10 +57,10 @@ class AccountMatcher
      * Birden fazla hesap aynı adresi taşıyorsa hangisinin kastedildiği belli
      * değildir; tahmin etmek yanlış hesaba giriş demek olurdu.
      */
-    private function epostayaGore(string $eposta): ?User
+    private function emailBy(string $email): ?User
     {
-        $adaylar = User::where('email', $eposta)->limit(2)->get();
+        $candidates = User::where('email', $email)->limit(2)->get();
 
-        return $adaylar->count() === 1 ? $adaylar->first() : null;
+        return $candidates->count() === 1 ? $candidates->first() : null;
     }
 }

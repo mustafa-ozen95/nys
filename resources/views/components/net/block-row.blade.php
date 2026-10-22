@@ -11,25 +11,25 @@
 @props(['block', 'selected' => null])
 
 <a href="{{ route('addressing.index', ['block' => $block->uuid]) }}"
-   class="grid-row block-row agac__satir"
+   class="grid-row block-row agac__row"
    @if ($selected?->is($block)) aria-selected="true" @endif>
     <span class="mono block-row__cidr">{{ $block->cidr }}</span>
 
-    <span class="text-sm text-muted truncate block-row__aciklama">
+    <span class="text-sm text-muted truncate block-row__description">
         @if ($block->purpose?->isInfrastructure())
             <x-ui.badge :variant="$block->purpose->badge()">{{ $block->purpose->label() }}</x-ui.badge>
         @endif
         {{ $block->description }}
     </span>
 
-    <span class="block-row__atama">
+    <span class="block-row__assignment">
         @if ($block->is_assigned)
             <x-ui.badge variant="orange">Kullanımda</x-ui.badge>
         @endif
         <x-net.assignment :block="$block" />
     </span>
 
-    <span class="text-sm text-muted block-row__sayi">
+    <span class="text-sm text-muted block-row__number">
         @if ($block->is_subnetted)
             {{ $block->subnets_count ?? $block->subnets()->count() }} alt ağ
         @elseif ($block->is_assigned)
