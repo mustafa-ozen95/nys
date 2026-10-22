@@ -31,14 +31,14 @@ try {
     $dosya = new ConnectionFile(new Encrypter((string) $anahtar, 'AES-256-CBC'), $kok.'/storage/app/database');
 
     match ($argv[1] ?? '') {
-        'asama' => print ($dosya->asama() ?? '')."\n",
-        'ortam' => print $dosya->ortamSatirlari(),
-        'istemci' => print $dosya->istemciAyari(),
-        'ortam-istemci' => print ConnectionFile::istemciMetni(ConnectionFile::temizle([
+        'asama' => print ($dosya->stage() ?? '')."\n",
+        'ortam' => print $dosya->environmentRows(),
+        'istemci' => print $dosya->clientSetting(),
+        'ortam-istemci' => print ConnectionFile::clientText(ConnectionFile::clean([
             'host' => getenv('DB_HOST'), 'port' => getenv('DB_PORT'),
             'username' => getenv('DB_USERNAME'), 'password' => getenv('DB_PASSWORD'),
         ])),
-        'yaz' => $dosya->asamaYaz((string) ($argv[2] ?? ''), isset($argv[3]) && $argv[3] !== '' ? $argv[3] : null),
+        'yaz' => $dosya->stageWrite((string) ($argv[2] ?? ''), isset($argv[3]) && $argv[3] !== '' ? $argv[3] : null),
         default => throw new RuntimeException('kullanım: dc-database asama|ortam|istemci|ortam-istemci|yaz <aşama> [açıklama]'),
     };
 } catch (Throwable $e) {
