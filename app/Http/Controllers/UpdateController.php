@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityChannel;
+use App\Services\ActivityRecorder;
 use App\Services\Settings\SettingsCatalog;
+use App\Services\Update\UpdateApply;
 use App\Services\Update\UpdateCheck;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,13 +15,15 @@ use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
+use RuntimeException;
 use Throwable;
 
 /**
  * Güncelleme kontrolü: çalışan sürüm ve GitHub'daki son başarılı derleme.
  *
- * Yalnızca BAKAR. Kontrol her sabah kendiliğinden yapılır (update:check);
- * düğme aynı kontrolü hemen yapar. Güncellemenin kendisi sunucudan yapılır.
+ * Kontrol her sabah kendiliğinden yapılır (update:check); düğme aynı
+ * kontrolü hemen yapar. Yeni sürüm varsa "Şimdi güncelle" platformun deploy
+ * hook'unu tetikler (UpdateApply); kurulumu platform yapar.
  *
  * Yetkilendirme: HasMiddleware ile `can:manageUpdate` (yalnızca yönetici).
  */
@@ -37,6 +42,8 @@ class UpdateController extends Controller implements HasMiddleware
     public function __construct(
         private SettingsCatalog $catalog,
         private UpdateCheck $audit,
+        private UpdateApply $updater,
+        private ActivityRecorder $activity,
     ) {}
 
     /** @return array<int, Middleware> */
@@ -71,6 +78,8 @@ class UpdateController extends Controller implements HasMiddleware
                 'eski' => ($last['calisan'] ?? null) !== $running,
             ],
             'durum' => $last === null ? null : self::STATUSES[$last['durum']],
+            'guncellenebilir' => $this->updater->mumkun(),
+            'hookYok' => ! $this->updater->hazir(),
         ]);
     }
 
@@ -93,5 +102,18 @@ class UpdateController extends Controller implements HasMiddleware
         } catch (Throwable) {
             return $iso;
         }
+    }
+
+    public function apply(): RedirectResponse
+    {
+        try {
+            $sonuc = $this->updater->baslat();
+        } catch (RuntimeException $e) {
+            return back()->with('error', 'Güncelleme başlatılamadı: '.$e->getMessage());
+        }
+
+        $this->activity->record(null, 'guncelleme_baslat', 'Panel güncellemesi başlatıldı: '.$sonuc, ActivityChannel::Config);
+
+        return back()->with('status', 'Güncelleme başlatıldı ('.$sonuc.'). Panel birkaç dakika içinde yeni sürümle yeniden açılır; bu sırada sayfa kısa bir süre yanıt vermeyebilir.');
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Services\Update\UpdateCheck;
 use Illuminate\Console\Scheduling\Schedule;
@@ -28,6 +29,8 @@ class UpdateScreenTest extends TestCase
     private const RUNNING = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
     private const LAST = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+
+    private const HOOK = 'http://10.0.0.9:3000/v1/deploy-hooks/GIZLI_HOOK_JETONU';
 
     private string $directory;
 
@@ -151,5 +154,92 @@ class UpdateScreenTest extends TestCase
             ->get(route('settings.updates'))
             ->assertSee('kontrol edilemedi')
             ->assertSee('erişilemedi');
+    }
+
+    private function yeniSurumBulunmus(User $yonetici): void
+    {
+        $this->actingAs($yonetici)->post(route('settings.updates.check'));
+    }
+
+    public function test_guncelle_dugmesi_yalnizca_yeni_surum_ve_hook_varken_gorunur(): void
+    {
+        $yonetici = User::factory()->admin()->create();
+
+        // Hook var ama henüz kontrol yok: düğme yok.
+        config(['update.hook' => self::HOOK]);
+        $this->actingAs($yonetici)->get(route('settings.updates'))->assertDontSee(route('settings.updates.apply'));
+
+        // Yeni sürüm var, hook yok: düğme yok, ne gerektiği yazılı.
+        config(['update.hook' => null]);
+        $this->yeniSurumBulunmus($yonetici);
+        $this->actingAs($yonetici)->get(route('settings.updates'))
+            ->assertDontSee(route('settings.updates.apply'))
+            ->assertSee('UPDATE_HOOK_URL');
+
+        // İkisi de var: düğme görünür, hook adresi görünmez.
+        config(['update.hook' => self::HOOK]);
+        $this->actingAs($yonetici)->get(route('settings.updates'))
+            ->assertSee(route('settings.updates.apply'))
+            ->assertDontSee('GIZLI_HOOK_JETONU');
+
+        // Panel güncellenince (çalışan = son derleme) düğme kaybolur.
+        config(['update.version' => self::LAST]);
+        $this->actingAs($yonetici)->get(route('settings.updates'))->assertDontSee(route('settings.updates.apply'));
+    }
+
+    public function test_guncelle_hooku_cagirir_ve_kayda_gecer(): void
+    {
+        Http::fake(['10.0.0.9:3000/*' => Http::response(['deploymentId' => 77], 202)]);
+        config(['update.hook' => self::HOOK]);
+        $yonetici = User::factory()->admin()->create();
+        $this->yeniSurumBulunmus($yonetici);
+
+        $this->actingAs($yonetici)->from(route('settings.updates'))
+            ->post(route('settings.updates.apply'))
+            ->assertRedirect(route('settings.updates'))
+            ->assertSessionHas('status', fn (string $m): bool => str_contains($m, 'deploy #77'));
+
+        Http::assertSent(fn ($istek): bool => $istek->url() === self::HOOK && $istek->method() === 'POST');
+        $this->assertSame(1, ActivityLog::where('action', 'guncelleme_baslat')->count());
+        $this->assertStringNotContainsString('GIZLI_HOOK_JETONU', (string) ActivityLog::where('action', 'guncelleme_baslat')->value('description'));
+    }
+
+    /** Düğme gizli olsa da istek elle gönderilebilir: karar sunucuda. */
+    public function test_yeni_surum_yoksa_hook_cagrilmaz(): void
+    {
+        config(['update.hook' => self::HOOK, 'update.version' => self::LAST]);
+        $yonetici = User::factory()->admin()->create();
+        $this->yeniSurumBulunmus($yonetici);
+
+        $this->actingAs($yonetici)->from(route('settings.updates'))
+            ->post(route('settings.updates.apply'))
+            ->assertSessionHas('error');
+
+        Http::assertNotSent(fn ($istek): bool => str_contains($istek->url(), 'deploy-hooks'));
+        $this->assertSame(0, ActivityLog::where('action', 'guncelleme_baslat')->count());
+    }
+
+    public function test_yonetici_olmayan_guncelleyemez(): void
+    {
+        config(['update.hook' => self::HOOK]);
+        $this->yeniSurumBulunmus(User::factory()->admin()->create());
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('settings.updates.apply'))
+            ->assertForbidden();
+
+        Http::assertNotSent(fn ($istek): bool => str_contains($istek->url(), 'deploy-hooks'));
+    }
+
+    public function test_platform_reddederse_sebep_gorunur_hook_gorunmez(): void
+    {
+        Http::fake(['10.0.0.9:3000/*' => Http::response(['message' => 'not found'], 404)]);
+        config(['update.hook' => self::HOOK]);
+        $yonetici = User::factory()->admin()->create();
+        $this->yeniSurumBulunmus($yonetici);
+
+        $this->actingAs($yonetici)->from(route('settings.updates'))
+            ->post(route('settings.updates.apply'))
+            ->assertSessionHas('error', fn (string $m): bool => str_contains($m, '404') && ! str_contains($m, 'GIZLI_HOOK_JETONU'));
     }
 }

@@ -71,6 +71,7 @@ services:
       - THEME_COOKIE_DOMAIN
       - ACTIVITY_CHAIN_KEY
       - UPDATE_TOKEN
+      - UPDATE_HOOK_URL
       - ZABBIX_ENABLED
       - ZABBIX_URL
       - ZABBIX_API_TOKEN

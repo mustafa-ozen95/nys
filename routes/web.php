@@ -222,11 +222,13 @@ Route::middleware('auth')->group(function (): void {
         Route::post('database/migrate', [DatabaseController::class, 'migrate'])->name('database.migrate');
 
         /*
-         * GÜNCELLEME de bölüm rotasından ÖNCE. Yalnızca bakar: çalışan sürüm
-         * GitHub'daki son başarılı derlemeyle karşılaştırılır (bkz. UpdateCheck).
+         * GÜNCELLEME de bölüm rotasından ÖNCE. Çalışan sürüm GitHub'daki son
+         * başarılı derlemeyle karşılaştırılır (bkz. UpdateCheck); yeni sürüm
+         * varsa apply platformun deploy hook'unu tetikler (bkz. UpdateApply).
          */
         Route::get('update', [UpdateController::class, 'index'])->name('updates');
         Route::post('update', [UpdateController::class, 'check'])->name('updates.check');
+        Route::post('update/apply', [UpdateController::class, 'apply'])->name('updates.apply');
 
         Route::get('{section}', 'show')->name('show');
         Route::put('{section}', 'update')->name('update');
