@@ -9,7 +9,14 @@ use PDO;
 use Throwable;
 
 /**
- * Panelin veritabanı: şu an nerede, ve uzak bir hedef taşımaya uygun mu?
+ * Panelin veritabanı: şu an nerede, ve uzak bir hedef taşımaya ya da
+ * bağlanmaya uygun mu?
+ *
+ * İKİ İŞLEM: TAŞI boş bir hedefe şu anki veritabanını kopyalar; BAĞLAN
+ * kopyalamadan DOLU bir hedefe geçer (yeni kurulumu eski kurulumun
+ * veritabanına bağlamak). Bağlanılacak hedef bu panelin olmalı (göç kayıtları
+ * tutmalı) ve bu sürümden yeni olmamalı: eski kod yeni şemayla açılırsa
+ * veriyi bozabilir.
  *
  * Taşımanın kendisi başlatıcıda yapılır (bkz. <panel>-entrypoint, "Paneldeki
  * veritabanı ayarı" bölümü); bu sınıf yalnızca ÖNCESİNİ sınar. Aynı
@@ -76,10 +83,12 @@ class RemoteDatabase
      * sonrakiler denenmez.
      *
      * @param  array{host: string, port: int, database: string, username: string, password: string}  $hedef
+     * @param  'tasi'|'baglan'  $operation  taşı: boş hedefe kopyala; bağlan: dolu hedefe kopyalamadan geç
      * @return list<array{ad: string, tamam: bool, ayrinti: string}>
      */
-    public function sina(array $target): array
+    public function sina(array $target, string $operation = 'tasi'): array
     {
+        $connect = $operation === 'baglan';
         $result = [];
         $source = $this->info();
 
@@ -88,7 +97,7 @@ class RemoteDatabase
             'Panel kurulumun veritabanında',
             $source['kaynak'] === 'ortam',
             $source['kaynak'] === 'ortam'
-                ? 'Kopya şu anki veritabanından ('.$address.') alınacak.'
+                ? ($connect ? 'Şu anki veritabanı ('.$address.') bırakılacak; kopyalanmaz.' : 'Kopya şu anki veritabanından ('.$address.') alınacak.')
                 : 'Panel zaten bu sekmeden taşınmış bir veritabanında ('.$address.'); ikinci kez taşınmaz.',
         );
 
@@ -100,15 +109,17 @@ class RemoteDatabase
             $same ? 'Hedef, panelin şu anki veritabanının kendisi.' : 'Şu anki veritabanından farklı.',
         );
 
-        $result[] = $this->item(
-            'Şu anki veritabanında yalnızca tablo var',
-            $source['ozel'] === 0,
-            match ($source['ozel']) {
-                0 => 'Görünüm, yordam, tetikleyici ya da zamanlanmış olay yok.',
-                null => 'Şu anki veritabanı okunamadı.',
-                default => $source['ozel'].' görünüm/yordam/tetikleyici/olay var; taşıma bunları kopyalamaz.',
-            },
-        );
+        if (! $connect) {
+            $result[] = $this->item(
+                'Şu anki veritabanında yalnızca tablo var',
+                $source['ozel'] === 0,
+                match ($source['ozel']) {
+                    0 => 'Görünüm, yordam, tetikleyici ya da zamanlanmış olay yok.',
+                    null => 'Şu anki veritabanı okunamadı.',
+                    default => $source['ozel'].' görünüm/yordam/tetikleyici/olay var; taşıma bunları kopyalamaz.',
+                },
+            );
+        }
 
         if ($same) {
             return $result;
@@ -128,6 +139,11 @@ class RemoteDatabase
         $result[] = $this->versionItem($version);
 
         $table = (int) $pdo->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()')->fetchColumn();
+
+        if ($connect) {
+            return [...$result, ...$this->connectItems($pdo, $table)];
+        }
+
         $result[] = $this->item(
             'Hedef veritabanı boş',
             $table === 0,
@@ -139,6 +155,76 @@ class RemoteDatabase
         }
 
         return $result;
+    }
+
+    /**
+     * Bağlanılacak hedef: dolu, bu panelin ve bu sürümden yeni değil. Yetki
+     * de sınanır: açılışta bekleyen göçler hedefte koşacak.
+     *
+     * @return list<array{ad: string, tamam: bool, ayrinti: string}>
+     */
+    private function connectItems(PDO $pdo, int $table): array
+    {
+        $hasMigrations = $table > 0 && (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = DATABASE() AND table_name = 'migrations'")->fetchColumn() > 0;
+        $targetMigrations = $hasMigrations ? array_map('strval', $pdo->query('SELECT migration FROM migrations')->fetchAll(PDO::FETCH_COLUMN)) : [];
+        $diff = self::compareMigrations($targetMigrations, $this->localMigrations());
+
+        $result = [$this->item(
+            'Hedef bu panelin dolu veritabanı',
+            $diff['ortak'] > 0,
+            match (true) {
+                $table === 0 => 'Hedef boş: bağlanacak veri yok. Boş bir hedefe "Taşı" ile kopyalayın.',
+                ! $hasMigrations => $table.' tablo var ama göç kaydı (migrations) yok; bu panelin veritabanı değil.',
+                $diff['ortak'] === 0 => 'Göç kayıtları bu panele ait değil; başka bir uygulamanın veritabanı olabilir.',
+                default => $table.' tablo; bu panelin '.$diff['ortak'].' göçü kayıtlı.',
+            },
+        )];
+
+        if ($diff['ortak'] === 0) {
+            return $result;
+        }
+
+        $result[] = $this->item(
+            'Hedef bu sürümden yeni değil',
+            $diff['bilinmeyen'] === 0,
+            $diff['bilinmeyen'] === 0
+                ? ($diff['bekleyen'] > 0 ? $diff['bekleyen'].' göç açılışta hedefte uygulanacak.' : 'Şema bu sürümle aynı.')
+                : 'Hedefte bu sürümün bilmediği '.$diff['bilinmeyen'].' göç var: daha yeni bir panel sürümüne ait. Önce bu paneli güncelleyin.',
+        );
+        $result[] = $this->permissionItem($pdo);
+
+        return $result;
+    }
+
+    /**
+     * Hedefteki göç kayıtları ile bu sürümün göç dosyaları.
+     *
+     * @param  list<string>  $target
+     * @param  list<string>  $local
+     * @return array{ortak: int, bilinmeyen: int, bekleyen: int}
+     */
+    public static function compareMigrations(array $target, array $local): array
+    {
+        return [
+            'ortak' => count(array_intersect($target, $local)),
+            'bilinmeyen' => count(array_diff($target, $local)),
+            'bekleyen' => count(array_diff($local, $target)),
+        ];
+    }
+
+    /**
+     * Bu sürümün göç adları. Klasöre bakmak yetmez: modüller kendi göçlerini
+     * ayrıca yükleyebilir (loadMigrationsFrom); "migrate"in gördüğü listenin
+     * aynısı Laravel'in göç sisteminden alınır.
+     *
+     * @return list<string>
+     */
+    protected function localMigrations(): array
+    {
+        $migrator = app('migrator');
+
+        return array_keys($migrator->getMigrationFiles([database_path('migrations'), ...$migrator->paths()]));
     }
 
     /** @param  list<array{tamam: bool}>  $sonuc */

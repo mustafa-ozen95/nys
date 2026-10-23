@@ -28,6 +28,12 @@ use Throwable;
  * Taşımanın kendisi panel kapalıyken başlatıcıda yapılır (bkz. ConnectionFile).
  * Bu ekran isteği bırakır ve konteyneri yeniden başlatır.
  *
+ * İKİ İŞLEM: TAŞI şu anki veritabanını boş bir hedefe kopyalar. BAĞLAN
+ * kopyalamaz; yeni bir kurulumu eski kurulumun dolu veritabanına geçirir.
+ * Bağlanırken eski kurulumun APP_KEY ve AUDIT_KEY değerleri bu kurulumda da
+ * olmalı (şifreli alanlar ve denetim zinciri onlara bağlı); yönetici bunu
+ * onaylar, panel bunu hedefte sınayamaz.
+ *
  * Yetkilendirme: HasMiddleware ile `can:manageDatabase` (yalnızca yönetici).
  */
 class DatabaseController extends Controller implements HasMiddleware
@@ -37,14 +43,20 @@ class DatabaseController extends Controller implements HasMiddleware
 
     private const SESSION_KEY = 'database.tested';
 
+    /** Süren ya da tamamlanmış bir işlem varken yenisi başlatılmaz. */
+    private const RUNNING = ['tasinacak', 'baglanacak', 'tasiniyor', 'deneniyor', 'etkin'];
+
+    private const OPERATIONS = ['tasi' => 'Taşı: şu anki veritabanını boş hedefe kopyala', 'baglan' => 'Bağlan: hedefteki mevcut veriyle aç (kopyalamaz)'];
+
     private const SOURCES = [
         'ortam' => ['etiket' => 'Kurulum ayarı', 'aciklama' => 'Bağlantı kurulumun ortam değişkenlerinden (DB_*) geliyor; varsayılanı compose\'taki db servisi.'],
-        'panel' => ['etiket' => 'Uzak (panel ayarı)', 'aciklama' => 'Bu sekmeden taşındı; bağlantı panelin depolama hacminde şifreli duruyor ve kurulum ayarını eziyor.'],
+        'panel' => ['etiket' => 'Uzak (panel ayarı)', 'aciklama' => 'Bu sekmeden taşındı ya da bağlandı; bağlantı panelin depolama hacminde şifreli duruyor ve kurulum ayarını eziyor.'],
     ];
 
     /** @var array<string, array{etiket: string, renk: string}> */
     private const STAGES = [
         'tasinacak' => ['etiket' => 'istendi, yeniden başlatma bekleniyor', 'renk' => 'blue'],
+        'baglanacak' => ['etiket' => 'bağlanma istendi, yeniden başlatma bekleniyor', 'renk' => 'blue'],
         'tasiniyor' => ['etiket' => 'kopyalanıyor', 'renk' => 'blue'],
         'deneniyor' => ['etiket' => 'uzak veritabanıyla açılıyor', 'renk' => 'blue'],
         'etkin' => ['etiket' => 'tamamlandı', 'renk' => 'green'],
@@ -83,7 +95,8 @@ class DatabaseController extends Controller implements HasMiddleware
             'asama' => $status === null ? null : self::STAGES[$status['durum']],
             // Süren ya da biten bir taşıma varken yeni taşıma formu gösterilmez.
             'tasinabilir' => $info['kaynak'] === 'ortam'
-                && ! in_array($status['durum'] ?? null, ['tasinacak', 'tasiniyor', 'deneniyor', 'etkin'], true),
+                && ! in_array($status['durum'] ?? null, self::RUNNING, true),
+            'islemler' => self::OPERATIONS,
             'sonuclar' => session('veritabani.sonuclar'),
             'sinanan' => $tested === null ? null : [
                 ...array_diff_key($tested, ['password' => true]),
@@ -100,7 +113,10 @@ class DatabaseController extends Controller implements HasMiddleware
             'database' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9_\-]+$/'],
             'username' => ['required', 'string', 'max:80'],
             'password' => ['required', 'string', 'max:200'],
+            'islem' => ['nullable', 'in:tasi,baglan'],
+            'anahtar_onay' => ['accepted_if:islem,baglan'],
         ], [
+            'anahtar_onay.accepted_if' => 'Bağlanmadan önce eski kurulumun APP_KEY ve AUDIT_KEY değerlerinin bu kurulumda tanımlı olduğunu onaylayın.',
             'host.regex' => 'Konak adı ya da IPv4 adresi girin.',
             'database.regex' => 'Veritabanı adında yalnızca harf, rakam, alt çizgi ve tire olabilir.',
         ]));
@@ -110,11 +126,12 @@ class DatabaseController extends Controller implements HasMiddleware
                 ->withErrors(['host' => 'Bu adres konteynerin kendisi; uzak sunucunun adresini girin.']);
         }
 
-        $results = $this->database->sina($target);
+        $operation = $request->input('islem') === 'baglan' ? 'baglan' : 'tasi';
+        $results = $this->database->sina($target, $operation);
         $done = RemoteDatabase::allDone($results);
 
         if ($done) {
-            $request->session()->put(self::SESSION_KEY, Crypt::encrypt([...$target, 'zaman' => time()]));
+            $request->session()->put(self::SESSION_KEY, Crypt::encrypt([...$target, 'islem' => $operation, 'zaman' => time()]));
         } else {
             $request->session()->forget(self::SESSION_KEY);
         }
@@ -122,9 +139,12 @@ class DatabaseController extends Controller implements HasMiddleware
         return back()
             ->withInput($request->except('password'))
             ->with('veritabani.sonuclar', $results)
-            ->with($done ? 'status' : 'error', $done
-                ? 'Sınamalar geçti. Taşımak için aşağıdaki düğmeyi kullanın.'
-                : 'Hedef taşımaya uygun değil; ayrıntılar aşağıda.');
+            ->with($done ? 'status' : 'error', match (true) {
+                $done && $operation === 'baglan' => 'Sınamalar geçti. Bağlanmak için aşağıdaki düğmeyi kullanın.',
+                $done => 'Sınamalar geçti. Taşımak için aşağıdaki düğmeyi kullanın.',
+                $operation === 'baglan' => 'Hedefe bağlanılamaz; ayrıntılar aşağıda.',
+                default => 'Hedef taşımaya uygun değil; ayrıntılar aşağıda.',
+            });
     }
 
     public function migrate(Request $request): RedirectResponse
@@ -135,26 +155,28 @@ class DatabaseController extends Controller implements HasMiddleware
             return back()->withErrors(['veritabani' => 'Önce bağlantıyı sınayın (sınama 15 dakika geçerli).']);
         }
 
-        if (in_array($this->file->stage(), ['tasinacak', 'tasiniyor', 'deneniyor', 'etkin'], true)) {
+        if (in_array($this->file->stage(), self::RUNNING, true)) {
             return back()->withErrors(['veritabani' => 'Süren ya da tamamlanmış bir taşıma var.']);
         }
 
-        $results = $this->database->sina($target);
+        $operation = $target['islem'];
+        $results = $this->database->sina(ConnectionFile::clean($target), $operation);
 
         if (! RemoteDatabase::allDone($results)) {
             $request->session()->forget(self::SESSION_KEY);
 
             return back()
                 ->with('veritabani.sonuclar', $results)
-                ->withErrors(['veritabani' => 'Sınamalar artık geçmiyor; taşıma başlatılmadı.']);
+                ->withErrors(['veritabani' => 'Sınamalar artık geçmiyor; '.($operation === 'baglan' ? 'bağlanılmadı.' : 'taşıma başlatılmadı.')]);
         }
 
         $address = $target['username'].'@'.$target['host'].':'.$target['port'].'/'.$target['database'];
 
         try {
             $this->file->connectionWrite($target);
-            $this->file->stageWrite('tasinacak', null, [
+            $this->file->stageWrite($operation === 'baglan' ? 'baglanacak' : 'tasinacak', null, [
                 'hedef' => $address,
+                'islem' => $operation,
                 'isteyen' => $request->user()?->name,
                 'istenme' => date('c'),
             ]);
@@ -166,14 +188,17 @@ class DatabaseController extends Controller implements HasMiddleware
         }
 
         // Gerekçeyi (onay penceresinden gelen "reason") kaydedici kendisi alır.
-        $this->activity->record(null, 'veritabani_tasi', 'Veritabanı taşıması istendi: '.$address, ActivityChannel::Crud);
+        $this->activity->record(null, $operation === 'baglan' ? 'veritabani_baglan' : 'veritabani_tasi',
+            ($operation === 'baglan' ? 'Mevcut veritabanına bağlanma istendi: ' : 'Veritabanı taşıması istendi: ').$address, ActivityChannel::Crud);
         $request->session()->forget(self::SESSION_KEY);
 
         if (! $this->file->reStartRequest()) {
             return back()->withErrors(['veritabani' => 'Taşıma istendi ama panel yeniden başlatılamadı. Konteyneri elle yeniden başlatın; taşıma açılışta yapılır.']);
         }
 
-        return back()->with('status', 'Taşıma istendi. Panel birkaç saniye içinde yeniden başlayacak ve kopya bitene kadar erişilemeyecek; oturumlar kapanır. Sonucu bu sekmede görürsünüz.');
+        return back()->with('status', $operation === 'baglan'
+            ? 'Bağlanma istendi. Panel birkaç saniye içinde yeniden başlayacak ve hedef veritabanıyla açılacak; oturumlar kapanır. Sonucu bu sekmede görürsünüz.'
+            : 'Taşıma istendi. Panel birkaç saniye içinde yeniden başlayacak ve kopya bitene kadar erişilemeyecek; oturumlar kapanır. Sonucu bu sekmede görürsünüz.');
     }
 
     /** Dosyadaki ISO zaman, panelin saat diliminde okunur biçime. */
@@ -186,7 +211,7 @@ class DatabaseController extends Controller implements HasMiddleware
         }
     }
 
-    /** @return array{host: string, port: int, database: string, username: string, password: string}|null */
+    /** @return array{host: string, port: int, database: string, username: string, password: string, islem: 'tasi'|'baglan'}|null */
     private function tested(Request $request): ?array
     {
         $encrypted = $request->session()->get(self::SESSION_KEY);
@@ -201,6 +226,8 @@ class DatabaseController extends Controller implements HasMiddleware
             return null;
         }
 
-        return time() - (int) ($veri['zaman'] ?? 0) <= self::TEST_LIFETIME ? ConnectionFile::clean($veri) : null;
+        return time() - (int) ($veri['zaman'] ?? 0) <= self::TEST_LIFETIME
+            ? [...ConnectionFile::clean($veri), 'islem' => ($veri['islem'] ?? 'tasi') === 'baglan' ? 'baglan' : 'tasi']
+            : null;
     }
 }

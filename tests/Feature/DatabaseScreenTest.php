@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Database\ConnectionFile;
 use App\Services\Database\RemoteDatabase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -68,6 +69,9 @@ class DatabaseScreenTest extends TestCase
         {
             public int $test = 0;
 
+            /** @var list<string> */
+            public array $operations = [];
+
             public function __construct(ConnectionFile $file, private array $inOrder, private string $source)
             {
                 parent::__construct($file);
@@ -79,8 +83,9 @@ class DatabaseScreenTest extends TestCase
                     'username' => 'nys', 'surum' => '10.11.14-MariaDB', 'boyut' => 2_500_000, 'tablo' => 48, 'ozel' => 0];
             }
 
-            public function sina(array $target): array
+            public function sina(array $target, string $operation = 'tasi'): array
             {
+                $this->operations[] = $operation;
                 $passed = $this->inOrder[min($this->test++, count($this->inOrder) - 1)];
 
                 return [
@@ -290,5 +295,98 @@ class DatabaseScreenTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('settings.certificate'))
             ->assertSee(route('settings.database'));
+    }
+
+    #[Test]
+    public function baglan_anahtar_onayi_ister(): void
+    {
+        $fake = $this->fake([true]);
+
+        $this->actingAs($this->admin())
+            ->from(route('settings.database'))
+            ->post(route('settings.database.test'), [...self::TARGET, 'islem' => 'baglan'])
+            ->assertSessionHasErrors('anahtar_onay');
+
+        $this->assertSame(0, $fake->test, 'Onaysız sınama koşmamalıydı.');
+    }
+
+    /** Yeni kurulum eski kurulumun dolu veritabanına: kopya yok, aşama "baglanacak"; onay penceresi veritabanı adını ister. */
+    #[Test]
+    public function baglan_istegi_birakir_kopyalamaz(): void
+    {
+        $fake = $this->fake([true]);
+        $yonetici = $this->admin();
+        $adres = self::TARGET['username'].'@'.self::TARGET['host'].':'.self::TARGET['port'].'/'.self::TARGET['database'];
+
+        $this->actingAs($yonetici)
+            ->from(route('settings.database'))
+            ->followingRedirects()
+            ->post(route('settings.database.test'), [...self::TARGET, 'islem' => 'baglan', 'anahtar_onay' => '1'])
+            ->assertOk()
+            ->assertSee('Bağlanmak için aşağıdaki düğmeyi kullanın')
+            ->assertSee($adres.' veritabanına bağlan')
+            ->assertSee('data-confirm-title="Mevcut veritabanına bağlan"', false)
+            ->assertSee('data-confirm-verify="'.self::TARGET['database'].'"', false)
+            ->assertDontSee('hedefine taşı')
+            ->assertDontSee(self::TARGET['password']);
+
+        $this->actingAs($yonetici)
+            ->from(route('settings.database'))
+            ->post(route('settings.database.migrate'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', fn (string $m): bool => str_contains($m, 'Bağlanma istendi'));
+
+        $this->assertSame(['baglan', 'baglan'], $fake->operations, 'Bağlan düğmesi de sınamaları bağlan olarak yeniden yapmalı.');
+        $this->assertSame(self::TARGET, $this->file->connection());
+        $this->assertSame('baglanacak', $this->file->stage());
+        $this->assertSame('baglan', $this->file->status()['islem']);
+        $this->assertFileExists($this->directory.'/restart');
+        $kayit = ActivityLog::query()->where('action', 'veritabani_baglan')->sole();
+        $this->assertStringContainsString($adres, $kayit->description);
+        $this->assertStringNotContainsString(self::TARGET['password'], $kayit->description);
+
+        $this->actingAs($yonetici)
+            ->get(route('settings.database'))
+            ->assertSee('Son bağlanma')
+            ->assertSee('bağlanma istendi, yeniden başlatma bekleniyor')
+            ->assertDontSee('Bağlantıyı sına');
+    }
+
+    /** Taşı da onay penceresiyle: veritabanı adı yazılmadan gönderilmez. */
+    #[Test]
+    public function tasi_varsayilan_islem_ve_onay_penceresi(): void
+    {
+        $fake = $this->fake([true]);
+
+        $this->actingAs($this->admin())
+            ->from(route('settings.database'))
+            ->followingRedirects()
+            ->post(route('settings.database.test'), self::TARGET)
+            ->assertSee('data-confirm-title="Veritabanını taşı"', false)
+            ->assertSee('data-confirm-verify="'.self::TARGET['database'].'"', false);
+
+        $this->assertSame(['tasi'], $fake->operations);
+    }
+
+    /** Bağlanılacak hedef bu panelin olmalı ve bu sürümden yeni olmamalı. */
+    #[Test]
+    public function goc_karsilastirmasi(): void
+    {
+        $yerel = ['2026_01_01_a', '2026_01_02_b', '2026_01_03_c'];
+
+        $this->assertSame(['ortak' => 3, 'bilinmeyen' => 0, 'bekleyen' => 0], RemoteDatabase::compareMigrations($yerel, $yerel));
+        $this->assertSame(['ortak' => 2, 'bilinmeyen' => 0, 'bekleyen' => 1], RemoteDatabase::compareMigrations(['2026_01_01_a', '2026_01_02_b'], $yerel));
+        $this->assertSame(['ortak' => 3, 'bilinmeyen' => 1, 'bekleyen' => 0], RemoteDatabase::compareMigrations([...$yerel, '2026_02_01_yeni'], $yerel));
+        $this->assertSame(['ortak' => 0, 'bilinmeyen' => 2, 'bekleyen' => 3], RemoteDatabase::compareMigrations(['baska_a', 'baska_b'], $yerel));
+    }
+
+    /** Yerel liste "migrate"in gördüğüyle aynı: çalışan şema bu sürümden yeni sayılmamalı. */
+    #[Test]
+    public function yerel_goc_listesi_calisan_semayla_ortusur(): void
+    {
+        $yerel = (fn (): array => $this->localMigrations())->call(app(RemoteDatabase::class));
+        $calisan = DB::table('migrations')->pluck('migration')->all();
+
+        $this->assertSame(['ortak' => count($calisan), 'bilinmeyen' => 0, 'bekleyen' => 0], RemoteDatabase::compareMigrations($calisan, $yerel));
     }
 }

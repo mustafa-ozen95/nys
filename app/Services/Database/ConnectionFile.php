@@ -23,6 +23,8 @@ use RuntimeException;
  * AŞAMALAR (state.json → durum):
  *
  *   tasinacak  panel istedi; başlatıcı bir sonraki açılışta kopyalar
+ *   baglanacak panel istedi; başlatıcı KOPYALAMADAN dolu hedefe geçer (yeni
+ *              kurulumu eski kurulumun veritabanına bağlamak için)
  *   tasiniyor  başlatıcı kopyalıyor
  *   deneniyor  kopya doğrulandı, uzak veritabanıyla ilk açılış sürüyor
  *   etkin      panel uzak veritabanında; GERİ DÜŞÜLMEZ
@@ -38,7 +40,10 @@ use RuntimeException;
  */
 class ConnectionFile
 {
-    public const STATUSES = ['tasinacak', 'tasiniyor', 'deneniyor', 'etkin', 'basarisiz'];
+    public const STATUSES = ['tasinacak', 'baglanacak', 'tasiniyor', 'deneniyor', 'etkin', 'basarisiz'];
+
+    /** Yeni bir istek başlatan aşamalar: önceki isteğin alanları taşınmaz. */
+    public const REQUESTS = ['tasinacak', 'baglanacak'];
 
     /** Bağlantının alanları; başka alan okunmaz, yazılmaz. */
     public const FIELDS = ['host', 'port', 'database', 'username', 'password'];
@@ -112,7 +117,7 @@ class ConnectionFile
             throw new RuntimeException('Bilinmeyen aşama: '.$status);
         }
 
-        $previous = $status === 'tasinacak' ? [] : ($this->status() ?? []);
+        $previous = in_array($status, self::REQUESTS, true) ? [] : ($this->status() ?? []);
 
         $this->write('state.json', json_encode(array_filter([
             ...$previous,
